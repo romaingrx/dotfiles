@@ -41,6 +41,12 @@
       finder = {
         FXPreferredViewStyle = "clmv";
         AppleShowAllExtensions = true;
+        AppleShowAllFiles = true; # Show hidden files
+        ShowExternalHardDrivesOnDesktop = false;
+        ShowHardDrivesOnDesktop = false;
+        ShowMountedServersOnDesktop = false;
+        ShowRemovableMediaOnDesktop = false;
+        ShowPathbar = true;
       };
       loginwindow = {
         GuestEnabled = false;

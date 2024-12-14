@@ -5,6 +5,9 @@
 >[!Warning]
 > At the moment, I'll focus on the MacOS setup and it's a work in progress.
 
+> [!Note]
+> I really recommend using Obsidian to view the documentation as it doesn't appear very well with the github markdown renderer.
+
 ## Documentation Structure
 
 All detailed documentation can be found in the `docs/` directory:
