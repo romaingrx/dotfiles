@@ -3,7 +3,6 @@
     ./system/defaults.nix
     ./system/homebrew.nix
     ./system/packages.nix
-    ./desktop/services.nix
   ];
 
   # Set ZSH
