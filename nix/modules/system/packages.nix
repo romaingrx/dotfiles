@@ -8,11 +8,13 @@
     git
     gnupg
     gh
+    # bitwarden-cli
 
     # Apps
     ## Default
     obsidian
     signal-desktop
+    # spotify
 
     ## MacOS only
     raycast

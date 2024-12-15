@@ -29,7 +29,7 @@
           home-manager = {
             useGlobalPkgs = true;
             useUserPackages = true;
-            users.romaingrx = import ./home.nix;
+            users.romaingrx = import ./home;
           };
         }
         nix-homebrew.darwinModules.nix-homebrew {
