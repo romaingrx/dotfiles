@@ -1,4 +1,4 @@
-{
+{ config, ... }: {
   enable = true;
   enableCompletion = true;
   autosuggestion.enable = true;
@@ -40,5 +40,12 @@
     setopt AUTO_PUSHD
     setopt PUSHD_IGNORE_DUPS
     setopt PUSHD_MINUS
+
+    # GPG configuration
+    export GPG_TTY=$(tty)
+    if [ -f "${config.home.homeDirectory}/.gpg-agent-info" ]; then
+      . "${config.home.homeDirectory}/.gpg-agent-info"
+      export GPG_AGENT_INFO
+    fi
   '';
 }
