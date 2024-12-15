@@ -18,7 +18,7 @@
   shellAliases = {
     ll = "ls -l";
     la = "ls -la";
-    # update = "sudo nixos-rebuild switch";
+    update = "nix run nix-darwin -- switch --flake ~/.dotfiles";
     ".." = "cd ..";
     "..." = "cd ../..";
   };
