@@ -16,9 +16,6 @@
     signal-desktop
     # spotify
 
-    ## MacOS only
-    raycast
-    alacritty
   ];
 
   environment.shellAliases = {

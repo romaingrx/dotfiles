@@ -32,6 +32,7 @@
           "${pkgs.signal-desktop}/Applications/Signal.app"
           "/System/Applications/Mail.app"
           "/System/Applications/Calendar.app"
+          "${pkgs.raycast}/Applications/Raycast.app"
         ];
         persistent-others = [
           "/Users/romaingrx/Downloads"
