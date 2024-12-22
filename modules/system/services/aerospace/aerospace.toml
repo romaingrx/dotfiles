@@ -37,7 +37,7 @@ alt-comma = 'layout accordion horizontal vertical'
 
 alt-f = 'fullscreen'
 alt-t = 'layout vertical'
-alt-m = 'layout tiling'
+# alt-m = 'layout tiling'
 
 alt-h = 'focus left'
 alt-j = 'focus down'
@@ -59,12 +59,14 @@ alt-2 = 'workspace 2'
 alt-3 = 'workspace 3'
 alt-b = 'workspace B' # Browser workspace
 alt-c = 'workspace C' # Code workspace
+alt-m = 'workspace M'
 
 alt-shift-1 = ['move-node-to-workspace 1', 'workspace 1']
 alt-shift-2 = ['move-node-to-workspace 2', 'workspace 2']
 alt-shift-3 = ['move-node-to-workspace 3', 'workspace 3']
 alt-shift-b = ['move-node-to-workspace B', 'workspace B']
 alt-shift-c = ['move-node-to-workspace C', 'workspace C']
+alt-shift-m = ['move-node-to-workspace M', 'workspace M']
 
 # TODO romaingrx: Find better way to move workspaces between monitors
 cmd-alt-shift-left = 'move-node-to-monitor prev --focus-follows-window'
@@ -73,6 +75,7 @@ cmd-alt-shift-right = 'move-node-to-monitor next --focus-follows-window'
 # TODO romaingrx: Find better ways to link to the apps (from pkgs, ...)
 alt-shift-d = 'exec-and-forget open -a /Applications/DuckDuckGo.app'
 alt-shift-s = 'exec-and-forget open -a /Applications/Signal.app'
+alt-shift-t = 'exec-and-forget open -a /Applications/Alacritty.app'
 
 alt-tab = 'workspace-back-and-forth'
 alt-shift-tab = 'move-workspace-to-monitor --wrap-around next'
