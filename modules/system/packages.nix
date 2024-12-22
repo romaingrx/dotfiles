@@ -5,6 +5,7 @@
     neovim
     tmux
     nixpkgs-fmt
+    nix-prefetch-git
     git
     gnupg
     gh

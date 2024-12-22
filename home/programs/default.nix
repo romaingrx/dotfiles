@@ -1,8 +1,14 @@
 { config, pkgs, ... }: {
-  programs.git = import ./git.nix;
-  programs.zsh = import ./zsh.nix { inherit config; };
-  programs.ssh = import ./ssh.nix;
-  programs.gpg = import ./gpg.nix;
-  programs.alacritty = import ./alacritty.nix { inherit pkgs; };
+  programs = {
+    git = import ./git.nix;
+    zsh = import ./zsh.nix { inherit config pkgs; };
+    fzf = {
+      enable = true;
+      enableZshIntegration = true;
+    };
+    ssh = import ./ssh.nix;
+    gpg = import ./gpg.nix;
+    alacritty = import ./alacritty.nix { inherit pkgs; };
+  };
 }
 
