@@ -3,6 +3,7 @@
     docker
     docker-compose
     ffmpeg
+    tor
 
     ## Python
     uv
