@@ -9,8 +9,10 @@
       "spotify"
       "bitwarden"
       "docker" # Docker Desktop
-      "font-fira-code-nerd-font" # Needed for alacritty
       "anaconda"
+      "font-fira-code-nerd-font" # Needed for alacritty
+      "font-sf-pro"
+      "sf-symbols"
     ];
     brews = [
       "bitwarden-cli"

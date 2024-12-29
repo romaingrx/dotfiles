@@ -20,7 +20,7 @@
         ApplePressAndHoldEnabled = false;
         AppleInterfaceStyleSwitchesAutomatically = true;
         "com.apple.mouse.tapBehavior" = 1; # Is not working with trackpad
-        _HIHideMenuBar = false;
+        _HIHideMenuBar = true;
       };
       dock = {
         autohide = true;
