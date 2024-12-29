@@ -9,6 +9,7 @@
     ssh = import ./ssh.nix;
     gpg = import ./gpg.nix;
     alacritty = import ./alacritty.nix { inherit pkgs; };
+    tmux = import ./tmux.nix { inherit pkgs; };
   };
 }
 

@@ -3,7 +3,6 @@
 
   environment.systemPackages = with pkgs; [
     neovim
-    tmux
     nixpkgs-fmt
     nix-prefetch-git
     git
