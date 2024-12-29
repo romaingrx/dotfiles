@@ -56,12 +56,6 @@ let
     # Create lib directory and link the Lua module
     mkdir -p $out/lib
     ln -s ${sbarLua}/lib/libsketchybar.so $out/lib/sketchybar.so
-
-    # Debug: List all files in the output directory
-    echo "=== Files in output directory ==="
-    find $out -type f -o -type l
-    echo "=== Directory structure ==="
-    tree $out || find $out -type d
   '';
 in
 {

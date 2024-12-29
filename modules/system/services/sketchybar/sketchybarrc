@@ -1,5 +1,8 @@
 #!/usr/bin/env lua
 
+-- TODO romaingrx: share UI config with the whole Nix config
+-- TODO romaingrx: set default item props and then override when needed
+
 -- Set up logging to a file
 local log_file = io.open("/tmp/sketchybar.log", "a")
 local function log(msg)

@@ -23,4 +23,7 @@ return {
     connected = "􀙇",
     disconnected = "􀙈",
   },
+  app = {
+    default = "􀆊",
+  },
 } 

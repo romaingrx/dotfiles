@@ -3,6 +3,8 @@ local colors = require("colors")
 local settings = require("settings")
 local network = require("helpers.network")
 
+local theme = colors.theme
+
 local wifi_up = sbar.add("item", "widgets.wifi1", {
   position = "right",
   padding_left = -5,
@@ -14,6 +16,7 @@ local wifi_up = sbar.add("item", "widgets.wifi1", {
       size = 9.0,
     },
     string = icons.wifi.upload,
+    color = theme.text.normal,
   },
   label = {
     font = {
@@ -21,7 +24,7 @@ local wifi_up = sbar.add("item", "widgets.wifi1", {
       style = settings.font.style_map["Bold"],
       size = 9.0,
     },
-    color = colors.red,
+    color = theme.network.upload,
     string = "0 Bps",
   },
   y_offset = 4,
@@ -38,6 +41,7 @@ local wifi_down = sbar.add("item", "widgets.wifi2", {
       size = 9.0,
     },
     string = icons.wifi.download,
+    color = theme.text.normal,
   },
   label = {
     font = {
@@ -45,7 +49,7 @@ local wifi_down = sbar.add("item", "widgets.wifi2", {
       style = settings.font.style_map["Bold"],
       size = 9.0,
     },
-    color = colors.blue,
+    color = theme.network.download,
     string = "0 Bps",
   },
   y_offset = -4,
@@ -62,14 +66,16 @@ local wifi_bracket = sbar.add("bracket", "widgets.wifi.bracket", {
   wifi_up.name,
   wifi_down.name
 }, {
-  background = { color = colors.bg1 },
+  background = { color = theme.item.background, corner_radius = 5 },
   popup = { 
     align = "center",
     background = {
-      color = colors.bg1,
+      color = theme.popup.background,
       border_width = 2,
-      border_color = colors.grey,
+      border_color = theme.popup.border,
       corner_radius = 9,
+      padding_left = 7,
+      padding_right = 7,
     }
   }
 })
@@ -81,6 +87,7 @@ local ssid = sbar.add("item", {
       style = settings.font.style_map["Bold"]
     },
     string = icons.wifi.router,
+    color = theme.text.normal,
   },
   width = 250,
   align = "center",
@@ -89,80 +96,47 @@ local ssid = sbar.add("item", {
       size = 15,
       style = settings.font.style_map["Bold"]
     },
+    color = theme.text.normal,
     max_chars = 18,
     string = "????????????",
   },
   padding_bottom = 5,
   background = {
     height = 2,
-    color = colors.grey,
+    color = theme.popup.border,
     y_offset = -15
   }
 })
 
-local hostname = sbar.add("item", {
-  position = "popup." .. wifi_bracket.name,
-  icon = {
-    align = "left",
-    string = "Hostname:",
-    width = 125,
-  },
-  label = {
-    max_chars = 20,
-    string = "????????????",
-    width = 125,
-    align = "right",
-  }
-})
+local function create_info_item(name, label)
+  return sbar.add("item", {
+    position = "popup." .. wifi_bracket.name,
+    icon = {
+      align = "left",
+      string = label .. ":",
+      width = 125,
+      color = theme.text.dim,
+    },
+    label = {
+      string = "????????????",
+      width = 125,
+      align = "right",
+      color = theme.text.normal,
+    }
+  })
+end
 
-local ip = sbar.add("item", {
-  position = "popup." .. wifi_bracket.name,
-  icon = {
-    align = "left",
-    string = "IP:",
-    width = 125,
-  },
-  label = {
-    string = "???.???.???.???",
-    width = 125,
-    align = "right",
-  }
-})
-
-local mask = sbar.add("item", {
-  position = "popup." .. wifi_bracket.name,
-  icon = {
-    align = "left",
-    string = "Subnet mask:",
-    width = 125,
-  },
-  label = {
-    string = "???.???.???.???",
-    width = 125,
-    align = "right",
-  }
-})
-
-local router = sbar.add("item", {
-  position = "popup." .. wifi_bracket.name,
-  icon = {
-    align = "left",
-    string = "Router:",
-    width = 125,
-  },
-  label = {
-    string = "???.???.???.???",
-    width = 125,
-    align = "right",
-  },
-})
+local hostname = create_info_item("hostname", "Hostname")
+local ip = create_info_item("ip", "IP")
+local mask = create_info_item("mask", "Subnet mask")
+local router = create_info_item("router", "Router")
 
 sbar.add("item", { position = "right", width = settings.group_paddings })
 
 wifi_up:subscribe({ "routine", "system_woke" }, function()
   local download, upload = network.update_network("en0")
-  local up_color = (upload == "0 Bps") and colors.grey or colors.red
-  local down_color = (download == "0 Bps") and colors.grey or colors.blue
+  local up_color = (upload == "0 Bps") and theme.network.inactive or theme.network.upload
+  local down_color = (download == "0 Bps") and theme.network.inactive or theme.network.download
   
   wifi_up:set({
     icon = { color = up_color },
@@ -186,7 +160,7 @@ wifi:subscribe({"wifi_change", "system_woke"}, function(env)
     wifi:set({
       icon = {
         string = connected and icons.wifi.connected or icons.wifi.disconnected,
-        color = connected and colors.white or colors.red,
+        color = connected and theme.text.normal or theme.network.upload,
       },
     })
   end)
@@ -201,19 +175,19 @@ local function toggle_details()
   if should_draw then
     wifi_bracket:set({ popup = { drawing = true }})
     sbar.exec("networksetup -getcomputername", function(result)
-      hostname:set({ label = result })
+      hostname:set({ label = { string = result, color = theme.text.normal } })
     end)
     sbar.exec("ipconfig getifaddr en0", function(result)
-      ip:set({ label = result })
+      ip:set({ label = { string = result, color = theme.text.normal } })
     end)
     sbar.exec("ipconfig getsummary en0 | awk -F ' SSID : '  '/ SSID : / {print $2}'", function(result)
-      ssid:set({ label = result })
+      ssid:set({ label = { string = result, color = theme.text.normal } })
     end)
     sbar.exec("networksetup -getinfo Wi-Fi | awk -F 'Subnet mask: ' '/^Subnet mask: / {print $2}'", function(result)
-      mask:set({ label = result })
+      mask:set({ label = { string = result, color = theme.text.normal } })
     end)
     sbar.exec("networksetup -getinfo Wi-Fi | awk -F 'Router: ' '/^Router: / {print $2}'", function(result)
-      router:set({ label = result })
+      router:set({ label = { string = result, color = theme.text.normal } })
     end)
   else
     hide_details()

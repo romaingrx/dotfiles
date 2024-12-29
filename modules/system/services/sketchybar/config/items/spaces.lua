@@ -1,5 +1,6 @@
 local colors = require("colors")
 local settings = require("settings")
+local theme = colors.theme
 
 -- Add events for workspace changes
 sbar.add("event", "aerospace_workspace_change")
@@ -17,11 +18,11 @@ sbar.exec("aerospace list-workspaces --all", function(workspaces)
       padding_left = 2,
       padding_right = 2,
       background = {
-        color = colors.workspace.inactive,
+        color = theme.item.background,
         corner_radius = 5,
         height = 20,
         drawing = true,
-        border_color = colors.workspace.border,
+        border_color = theme.item.border,
       },
       label = {
         string = workspace,
@@ -43,7 +44,7 @@ sbar.exec("aerospace list-workspaces --all", function(workspaces)
       -- Update space appearance
       space:set({
         background = {
-          color = is_active and colors.workspace.active or colors.workspace.inactive,
+          color = is_active and theme.item.background_selected or theme.item.background,
         },
         label = {
           drawing = true,
@@ -57,8 +58,8 @@ end)
 -- Add a bracket around all spaces
 sbar.add("bracket", "spaces", { "/space\\..*/" }, {
   background = {
-    color = colors.bg1,
-    border_color = colors.black,
+    color = theme.item.background,
+    border_color = theme.item.border,
     border_width = 1,
   },
 }) 
