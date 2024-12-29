@@ -12,7 +12,7 @@ let
     };
 
     nativeBuildInputs = [ pkgs.gcc ];
-    buildInputs = with pkgs; [ 
+    buildInputs = with pkgs; [
       lua
       readline
       darwin.apple_sdk.frameworks.CoreFoundation
@@ -47,7 +47,7 @@ let
   };
 
   # Create config directory with all Lua files
-  configDir = pkgs.runCommand "sketchybar-config" {} ''
+  configDir = pkgs.runCommand "sketchybar-config" { } ''
     mkdir -p $out
     
     # Copy all Lua files preserving directory structure
