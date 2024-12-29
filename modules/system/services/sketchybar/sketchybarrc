@@ -1,74 +1,38 @@
-# This is a demo config to showcase some of the most important commands.
-# It is meant to be changed and configured, as it is intentionally kept sparse.
-# For a (much) more advanced configuration example see my dotfiles:
-# https://github.com/FelixKratz/dotfiles
+#!/usr/bin/env lua
 
-CONFIG_DIR="{{ CONFIG_DIR_DEFINITION }}"
-export PLUGIN_DIR="$CONFIG_DIR/plugins"
-export ITEM_DIR="$CONFIG_DIR/items"
+-- Set up logging to a file
+local log_file = io.open("/tmp/sketchybar.log", "a")
+local function log(msg)
+    log_file:write(os.date("%Y-%m-%d %H:%M:%S") .. ": " .. msg .. "\n")
+    log_file:flush()
+    print(msg)
+end
 
-##### Bar Appearance #####
-sketchybar --bar \
-           position=top \
-           height=32 \
-           margin=0 \
-           blur_radius=10 \
-           color=${MAIN_COLOR:=0x40000000} \
-           padding_left=10 \
-           padding_right=10
+log("Starting sketchybar configuration...")
 
-##### Changing Defaults #####
-default=(
-  padding_left=5
-  padding_right=5
-  icon.color=0xffffffff
-  label.color=0xffffffff
-  icon.padding_left=4
-  icon.padding_right=4
-  label.padding_left=4
-  label.padding_right=4
-  background.corner_radius=5
-  background.height=24
-  background.border_width=1
-  label.font="SF Pro:Semibold:13.0"
-  icon.font="SF Symbols:Semibold:13.0"
-)
-sketchybar --default "${default[@]}"
+-- Add the config directory to package.path and cpath
+package.path = "{{ CONFIG_DIR_DEFINITION }}/?.lua;" .. package.path
+package.cpath = "{{ CONFIG_DIR_DEFINITION }}/lib/?.so;" .. package.cpath
 
-export WORKSPACE_ACTIVE_COLOR="0xffefbaff"    # Active workspace color
-export WORKSPACE_INACTIVE_COLOR="0x44ffffff"  # Inactive workspace color
-export WORKSPACE_BORDER_COLOR="0x44ffffff"    # Border color for workspace items
+log("package.path: " .. package.path)
+log("package.cpath: " .. package.cpath)
 
-# Add handler for workspace change
-sketchybar --add event aerospace_workspace_change \
-           --add event window_focus \
-           --add event space_change
+-- Try loading the sketchybar module
+local ok, sbar = pcall(require, "sketchybar")
+if not ok then
+    log("Failed to load sketchybar module: " .. tostring(sbar))
+    os.exit(1)
+end
+log("Successfully loaded sketchybar module")
 
-for sid in $(aerospace list-workspaces --all); do
-    sketchybar --add item space.$sid left \
-        --subscribe space.$sid aerospace_workspace_change window_focus space_change \
-        --set space.$sid \
-        background.color=$WORKSPACE_INACTIVE_COLOR \
-        background.corner_radius=5 \
-        background.height=20 \
-        background.drawing=on \
-        background.border_color=$WORKSPACE_BORDER_COLOR \
-        label="$sid" \
-        click_script="aerospace workspace $sid" \
-        script="$PLUGIN_DIR/space.sh $sid"
-done
+-- Make sbar global for other modules
+_G.sbar = sbar
 
-##### Adding Left Items #####
-# $ITEM_DIR/front_app.sh
+-- Load the sketchybar configuration
+local ok, err = pcall(require, "init")
+if not ok then
+    log("Failed to load init.lua: " .. tostring(err))
+    os.exit(1)
+end
 
-
-##### Adding Right Items #####
-$ITEM_DIR/clock.sh
-$ITEM_DIR/volume.sh
-$ITEM_DIR/battery.sh
-$ITEM_DIR/cpu.sh
-$ITEM_DIR/network.sh
-$ITEM_DIR/memory.sh
-
-##### Force all scripts to run the first time #####
-sketchybar --update
+log("Configuration loaded successfully")

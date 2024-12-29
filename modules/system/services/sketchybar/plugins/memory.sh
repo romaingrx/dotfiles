@@ -1,31 +1,22 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-# Get memory info using vm_stat
-PAGE_SIZE=$(pagesize)
-VM_STAT=$(vm_stat)
+UPDOWN=$(ifstat -i "en0" -b 0.1 1 | tail -n1)
+DOWN=$(echo "$UPDOWN" | awk "{ print \$1 }" | cut -f1 -d ".")
+UP=$(echo "$UPDOWN" | awk "{ print \$2 }" | cut -f1 -d ".")
 
-PAGES_FREE=$(echo "$VM_STAT" | grep "Pages free:" | awk '{print $3}' | sed 's/\.//')
-PAGES_ACTIVE=$(echo "$VM_STAT" | grep "Pages active:" | awk '{print $3}' | sed 's/\.//')
-PAGES_INACTIVE=$(echo "$VM_STAT" | grep "Pages inactive:" | awk '{print $3}' | sed 's/\.//')
-PAGES_SPECULATIVE=$(echo "$VM_STAT" | grep "Pages speculative:" | awk '{print $3}' | sed 's/\.//')
-PAGES_WIRED=$(echo "$VM_STAT" | grep "Pages wired down:" | awk '{print $4}' | sed 's/\.//')
-
-# Calculate used memory
-USED_MEM=$((((PAGES_ACTIVE + PAGES_INACTIVE + PAGES_SPECULATIVE + PAGES_WIRED) * PAGE_SIZE) / 1024 / 1024))
-
-# Get total memory
-TOTAL_MEM=$(sysctl -n hw.memsize)
-TOTAL_MEM=$((TOTAL_MEM / 1024 / 1024))
-
-# Calculate percentage
-MEMORY_PERCENT=$(echo "scale=2; ($USED_MEM * 100) / $TOTAL_MEM" | bc)
-ROUNDED_PERCENT=$(printf "%.0f" "$MEMORY_PERCENT")
-
-# Format label
-if [ "$ROUNDED_PERCENT" -lt 10 ]; then
-  LABEL=" ${ROUNDED_PERCENT}%"
+DOWN_FORMAT=""
+if [ "$DOWN" -gt "999" ]; then
+	DOWN_FORMAT=$(echo "$DOWN" | awk '{ printf "%03.0f Mbps", $1 / 1000}')
 else
-  LABEL="${ROUNDED_PERCENT}%"
+	DOWN_FORMAT=$(echo "$DOWN" | awk '{ printf "%03.0f kbps", $1}')
 fi
 
-sketchybar --set memory label="$LABEL" 
+UP_FORMAT=""
+if [ "$UP" -gt "999" ]; then
+	UP_FORMAT=$(echo "$UP" | awk '{ printf "%03.0f Mbps", $1 / 1000}')
+else
+	UP_FORMAT=$(echo "$UP" | awk '{ printf "%03.0f kbps", $1}')
+fi
+
+sketchybar -m --set network.down label="$DOWN_FORMAT" icon.highlight=$(if [ "$DOWN" -gt "0" ]; then echo "on"; else echo "off"; fi) \
+	--set network.up label="$UP_FORMAT" icon.highlight=$(if [ "$UP" -gt "0" ]; then echo "on"; else echo "off"; 
