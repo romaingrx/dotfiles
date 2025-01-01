@@ -2,7 +2,6 @@
   nixpkgs.config.allowUnfree = true;
 
   environment.systemPackages = with pkgs; [
-    neovim
     nixpkgs-fmt
     nix-prefetch-git
     git

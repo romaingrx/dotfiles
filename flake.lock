@@ -461,11 +461,11 @@
       "locked": {
         "lastModified": 1,
         "narHash": "sha256-h/l52fh+/DCmXvVDBm1RN7OVC1bkK7bCGqYAT0ecHNk=",
-        "path": "/nix/store/qm66arnb8icbd06rjymydcjvhpasf5ns-source/nixvim",
+        "path": "/nix/store/cg6knihprbzi1nmzdq6daqs68pr0gk47-source/nixvim",
         "type": "path"
       },
       "original": {
-        "path": "/nix/store/qm66arnb8icbd06rjymydcjvhpasf5ns-source/nixvim",
+        "path": "/nix/store/cg6knihprbzi1nmzdq6daqs68pr0gk47-source/nixvim",
         "type": "path"
       }
     },
