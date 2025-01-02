@@ -61,5 +61,5 @@
       };
     };
   };
-  services = import ./services { inherit pkgs; };
+  services = import ../services { inherit pkgs; };
 }

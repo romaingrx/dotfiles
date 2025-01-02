@@ -3,7 +3,6 @@
     ../../modules/darwin/defaults
     ../../modules/darwin/homebrew.nix
     ../../modules/darwin/packages.nix
-    ../../modules/darwin/services
   ];
 
   # Host-specific settings
