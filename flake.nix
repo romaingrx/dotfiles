@@ -14,42 +14,56 @@
   };
 
   outputs = inputs@{ self, nixpkgs, nix-darwin, nix-homebrew, home-manager, nixvim-config }:
+  let
+    # Define common modules that will be shared across configurations
+    commonModules = [
+      nixvim-config.darwinModules.default
+      home-manager.darwinModules.home-manager
+      nix-homebrew.darwinModules.nix-homebrew
+    ];
+
+    # Define different machine configurations
+    mkDarwinConfig = { system, user, homeDirectory ? "/Users/${user}" }: 
+      nix-darwin.lib.darwinSystem {
+        inherit inputs;
+        modules = [
+          ./hosts/${system}
+          {
+            users.users.${user} = {
+              name = user;
+              home = homeDirectory;
+              createHome = true;
+            };
+            home-manager = {
+              useGlobalPkgs = true;
+              useUserPackages = true;
+              backupFileExtension = "bckp";
+              users.${user} = { config, pkgs, ... }: import ./profiles/${user} { inherit config pkgs; };
+            };
+            nix-homebrew = {
+              enable = true;
+              enableRosetta = true;
+              user = user;
+            };
+          }
+        ] ++ commonModules;
+      };
+  in
   {
-    # Build darwin flake using:
-    # $ darwin-rebuild build --flake .#goddard
-    darwinConfigurations."goddard" = nix-darwin.lib.darwinSystem {
-      modules = [
-        ./hosts/goddard
-        nixvim-config.darwinModules.default
-        home-manager.darwinModules.home-manager {
-          users.users = {
-            romaingrx = {
-              name = "romaingrx";
-              home = "/Users/romaingrx";
-            };
-            lcmd = {
-              name = "lcmd";
-              home = "/Users/lcmd";
-            };
-          };
-          home-manager = {
-            useGlobalPkgs = true;
-            useUserPackages = true;
-            backupFileExtension = "bckp";
-            users = {
-              romaingrx = import ./profiles/personal;
-              lcmd = import ./profiles/work;
-            };
-          };
-        }
-        nix-homebrew.darwinModules.nix-homebrew {
-          nix-homebrew = {
-            enable = true;
-            enableRosetta = true;
-            user = "romaingrx"; # Keep primary user as homebrew manager
-          };
-        }
-      ];
+    darwinConfigurations = {
+      # Original goddard configuration
+      "romaingrx@goddard" = mkDarwinConfig {
+        system = "goddard";
+        user = "romaingrx";
+        homeDirectory = "/Users/romaingrx";
+      };
+      
+      # Work configuration
+      "lcmd@goddard" = mkDarwinConfig {
+        system = "goddard";
+        user = "lcmd";
+        homeDirectory = "/Users/lcmd";
+      };
     };
   };
 }

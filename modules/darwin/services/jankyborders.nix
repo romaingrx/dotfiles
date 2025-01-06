@@ -5,4 +5,3 @@
   inactive_color = "#000000";
   width = 5.0;
 }
-

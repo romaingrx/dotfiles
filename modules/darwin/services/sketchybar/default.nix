@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{pkgs, ...}: 
 let
   sbarLua = pkgs.stdenv.mkDerivation rec {
     pname = "sketchybar-lua";
@@ -37,13 +37,6 @@ let
       mkdir -p $out/lib
       cp libsketchybar.so $out/lib/
     '';
-
-    meta = with pkgs.lib; {
-      description = "Lua API for SketchyBar";
-      homepage = "https://github.com/FelixKratz/SbarLua";
-      license = licenses.gpl3;
-      platforms = platforms.darwin;
-    };
   };
 
   # Create config directory with all Lua files
@@ -57,8 +50,7 @@ let
     mkdir -p $out/lib
     ln -s ${sbarLua}/lib/libsketchybar.so $out/lib/sketchybar.so
   '';
-in
-{
+in {
   enable = true;
   package = pkgs.sketchybar;
   config = builtins.replaceStrings
@@ -70,4 +62,4 @@ in
     jq
     tree
   ];
-}
+} 

@@ -23,7 +23,7 @@ let
 
   # Work-only packages
   workPackages = with pkgs; [
-    # Add work-specific packages here
+    slack
   ];
 
   # Determine which role-specific packages to include

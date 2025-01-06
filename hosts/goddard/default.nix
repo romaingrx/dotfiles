@@ -1,8 +1,6 @@
-{...}: {
+{ config, pkgs, ... }: {
   imports = [
-    ../../modules/darwin/defaults
-    ../../modules/darwin/homebrew.nix
-    ../../modules/darwin/packages.nix
+    ../../modules/darwin
   ];
 
   # Host-specific settings

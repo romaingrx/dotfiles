@@ -1,5 +1,8 @@
-{ pkgs, ... }: {
-
+{ pkgs, config, ... }: {
+  imports = [
+    ./homebrew.nix
+    ./packages.nix
+  ];
 
   system = {
     # activationScripts are executed every time you boot the system or run
@@ -35,8 +38,8 @@
           "${pkgs.raycast}/Applications/Raycast.app"
         ];
         persistent-others = [
-          "/Users/romaingrx/Downloads"
-          "/Users/romaingrx/Pictures/screenshots"
+          "~/Downloads"
+          "~/Pictures/screenshots"
         ];
       };
       finder = {
@@ -54,12 +57,12 @@
         LoginwindowText = "Hi-tech, barking, Swiss army knife";
       };
       screencapture = {
-        location = "/Users/romaingrx/Pictures/screenshots";
+        location = "~/Pictures/screenshots";
       };
       screensaver = {
         askForPasswordDelay = 0;
       };
     };
   };
-  services = import ../services { inherit pkgs; };
+  services = import ./services { inherit pkgs; };
 }
