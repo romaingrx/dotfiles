@@ -28,9 +28,12 @@
       "font-fira-code-nerd-font" # Needed for alacritty
       "font-sf-pro"
       "sf-symbols"
-      "avogadro"
       "wifiman"
+      # Work only
+      "avogadro"
       "onedrive"
+      "airtable"
+      "mattermost"
     ];
     brews = [
       "bitwarden-cli"

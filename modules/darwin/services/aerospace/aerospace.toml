@@ -2,7 +2,7 @@ after-login-command = []
 # Run Sketchybar together with AeroSpace
 # sketchbar has a built-in detection of already running process,
 # so it won't be run twice on AeroSpace restart
-after-startup-command = ['exec-and-forget sketchybar']
+# after-startup-command = ['exec-and-forget sketchybar']
 
 # Notify Sketchybar about workspace change
 # TODO romaingrx: Get the location of sketchybar from the system
@@ -32,7 +32,7 @@ inner.vertical = 10
 outer.left = 10
 outer.bottom = 10
 outer.top = 10
-outer.right = 30
+outer.right = 10
 
 [mode.main.binding]
 alt-slash = 'layout tiles horizontal vertical'

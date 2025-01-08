@@ -40,6 +40,7 @@ let
   # Add work specific packages on linux machine
   linuxWorkPackages = with pkgs; [
     onedrive
+    mattermost-desktop
   ];
 
   # Determine which role-specific packages to include
