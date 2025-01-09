@@ -3,8 +3,6 @@
   shell = "${pkgs.zsh}/bin/zsh";
   terminal = "tmux-256color";
   plugins = with pkgs; [
-    tmuxPlugins.better-mouse-mode
-    # tmuxPlugins.vim-tmux-navigator
     {
       plugin = tmuxPlugins.catppuccin;
       extraConfig = '' 
@@ -31,5 +29,15 @@
     }
   ];
   extraConfig = ''
+    # Open new windows/panes in the current directory
+    bind '"' split-window -c "#{pane_current_path}"
+    bind % split-window -h -c "#{pane_current_path}"
+    bind c new-window -c "#{pane_current_path}"
+
+    # Add shortcut to change base directory for new windows
+    bind C attach-session -c "#{pane_current_path}" \; display-message "New working directory: #{pane_current_path}"
+
+    # Allow ctrl+L to clear screen
+    bind -n C-l send-keys C-l \; clear-history
   '';
 }
