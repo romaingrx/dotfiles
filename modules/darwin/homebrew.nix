@@ -38,6 +38,7 @@
     brews = [
       "bitwarden-cli"
       "ffmpeg"
+      "mactop"
     ];
   };
 } 

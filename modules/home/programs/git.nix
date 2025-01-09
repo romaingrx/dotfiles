@@ -6,11 +6,13 @@
   # Add GPG signing
   signing = {
     # TODO romaingrx: get the default key from the gpg agent
-    key = "C52A01AE82206AB2"; # Default key
+    # key = "C52A01AE82206AB2"; # Default key
+    key = null;
     signByDefault = true;
   };
 
   extraConfig = {
     commit.gpgsign = true;
+    safe.directory = "*";
   };
 }

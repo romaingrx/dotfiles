@@ -8,6 +8,11 @@
         then "~/.ssh/github"
         else "~/.ssh/github_lcmd";
     };
+    "dipsy" = {
+      user = "romaingrx";
+      hostname = "10.42.0.4";
+      identityFile = "~/.ssh/dipsy";
+    };
   };
   extraConfig = ''
     UseKeychain yes
