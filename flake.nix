@@ -9,15 +9,12 @@
     nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-    # Local
-    nixvim-config.url = "./nixvim";
   };
 
-  outputs = inputs@{ self, nixpkgs, nix-darwin, nix-homebrew, home-manager, nixvim-config }:
+  outputs = inputs@{ self, nixpkgs, nix-darwin, nix-homebrew, home-manager }:
   let
     # Define common modules that will be shared across configurations
     commonModules = [
-      nixvim-config.darwinModules.default
       home-manager.darwinModules.home-manager
       nix-homebrew.darwinModules.nix-homebrew
     ];

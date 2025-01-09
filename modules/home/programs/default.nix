@@ -10,5 +10,6 @@
     gpg = import ./gpg.nix;
     alacritty = import ./alacritty.nix { inherit pkgs; };
     tmux = import ./tmux.nix { inherit pkgs; };
+    neovim = import ./neovim.nix { inherit pkgs; };
   };
 }
