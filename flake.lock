@@ -442,11 +442,11 @@
       "locked": {
         "lastModified": 1,
         "narHash": "sha256-3W2KUvOqbZZ2mCkRJOTaC5Agrr+co5dO/EVI4Vr14QA=",
-        "path": "/nix/store/d1j1ln5d27bik4hf50a3935sxq9fyr16-source/nixvim",
+        "path": "/nix/store/lk7rvqc31sq473474rd7lhqjhb67kqfh-source/nixvim",
         "type": "path"
       },
       "original": {
-        "path": "/nix/store/d1j1ln5d27bik4hf50a3935sxq9fyr16-source/nixvim",
+        "path": "/nix/store/lk7rvqc31sq473474rd7lhqjhb67kqfh-source/nixvim",
         "type": "path"
       }
     },

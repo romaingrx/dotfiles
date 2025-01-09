@@ -1,0 +1,3 @@
+[merge "theirs"]
+    name = always keep theirs during merge
+    driver = true 

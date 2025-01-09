@@ -5,9 +5,7 @@
 
   # Add GPG signing
   signing = {
-    # TODO romaingrx: get the default key from the gpg agent
-    # key = "C52A01AE82206AB2"; # Default key
-    key = null;
+    key = null; # Default key based on email and name
     signByDefault = true;
   };
 
