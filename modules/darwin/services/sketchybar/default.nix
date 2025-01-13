@@ -1,43 +1,7 @@
 {pkgs, ...}: 
 let
-  sbarLua = pkgs.stdenv.mkDerivation rec {
-    pname = "sketchybar-lua";
-    version = "0.1.0";
-
-    src = pkgs.fetchFromGitHub {
-      owner = "FelixKratz";
-      repo = "SbarLua";
-      rev = "main";
-      sha256 = "sha256-F0UfNxHM389GhiPQ6/GFbeKQq5EvpiqQdvyf7ygzkPg=";
-    };
-
-    nativeBuildInputs = [ pkgs.gcc ];
-    buildInputs = with pkgs; [
-      lua
-      readline
-      darwin.apple_sdk.frameworks.CoreFoundation
-    ];
-
-    preBuildPhase = ''
-      substituteInPlace makefile \
-        --replace "cd lua-5.4.7 && make" "echo 'Skipping lua build...'" \
-        --replace "bin/liblua.a" ""
-    '';
-
-    buildPhase = ''
-      mkdir -p bin
-      $CC -shared -o libsketchybar.so src/*.c \
-        -I${pkgs.lua}/include \
-        -L${pkgs.lua}/lib \
-        -llua \
-        -framework CoreFoundation
-    '';
-
-    installPhase = ''
-      mkdir -p $out/lib
-      cp libsketchybar.so $out/lib/
-    '';
-  };
+  customPackages = import ../../packages { inherit pkgs; };
+  sbarLua = customPackages.sbarLua;
 
   # Create config directory with all Lua files
   configDir = pkgs.runCommand "sketchybar-config" { } ''
@@ -45,20 +9,21 @@ let
     
     # Copy all Lua files preserving directory structure
     cp -r ${./config}/* $out/
-    
-    # Create lib directory and link the Lua module
-    mkdir -p $out/lib
-    ln -s ${sbarLua}/lib/libsketchybar.so $out/lib/sketchybar.so
+  '';
+
+  # Create wrapper script to set LUA_CPATH
+  wrappedSketchybarrc = pkgs.writeScript "sketchybarrc" ''
+    #!${pkgs.lua5_2}/bin/lua
+    package.cpath = package.cpath .. ";${sbarLua}/lib/lua/${pkgs.lua5_2.luaversion}/?.so"
+    dofile("${configDir}/init.lua")
   '';
 in {
   enable = true;
   package = pkgs.sketchybar;
-  config = builtins.replaceStrings
-    [ "{{ CONFIG_DIR_DEFINITION }}" ]
-    [ "${configDir}" ]
-    (builtins.readFile ./sketchybarrc);
+  config = builtins.readFile wrappedSketchybarrc;
   extraPackages = with pkgs; [
-    lua
+    lua5_2
+    sbarLua
     jq
     tree
   ];

@@ -1,4 +1,8 @@
-{pkgs, ...}: {
+{pkgs, ...}: 
+let
+  customPackages = import ./packages { inherit pkgs; };
+in
+{
   nixpkgs.config.allowUnfree = true;
 
   environment.systemPackages = with pkgs; [
@@ -7,9 +11,9 @@
     git
     gnupg
     gh
+    lua
+    jq
+    tree
+    customPackages.sbarLua
   ];
-
-  environment.shellAliases = {
-    nixvim = "nix run ~/.config/nix/nixvim#default";
-  };
 } 
