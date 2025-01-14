@@ -35,6 +35,7 @@ let
   # Work-only packages
   workPackages = with pkgs; [
     slack
+    openbabel
   ];
 
   # Add work specific packages on linux machine
