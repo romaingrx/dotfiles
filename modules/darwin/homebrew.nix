@@ -3,6 +3,10 @@
 
   homebrew = {
     enable = true;
+    global = {
+      brewfile = true;
+      lockfiles = false;  # Disable lockfiles to prevent permission issues
+    };
     onActivation = {
       cleanup = "zap"; # Remove non declared casks
       autoUpdate = true;
@@ -42,6 +46,7 @@
       "bitwarden-cli"
       "ffmpeg"
       "mactop"
+      "awscli"
     ];
   };
 } 

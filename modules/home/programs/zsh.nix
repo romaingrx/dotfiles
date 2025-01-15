@@ -103,5 +103,9 @@
     # Set colored output
     export CLICOLOR=1
     export LSCOLORS=ExFxBxDxCxegedabagacad
+
+    # TODO romaingrx: Add this in the profile
+    export EDITOR=nvim
+    export VISUAL=nvim
   '';
 }
