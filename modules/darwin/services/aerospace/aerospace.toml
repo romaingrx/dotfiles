@@ -4,7 +4,7 @@ after-login-command = []
 # so it won't be run twice on AeroSpace restart
 # after-startup-command = ['exec-and-forget sketchybar']
 
-# Notify Sketchybar about workspace change
+# Notify Sketchybar about workspace chang
 # TODO romaingrx: Get the location of sketchybar from the system
 exec-on-workspace-change = [
     '/bin/bash',
@@ -31,7 +31,7 @@ inner.horizontal = 10
 inner.vertical = 10
 outer.left = 10
 outer.bottom = 10
-outer.top = 10
+outer.top = 40
 outer.right = 10
 
 [mode.main.binding]
@@ -109,7 +109,59 @@ down = 'volume down'
 up = 'volume up'
 shift-down = ['volume set 0', 'mode main']
 
-# Not working at the moment, waiting on https://github.com/LnL7/nix-darwin/pull/1208 to be merged
-# [[on-window-detected]]
-# if.app-id = 'com.apple.finder'
-# run = 'move-node-to-workspace 3'
+
+[[on-window-detected]]
+if.app-id = 'com.todesktop.230313mzl4w4u92'
+run = 'move-node-to-workspace C'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.Terminal'
+run = 'move-node-to-workspace C'
+
+[[on-window-detected]]
+if.app-id = 'org.alacritty'
+run = 'move-node-to-workspace C'
+
+[[on-window-detected]]
+if.app-id = 'com.duckduckgo.macos.browser'
+run = 'move-node-to-workspace B'
+
+[[on-window-detected]]
+if.app-id = 'org.mozilla.firefox'
+run = 'move-node-to-workspace B'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.Safari'
+run = 'move-node-to-workspace B'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.Mail'
+run = 'move-node-to-workspace S'
+
+[[on-window-detected]]
+if.app-id = 'com.tinyspeck.slackmacgap'
+run = 'move-node-to-workspace S'
+
+[[on-window-detected]]
+if.app-id = 'org.whispersystems.signal-desktop'
+run = 'move-node-to-workspace S'
+
+[[on-window-detected]]
+if.app-id = 'md.obsidian'
+run = 'move-node-to-workspace U'
+
+[[on-window-detected]]
+if.app-id = 'notion.id'
+run = 'move-node-to-workspace U'
+
+[[on-window-detected]]
+if.app-id = 'com.anthropic.claudefordesktop'
+run = 'move-node-to-workspace U'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.finder'
+run = 'move-node-to-workspace U'
+
+[[on-window-detected]]
+if.app-id = 'com.spotify.client'
+run = 'move-node-to-workspace M'

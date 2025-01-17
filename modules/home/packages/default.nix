@@ -23,6 +23,7 @@ let
     signal-desktop
     obsidian
     gnupg
+    slack
   ];
 
   # TODO : change this and accept extra packages from inputs
@@ -34,7 +35,6 @@ let
 
   # Work-only packages
   workPackages = with pkgs; [
-    slack
     openbabel
   ];
 
