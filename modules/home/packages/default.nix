@@ -36,6 +36,7 @@ let
   # Work-only packages
   workPackages = with pkgs; [
     openbabel
+    zoom-us
   ];
 
   # Add work specific packages on linux machine
