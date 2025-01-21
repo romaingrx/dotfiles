@@ -47,6 +47,7 @@
       "ffmpeg"
       "mactop"
       "awscli"
+      "lightgbm"
     ];
   };
 } 

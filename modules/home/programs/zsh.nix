@@ -104,6 +104,11 @@
     export CLICOLOR=1
     export LSCOLORS=ExFxBxDxCxegedabagacad
 
+    # Generate UV completion
+    if [ -x "$(command -v uv)" ]; then
+      source <(uv generate-shell-completion zsh)
+    fi
+
     # TODO romaingrx: Add this in the profile
     export EDITOR=nvim
     export VISUAL=nvim
