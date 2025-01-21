@@ -29,6 +29,7 @@ let
   # TODO : change this and accept extra packages from inputs
   # Personal-only packages
   personalPackages = with pkgs; [
+    ollama
     tor
     mitmproxy
   ];
