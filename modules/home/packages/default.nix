@@ -24,6 +24,7 @@ let
     obsidian
     gnupg
     slack
+    git-lfs
   ];
 
   # TODO : change this and accept extra packages from inputs
