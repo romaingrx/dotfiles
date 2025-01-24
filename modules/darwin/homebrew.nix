@@ -48,6 +48,7 @@
       "mactop"
       "awscli"
       "lightgbm"
+      "libpq"
     ];
   };
 } 

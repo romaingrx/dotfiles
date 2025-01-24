@@ -25,6 +25,7 @@ let
     gnupg
     slack
     git-lfs
+    libpqxx # PostgreSql C++ client
   ];
 
   # TODO : change this and accept extra packages from inputs
