@@ -3,7 +3,7 @@
 > My dotfiles for MacOS and Linux mostly using Nix.
 
 >[!Warning]
-> At the moment, I'll focus on the MacOS setup and it's a work in progress.
+> At the moment, I'll focus on the MacOS setup and it's a work in progress. It's not very good for multi-user mode in macos as we lack a better way to manage homebrew packages and shared packages.
 
 > [!Note]
 > I really recommend using Obsidian to view the documentation as it doesn't appear very well with the github markdown renderer.
