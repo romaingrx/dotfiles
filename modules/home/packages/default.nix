@@ -7,15 +7,7 @@ let
     docker-compose
     ffmpeg
     uv
-    # (uv.overrideAttrs (old: {
-    #   version = "0.5.14";
-    #   src = fetchFromGitHub {
-    #     owner = "astral-sh";
-    #     repo = "uv";
-    #     rev = "refs/tags/0.5.14";
-    #     hash = "sha256-/IUVdOcQwBKfuNlQozdaVe3TzdXptpADXGk27XLF+xc="; # You'll need the correct hash
-    #   };
-    # }))
+    kubectl
     bun
     pnpm
     raycast
