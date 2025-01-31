@@ -7,7 +7,6 @@ let
     docker-compose
     ffmpeg
     uv
-    kubectl
     bun
     pnpm
     raycast
@@ -18,6 +17,9 @@ let
     slack
     git-lfs
     libpqxx # PostgreSql C++ client
+    minikube # When starting minikube with qemu, we need to specify the path as :  --qemu-firmware-path=/run/current-system/.../edk2-aarch64-code.fd 
+    kubectl # Kubectl should be a dependency of minikube so might not be needed
+    qemu # Used as the hypervisor for minikube
   ];
 
   # TODO : change this and accept extra packages from inputs
