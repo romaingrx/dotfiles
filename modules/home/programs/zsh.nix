@@ -56,12 +56,24 @@
   };
 
   history = {
-    size = 10000;
+    size = 50000;
+    save = 50000;
     path = "$HOME/.zsh_history";
     ignoreDups = true;
-    share = true;
-    extended = true;  # Save timestamp
+    share = false;
+    extended = true;
+    ignoreSpace = true;
   };
+
+  completionInit = ''
+    # Add zcompdump to .gitignore
+    autoload -Uz compinit
+    if [[ -n ${config.home.homeDirectory}/.zcompdump(#qN.mh+24) ]]; then
+      compinit -u;
+    else
+      compinit -u -C;
+    fi
+  '';
 
   initExtra = ''
     # Load and configure powerlevel10k
@@ -78,7 +90,21 @@
     setopt HIST_EXPIRE_DUPS_FIRST
     setopt HIST_IGNORE_SPACE
     setopt HIST_VERIFY
-    setopt SHARE_HISTORY
+    setopt HIST_FIND_NO_DUPS
+    setopt HIST_SAVE_NO_DUPS
+    setopt LOCAL_OPTIONS
+    setopt INC_APPEND_HISTORY_TIME   # Append commands to history file immediately with timestamp
+    unsetopt SHARE_HISTORY
+    unsetopt INC_APPEND_HISTORY      # Disable simple append to have better timestamp control
+
+    # Setup fzf for better history search
+    if [ -n "$(command -v fzf)" ]; then
+      source ${pkgs.fzf}/share/fzf/key-bindings.zsh
+      source ${pkgs.fzf}/share/fzf/completion.zsh
+      
+      export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"
+      export FZF_CTRL_R_OPTS="--sort --exact"
+    fi
 
     # Better completion
     zstyle ':completion:*' menu select
