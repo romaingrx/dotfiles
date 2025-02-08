@@ -37,7 +37,7 @@
 .
 ├── flake.nix
 ├── lib/                  # Shared Nix functions and utilities
-├── modules/
+├── modules
 │   ├── core/            # Core modules shared across all systems
 │   │   ├── common/      # System-agnostic configurations
 │   │   ├── darwin/      # Darwin-specific core modules
@@ -60,10 +60,10 @@
 ## Action Items
 
 ### Phase 1: Project Restructuring
-- [ ] Create new directory structure following the proposed layout
-- [ ] Move existing configurations to appropriate locations
-- [ ] Create a lib directory for shared Nix functions
-- [ ] Implement basic overlays structure
+- [x] Create new directory structure following the proposed layout
+- [x] Move existing configurations to appropriate locations
+- [x] Create a lib directory for shared Nix functions
+- [x] Implement basic overlays structure
 
 ### Phase 2: Core Module Reorganization
 - [ ] Separate system-agnostic configurations into `modules/core/common`
