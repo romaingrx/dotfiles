@@ -1,6 +1,6 @@
 { config, pkgs, ... }: {
   imports = [
-    ../../../modules/home
+    ../../../modules/core/common
   ];
 
   # State version

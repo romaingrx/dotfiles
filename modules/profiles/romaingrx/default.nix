@@ -1,6 +1,6 @@
 {pkgs, config, ...}: {
   imports = [
-    ../../../modules/home
+    ../../../modules/core/common
   ];
 
   home.stateVersion = "24.05";
