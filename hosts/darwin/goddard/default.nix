@@ -1,27 +1,13 @@
-{ config, pkgs, ... }: {
+{ config, pkgs, homeDirectory }: {
   imports = [
-    ../../../modules/darwin
+    (import ../../../modules/core/darwin { inherit pkgs config homeDirectory; })
   ];
 
   # Host-specific settings
   networking.hostName = "goddard";
   networking.computerName = "goddard";
 
-  # Set ZSH
-  programs.zsh.enable = true;
-
-  # Enable TouchID for sudo
-  security.pam.enableSudoTouchIdAuth = true;
-
-  # Necessary for using flakes on this system.
-  nix.settings.experimental-features = ["nix-command" "flakes"];
-
-  # The platform the configuration will be used on.
-  nixpkgs = {
-    hostPlatform = "aarch64-darwin";
-    config.allowUnfree = true;
-  };
-
-  # Used for backwards compatibility
-  system.stateVersion = 5;
-} 
+  # System-specific settings
+  system.defaults.loginwindow.LoginwindowText =
+    "Hi-tech, barking, Swiss army knife";
+}

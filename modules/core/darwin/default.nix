@@ -1,10 +1,20 @@
-{ pkgs, config, ... }: {
-  imports = [
-    ./homebrew.nix
-    ./packages.nix
-  ];
+{ config, pkgs, homeDirectory, ... }: {
+  imports = [ ./homebrew.nix ./packages.nix ];
+
+  # Enable TouchID for sudo
+  security.pam.enableSudoTouchIdAuth = true;
+  # Necessary for using flakes on this system.
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+
+  # The platform the configuration will be used on.
+  nixpkgs = {
+    hostPlatform = "aarch64-darwin";
+    config.allowUnfree = true;
+  };
 
   system = {
+    # Used for backwards compatibility
+    stateVersion = 5;
     # activationScripts are executed every time you boot the system or run
     # `nixos-rebuild` / `darwin-rebuild`.
     activationScripts.postUserActivation.text = ''
@@ -14,9 +24,7 @@
       /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
     '';
     defaults = {
-      trackpad = {
-        Clicking = true;
-      };
+      trackpad = { Clicking = true; };
       NSGlobalDomain = {
         KeyRepeat = 2;
         InitialKeyRepeat = 12;
@@ -40,8 +48,8 @@
           "${pkgs.raycast}/Applications/Raycast.app"
         ];
         persistent-others = [
-          "~/Downloads"
-          "~/Pictures/screenshots"
+          "${homeDirectory}/Downloads"
+          "${homeDirectory}/Pictures/screenshots"
         ];
       };
       finder = {
@@ -54,16 +62,9 @@
         ShowRemovableMediaOnDesktop = false;
         ShowPathbar = true;
       };
-      loginwindow = {
-        GuestEnabled = false;
-        LoginwindowText = "Hi-tech, barking, Swiss army knife";
-      };
-      screencapture = {
-        location = "~/Pictures/screenshots";
-      };
-      screensaver = {
-        askForPasswordDelay = 0;
-      };
+      loginwindow = { GuestEnabled = false; };
+      screencapture = { location = "~/Pictures/screenshots"; };
+      screensaver = { askForPasswordDelay = 0; };
     };
   };
   services = import ./services { inherit pkgs; };
