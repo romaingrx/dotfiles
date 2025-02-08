@@ -13,55 +13,53 @@
   };
 
   outputs = inputs@{ self, nixpkgs, nix-darwin, nix-homebrew, home-manager }:
-  let
-    # Define common modules that will be shared across configurations
-    commonModules = [
-      home-manager.darwinModules.home-manager
-    ];
+    let
+      # Define common modules that will be shared across configurations
+      commonModules = [ home-manager.darwinModules.home-manager ];
 
-    # Define different machine configurations
-    mkDarwinConfig = { system, user, homeDirectory ? "/Users/${user}" }: 
-      nix-darwin.lib.darwinSystem {
-        inherit inputs;
-        modules = [
-          ./hosts/${system}
-          {
-            users.users.${user} = {
-              name = user;
-              home = homeDirectory;
-              createHome = true;
-            };
-            home-manager = {
-              useGlobalPkgs = true;
-              useUserPackages = true;
-              backupFileExtension = "bckp";
-              users.${user} = { config, pkgs, ... }: import ./profiles/${user} { inherit config pkgs; };
-            };
-            nix-homebrew = {
-              enable = true;
-              enableRosetta = true;
-              user = user;
-            };
-          }
-        nix-homebrew.darwinModules.nix-homebrew
-        ] ++ commonModules;
-      };
-  in
-  {
-    darwinConfigurations = {
-      # Original goddard configuration
-      "romaingrx@goddard" = mkDarwinConfig {
-        system = "goddard";
-        user = "romaingrx";
-        homeDirectory = "/Users/romaingrx";
-      };
-      
-      # Work configuration
-      "lcmd@goddard" = mkDarwinConfig {
-        system = "goddard";
-        user = "lcmd";
-        homeDirectory = "/Users/lcmd";
+      # Define different machine configurations
+      mkDarwinConfig = { host, user, homeDirectory ? "/Users/${user}" }:
+        nix-darwin.lib.darwinSystem {
+          inherit inputs;
+          modules = [
+            ./hosts/darwin/${host}
+            {
+              users.users.${user} = {
+                name = user;
+                home = homeDirectory;
+                createHome = true;
+              };
+              home-manager = {
+                useGlobalPkgs = true;
+                useUserPackages = true;
+                backupFileExtension = "bckp";
+                users.${user} = { config, pkgs, ... }:
+                  import ./profiles/${user} { inherit config pkgs; };
+              };
+              nix-homebrew = {
+                enable = true;
+                enableRosetta = true;
+                user = user;
+              };
+            }
+            nix-homebrew.darwinModules.nix-homebrew
+          ] ++ commonModules;
+        };
+    in {
+      darwinConfigurations = {
+        # Original goddard configuration
+        "romaingrx@goddard" = mkDarwinConfig {
+          host = "goddard";
+          user = "romaingrx";
+          homeDirectory = "/Users/romaingrx";
+        };
+
+        # Work configuration
+        "lcmd@goddard" = mkDarwinConfig {
+          host = "goddard";
+          user = "lcmd";
+          homeDirectory = "/Users/lcmd";
+        };
       };
     };
-  };
 }

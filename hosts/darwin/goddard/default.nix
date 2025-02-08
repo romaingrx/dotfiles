@@ -1,6 +1,6 @@
 { config, pkgs, ... }: {
   imports = [
-    ../../modules/darwin
+    ../../../modules/darwin
   ];
 
   # Host-specific settings
