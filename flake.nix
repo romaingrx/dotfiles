@@ -17,7 +17,6 @@
     # Define common modules that will be shared across configurations
     commonModules = [
       home-manager.darwinModules.home-manager
-      nix-homebrew.darwinModules.nix-homebrew
     ];
 
     # Define different machine configurations
@@ -44,6 +43,7 @@
               user = user;
             };
           }
+        nix-homebrew.darwinModules.nix-homebrew
         ] ++ commonModules;
       };
   in
