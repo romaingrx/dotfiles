@@ -66,10 +66,10 @@
 - [x] Implement basic overlays structure
 
 ### Phase 2: Core Module Reorganization
-- [ ] Separate system-agnostic configurations into `modules/core/common`
-- [ ] Move Darwin-specific configurations to `modules/core/darwin`
-- [ ] Create placeholder for NixOS configurations in `modules/core/nixos`
-- [ ] Implement shared module utilities in `lib`
+- [x] Separate system-agnostic configurations into `modules/core/common`
+- [x] Move Darwin-specific configurations to `modules/core/darwin`
+- [x] Create placeholder for NixOS configurations in `modules/core/nixos`
+- [x] Implement shared module utilities in `lib`
 
 ### Phase 3: Role-Based Configuration
 - [ ] Define common roles (workstation, development, etc.)
@@ -78,8 +78,8 @@
 - [ ] Document role usage and composition
 
 ### Phase 4: Profile Enhancement
-- [ ] Move user configurations to `modules/profiles/users`
-- [ ] Create reusable desktop environment profiles
+- [x] Move user configurations to `modules/profiles/users`
+- [x] Create reusable desktop environment profiles
 - [ ] Implement development tool profiles
 - [ ] Document profile system and usage
 
