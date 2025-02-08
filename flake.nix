@@ -34,7 +34,7 @@
                 useUserPackages = true;
                 backupFileExtension = "bckp";
                 users.${user} = { config, pkgs, ... }:
-                  import ./profiles/${user} { inherit config pkgs; };
+                  import ./modules/profiles/${user} { inherit config pkgs; };
               };
               nix-homebrew = {
                 enable = true;
