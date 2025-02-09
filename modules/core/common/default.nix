@@ -1,8 +1,5 @@
 { pkgs, config, ... }: {
-  imports = [
-    ./packages
-    ./programs
-  ];
+  imports = [ ./packages ./programs ];
   home.stateVersion = "24.05"; # Please read the comment before changing.
 
   home.sessionVariables = {

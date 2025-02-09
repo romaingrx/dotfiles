@@ -22,7 +22,10 @@
         nix-darwin.lib.darwinSystem {
           inherit inputs;
           modules = [
-            ({ config, pkgs, ... }: import ./hosts/darwin/${host} { inherit config pkgs homeDirectory; })
+            ({ config, pkgs, ... }:
+              import ./hosts/darwin/${host} {
+                inherit config pkgs homeDirectory;
+              })
             {
               users.users.${user} = {
                 name = user;

@@ -3,10 +3,10 @@
   matchBlocks = {
     "github.com" = {
       user = "git";
-      identityFile =
-        if config.home.username == "romaingrx"
-        then "~/.ssh/github"
-        else "~/.ssh/github_lcmd";
+      identityFile = if config.home.username == "romaingrx" then
+        "~/.ssh/github"
+      else
+        "~/.ssh/github_lcmd";
     };
     "dipsy" = {
       user = "romaingrx";

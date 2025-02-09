@@ -1,9 +1,6 @@
-{...}: {
-  imports = [
-    ./system/defaults.nix
-    ./system/homebrew.nix
-    ./system/packages.nix
-  ];
+{ ... }: {
+  imports =
+    [ ./system/defaults.nix ./system/homebrew.nix ./system/packages.nix ];
 
   # Set ZSH
   programs.zsh.enable = true;
@@ -19,4 +16,4 @@
 
   # Used for backwards compatibility
   system.stateVersion = 5;
-} 
+}

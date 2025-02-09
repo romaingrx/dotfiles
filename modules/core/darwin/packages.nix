@@ -1,4 +1,4 @@
-{pkgs, ...}: {
+{ pkgs, ... }: {
   nixpkgs.config.allowUnfree = true;
 
   environment.systemPackages = with pkgs; [
@@ -12,4 +12,4 @@
   environment.shellAliases = {
     nixvim = "nix run ~/.config/nix/nixvim#default";
   };
-} 
+}

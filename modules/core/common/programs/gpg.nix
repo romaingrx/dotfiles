@@ -1,6 +1,4 @@
 {
   enable = true;
-  settings = {
-    trust-model = "tofu+pgp";
-  };
+  settings = { trust-model = "tofu+pgp"; };
 }

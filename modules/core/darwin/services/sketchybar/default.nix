@@ -1,4 +1,4 @@
-{pkgs, ...}: 
+{ pkgs, ... }:
 let
   sbarLua = pkgs.stdenv.mkDerivation rec {
     pname = "sketchybar-lua";
@@ -42,10 +42,10 @@ let
   # Create config directory with all Lua files
   configDir = pkgs.runCommand "sketchybar-config" { } ''
     mkdir -p $out
-    
+
     # Copy all Lua files preserving directory structure
     cp -r ${./config}/* $out/
-    
+
     # Create lib directory and link the Lua module
     mkdir -p $out/lib
     ln -s ${sbarLua}/lib/libsketchybar.so $out/lib/sketchybar.so
@@ -53,13 +53,8 @@ let
 in {
   enable = true;
   package = pkgs.sketchybar;
-  config = builtins.replaceStrings
-    [ "{{ CONFIG_DIR_DEFINITION }}" ]
-    [ "${configDir}" ]
+  config =
+    builtins.replaceStrings [ "{{ CONFIG_DIR_DEFINITION }}" ] [ "${configDir}" ]
     (builtins.readFile ./sketchybarrc);
-  extraPackages = with pkgs; [
-    lua
-    jq
-    tree
-  ];
-} 
+  extraPackages = with pkgs; [ lua jq tree ];
+}
