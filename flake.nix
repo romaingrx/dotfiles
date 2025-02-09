@@ -23,6 +23,11 @@
           inherit inputs;
           modules = [
             ({ config, pkgs, ... }: import ./hosts/darwin/${host} { inherit config pkgs homeDirectory; })
+            # Import profile-specific system configurations if they exist
+            (let brewFile = ./modules/profiles/${user}/homebrew.nix;
+             in if builtins.pathExists brewFile
+                then ({ config, pkgs, ... }: import brewFile { inherit config pkgs; })
+                else {})
             {
               users.users.${user} = {
                 name = user;

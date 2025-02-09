@@ -1,6 +1,4 @@
 { ... }: {
-  # TODO : change this and accept extra brews and casks from inputs
-
   homebrew = {
     enable = true;
     global = {
@@ -35,18 +33,12 @@
       "font-sf-pro"
       "sf-symbols"
       "wifiman"
-      # Work only
-      "avogadro"
-      "onedrive"
       "airtable"
-      "mattermost"
-      "neo4j"
     ];
     brews = [
       "bitwarden-cli"
       "ffmpeg"
       "mactop"
-      "awscli"
       "lightgbm"
       "libpq"
     ];

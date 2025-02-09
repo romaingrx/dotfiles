@@ -8,7 +8,7 @@
       EDITOR = "nvim";
       VISUAL = "nvim";
     };
-    packages = with pkgs; [ ollama tor mitmproxy ];
+    packages = with pkgs; [ openbabel zoom-us ];
   };
 
   # Let Home Manager install and manage itself.
