@@ -9,7 +9,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v30
       
-      - run: "nix develop --command nixfmt --check **/*.nix"
+      - run: "nix run nixpkgs#nixfmt -- --check **/*.nix"
         continue-on-error: true
         id: check
 
@@ -18,7 +18,7 @@ jobs:
         if: steps.check.outcome == 'failure'
         run: |
           set -e
-          nix develop --command nixfmt **/*.nix
+          nix run nixpkgs#nixfmt -- **/*.nix
 
           # If there are changes, commit them
           if [[ -n $(git status --porcelain) ]]; then

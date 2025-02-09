@@ -1,4 +1,5 @@
 # Dotfiles
+[![nixfmt](https://github.com/romaingrx/dotfiles/actions/workflows/nixfmt.yml/badge.svg)](https://github.com/romaingrx/dotfiles/actions/workflows/nixfmt.yml)
 
 > My dotfiles for MacOS and Linux mostly using Nix.
 
