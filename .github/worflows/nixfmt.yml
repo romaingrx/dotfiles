@@ -1,0 +1,32 @@
+name: nixfmt
+on:
+  push:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v30
+      
+      - run: "nix develop --command nixfmt --check **/*.nix"
+        continue-on-error: true
+        id: check
+
+      # If fails, then try to fix it and commit
+      - name: Fix formatting
+        if: steps.check.outcome == 'failure'
+        run: |
+          set -e
+          nix develop --command nixfmt **/*.nix
+
+          # If there are changes, commit them
+          if [[ -n $(git status --porcelain) ]]; then
+             # Not signed but whatever
+             git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+             git config --local user.name "github-actions[bot]"
+             
+             git add -A
+             git commit -m "style: auto-fix code style and lint issues"
+             git push
+          fi
