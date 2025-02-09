@@ -3,15 +3,13 @@
     enable = true;
     global = {
       brewfile = true;
-      lockfiles = false;  # Disable lockfiles to prevent permission issues
+      lockfiles = false; # Disable lockfiles to prevent permission issues
     };
     onActivation = {
       cleanup = "zap"; # Remove non declared casks
       autoUpdate = true;
       upgrade = true;
-      extraFlags = [
-        "--force"
-      ];
+      extraFlags = [ "--force" ];
     };
 
     # Homebrew permissions
@@ -34,6 +32,10 @@
       "sf-symbols"
       "wifiman"
       "airtable"
+      # Work related casks
+      "avogadro"
+      "onedrive"
+      "mattermost"
     ];
     brews = [
       "bitwarden-cli"
@@ -41,6 +43,8 @@
       "mactop"
       "lightgbm"
       "libpq"
+      # Personal brews
+      "awscli"
     ];
   };
-} 
+}
