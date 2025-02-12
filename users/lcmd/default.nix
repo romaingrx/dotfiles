@@ -1,13 +1,14 @@
 { pkgs, ... }: {
-  imports = [ ../../../modules/core/common ];
+  imports = [ ../../modules/core/common ];
 
+  # State version
   home = {
     stateVersion = "24.05";
     sessionVariables = {
       EDITOR = "nvim";
       VISUAL = "nvim";
     };
-    packages = with pkgs; [ ollama tor mitmproxy ];
+    packages = with pkgs; [ openbabel zoom-us ];
   };
 
   # Let Home Manager install and manage itself.

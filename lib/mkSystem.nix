@@ -25,7 +25,7 @@ in systemFunc {
       home-manager.useGlobalPkgs = true;
       home-manager.useUserPackages = true;
       home-manager.backupFileExtension = "bckp";
-      home-manager.users.${user} = import ../modules/profiles/${user};
+      home-manager.users.${user} = import ../users/${user};
       users.users.${user} = {
         home = homeDirectory;
         createHome = true;
