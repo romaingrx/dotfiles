@@ -10,7 +10,6 @@
 
   networking = {
     hostName = "carl";
-    computerName = "carl";
     networkmanager.enable = true;
   };
 
