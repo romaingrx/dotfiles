@@ -1,4 +1,4 @@
-{ config, pkgs, homeDirectory, ... }: {
+{ pkgs, homeDirectory, ... }: {
   imports = [ ./homebrew.nix ./packages.nix ];
 
   # Enable TouchID for sudo
@@ -63,7 +63,7 @@
         ShowPathbar = true;
       };
       loginwindow = { GuestEnabled = false; };
-      screencapture = { location = "~/Pictures/screenshots"; };
+      screencapture = { location = "${homeDirectory}/Pictures/screenshots"; };
       screensaver = { askForPasswordDelay = 0; };
     };
   };

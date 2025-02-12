@@ -1,7 +1,5 @@
-{ config, pkgs, homeDirectory }: {
-  imports = [
-    (import ../../../modules/core/darwin { inherit pkgs config homeDirectory; })
-  ];
+{ ... }: {
+  imports = [ ../../../modules/core/darwin ];
 
   # Host-specific settings
   networking.hostName = "goddard";
