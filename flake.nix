@@ -15,6 +15,13 @@
       config = { nixpkgs.config.allowUnfree = true; };
       mkSystem = import ./lib/mkSystem.nix { inherit inputs config; };
     in {
+      nixosConfigurations = {
+        "carl" = (mkSystem "carl") {
+          system = "x86_64-linux";
+          user = "romaingrx";
+        };
+      };
+
       darwinConfigurations = {
         # Original goddard configuration
         "romaingrx@goddard" = (mkSystem "goddard") {

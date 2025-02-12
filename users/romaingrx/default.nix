@@ -2,7 +2,7 @@
   imports = [ ../../modules/core/common ];
 
   home = {
-    stateVersion = "24.05";
+    stateVersion = "24.11";
     sessionVariables = {
       EDITOR = "nvim";
       VISUAL = "nvim";
