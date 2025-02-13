@@ -238,7 +238,7 @@
       ];
 
       # Startup applications
-      exec-once = [ "dunst" "hyprpaper" "hypridle" ];
+      exec-once = [ "waybar" "dunst" "hyprpaper" "hypridle" ];
     };
   };
 
