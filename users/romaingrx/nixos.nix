@@ -3,6 +3,7 @@
     isNormalUser = true;
     home = "/home/romaingrx";
     extraGroups = [ "wheel" "networkmanager" "video" "input" "docker" ];
+    shell = pkgs.zsh;
     createHome = true;
     name = "romaingrx";
     hashedPassword =
