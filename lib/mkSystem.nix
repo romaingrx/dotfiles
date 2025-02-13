@@ -30,7 +30,7 @@ in systemFunc {
       home-manager.useGlobalPkgs = true;
       home-manager.useUserPackages = true;
       home-manager.backupFileExtension = "bckp";
-      home-manager.users.${user} = import userHMConfig;
+      home-manager.users.${user} = import userHMConfig { isLinux = !darwin; };
     }
     {
       config._module.args = {
