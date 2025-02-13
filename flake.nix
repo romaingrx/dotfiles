@@ -12,8 +12,7 @@
 
   outputs = inputs@{ self, nixpkgs, nix-darwin, home-manager, }:
     let
-      config = { nixpkgs.config.allowUnfree = true; };
-      mkSystem = import ./lib/mkSystem.nix { inherit inputs config; };
+      mkSystem = import ./lib/mkSystem.nix { inherit inputs; };
     in {
       nixosConfigurations = {
         "carl" = (mkSystem "carl") {

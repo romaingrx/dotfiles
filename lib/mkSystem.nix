@@ -1,4 +1,4 @@
-{ config, inputs, ... }:
+{ inputs, ... }:
 name:
 { system, user, darwin ? false, ... }:
 let
@@ -21,6 +21,10 @@ let
 in systemFunc {
   inherit system;
   modules = [
+    # Allow unfree packages globally
+    {
+      nixpkgs.config.allowUnfree = true;
+    }
     hostConfig
     userOSConfig
     home-manager.home-manager

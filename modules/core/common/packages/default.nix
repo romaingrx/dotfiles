@@ -8,7 +8,6 @@
     uv
     bun
     pnpm
-    raycast
     alacritty
     signal-desktop
     obsidian

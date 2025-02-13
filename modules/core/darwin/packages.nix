@@ -7,6 +7,7 @@
     git
     gnupg
     gh
+    raycast
   ];
 
   environment.shellAliases = {
