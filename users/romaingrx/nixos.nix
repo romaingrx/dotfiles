@@ -12,6 +12,9 @@
 
   fonts.packages = with pkgs; [ nerd-fonts.fira-code ];
 
+  # TODO romaingrx: Make sure that the programs are user specific
+  programs.zsh.enable = true;
+
   # Enable Wayland compositor (Hyprland)
   programs.hyprland = {
     enable = true;
