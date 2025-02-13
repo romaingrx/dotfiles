@@ -181,11 +181,209 @@
         layer = "top";
         position = "top";
         height = 30;
-        modules-left = [ "hyprland/workspaces" "hyprland/window" ];
-        modules-center = [ "clock" ];
-        modules-right =
-          [ "pulseaudio" "network" "cpu" "memory" "battery" "tray" ];
+        spacing = 4;
+        margin-top = 6;
+        margin-left = 8;
+        margin-right = 8;
+        
+        modules-left = ["hyprland/workspaces" "hyprland/window"];
+        modules-center = ["clock"];
+        modules-right = ["pulseaudio" "network" "cpu" "memory" "battery" "tray"];
+
+        "hyprland/workspaces" = {
+          format = "{icon}";
+          on-click = "activate";
+          format-icons = {
+            "1" = "一";
+            "2" = "二";
+            "3" = "三";
+            "4" = "四";
+            "5" = "五";
+            "6" = "六";
+            "7" = "七";
+            "8" = "八";
+            "9" = "九";
+            "10" = "十";
+          };
+          sort-by-number = true;
+        };
+
+        "hyprland/window" = {
+          format = "{}";
+          max-length = 50;
+        };
+
+        "clock" = {
+          format = "{:%H:%M}";
+          format-alt = "{:%Y-%m-%d %H:%M:%S}";
+          tooltip-format = "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>";
+        };
+
+        "cpu" = {
+          format = "  {usage}%";
+          tooltip = false;
+          interval = 1;
+        };
+
+        "memory" = {
+          format = "  {}%";
+          interval = 1;
+        };
+
+        "network" = {
+          format-wifi = "  {essid}";
+          format-ethernet = "  Connected";
+          format-disconnected = "⚠  Disconnected";
+          tooltip-format = "{ifname} via {gwaddr}";
+          tooltip-format-wifi = "{essid} ({signalStrength}%)";
+        };
+
+        "pulseaudio" = {
+          format = "{icon}  {volume}%";
+          format-bluetooth = "{icon}  {volume}%";
+          format-bluetooth-muted = "   {volume}%";
+          format-muted = "  {volume}%";
+          format-icons = {
+            headphone = "";
+            hands-free = "";
+            headset = "";
+            phone = "";
+            portable = "";
+            car = "";
+            default = ["" "" ""];
+          };
+          on-click = "pavucontrol";
+        };
+
+        "tray" = {
+          icon-size = 18;
+          spacing = 10;
+        };
       };
     };
+    
+    style = ''
+      * {
+        border: none;
+        border-radius: 0;
+        font-family: "JetBrainsMono Nerd Font";
+        font-size: 13px;
+        min-height: 0;
+      }
+
+      window#waybar {
+        background: rgba(21, 18, 27, 0);
+        color: #a597ca;
+      }
+
+      tooltip {
+        background: #1e1e2e;
+        border-radius: 10px;
+        border-width: 2px;
+        border-style: solid;
+        border-color: #11111b;
+      }
+
+      #workspaces button {
+        padding: 5px;
+        color: #313244;
+        margin-right: 5px;
+      }
+
+      #workspaces button.active {
+        color: #a6adc8;
+      }
+
+      #workspaces button.focused {
+        color: #a6adc8;
+        background: #eba0ac;
+        border-radius: 10px;
+      }
+
+      #workspaces button.urgent {
+        color: #11111b;
+        background: #a6e3a1;
+        border-radius: 10px;
+      }
+
+      #workspaces button:hover {
+        background: #11111b;
+        color: #cdd6f4;
+        border-radius: 10px;
+      }
+
+      #window,
+      #clock,
+      #pulseaudio,
+      #network,
+      #cpu,
+      #memory,
+      #tray {
+        background: #1e1e2e;
+        padding: 0px 10px;
+        margin: 3px 0px;
+        margin-top: 10px;
+        border: 1px solid #181825;
+      }
+
+      #tray {
+        border-radius: 10px;
+        margin-right: 10px;
+      }
+
+      #workspaces {
+        background: #1e1e2e;
+        border-radius: 10px;
+        margin-left: 10px;
+        padding-right: 0px;
+        padding-left: 5px;
+      }
+
+      #window {
+        border-radius: 10px;
+        margin-left: 60px;
+        margin-right: 60px;
+      }
+
+      #clock {
+        color: #fab387;
+        border-radius: 10px 10px 10px 10px;
+        margin-left: 5px;
+        border-right: 0px;
+      }
+
+      #network {
+        color: #f9e2af;
+        border-radius: 10px 0px 0px 10px;
+        border-left: 0px;
+        border-right: 0px;
+      }
+
+      #memory {
+        color: #89b4fa;
+        border-radius: 10px 0px 0px 10px;
+        border-left: 0px;
+        border-right: 0px;
+      }
+
+      #cpu {
+        color: #94e2d5;
+        border-left: 0px;
+        border-right: 0px;
+      }
+
+      #battery {
+        color: #a6e3a1;
+        border-radius: 0 10px 10px 0;
+        margin-right: 10px;
+        border-left: 0px;
+      }
+
+      #pulseaudio {
+        color: #89b4fa;
+        border-left: 0px;
+        border-right: 0px;
+      }
+    '';
   };
 }
