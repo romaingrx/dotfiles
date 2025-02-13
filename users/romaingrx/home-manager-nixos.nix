@@ -37,36 +37,38 @@
   programs.hyprlock = {
     enable = true;
     package = pkgs.hyprlock;
-    general = {
-      disable_loading_bar = false;
-      hide_cursor = true;
-      grace = 0;
-      no_fade_in = false;
+    settings = {
+      general = {
+        disable_loading_bar = false;
+        hide_cursor = true;
+        grace = 0;
+        no_fade_in = false;
+      };
+      background = [{
+        path = "~/.wallpapers/nixos.png";
+        color = "rgba(25, 20, 20, 1.0)";
+        blur_passes = 2;
+        blur_size = 7;
+        noise = 1.17e-2;
+        contrast = 0.8916;
+        brightness = 0.8172;
+        vibrancy = 0.1696;
+        vibrancy_darkness = 0.0;
+      }];
+      input-field = [{
+        size = "200, 50";
+        position = "0, -80";
+        monitor = "";
+        dots_center = true;
+        fade_on_empty = false;
+        outer_color = "rgb(165, 151, 202)";
+        inner_color = "rgb(30, 30, 46)";
+        font_color = "rgb(200, 200, 200)";
+        outline_thickness = 5;
+        placeholder_text = ''<span foreground="#cad3f5">Password...</span>'';
+        shadow_passes = 2;
+      }];
     };
-    background = [{
-      path = "~/.wallpapers/nixos.png";
-      color = "rgba(25, 20, 20, 1.0)";
-      blur_passes = 2;
-      blur_size = 7;
-      noise = 1.17e-2;
-      contrast = 0.8916;
-      brightness = 0.8172;
-      vibrancy = 0.1696;
-      vibrancy_darkness = 0.0;
-    }];
-    input-field = [{
-      size = "200, 50";
-      position = "0, -80";
-      monitor = "";
-      dots_center = true;
-      fade_on_empty = false;
-      outer_color = "rgb(165, 151, 202)";
-      inner_color = "rgb(30, 30, 46)";
-      font_color = "rgb(200, 200, 200)";
-      outline_thickness = 5;
-      placeholder_text = ''<span foreground="#cad3f5">Password...</span>'';
-      shadow_passes = 2;
-    }];
   };
 
   # Configure hypridle
