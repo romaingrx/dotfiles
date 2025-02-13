@@ -188,6 +188,7 @@
         "$mod, R, exec, rofi -show drun"
         "$mod, P, pseudo,"
         "$mod, D, togglesplit,"
+        "$mod, L, exec, hyprlock"
 
         # Move focus
         "$mod, left, movefocus, l"
