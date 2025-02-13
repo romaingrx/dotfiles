@@ -17,6 +17,9 @@
 
   home.packages = with pkgs; [ hyprpaper rofi-wayland code-cursor ];
 
+  # TODO romaingrx: Make sure that the programs are user specific
+  home.programs.zsh.enable = true;
+
   # Link wallpaper from dotfiles to the home directory
   home.file.".wallpapers/nixos.png".source = ../../assets/wallpapers/nixos.png;
 
