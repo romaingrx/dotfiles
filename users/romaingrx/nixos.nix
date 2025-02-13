@@ -2,7 +2,7 @@
   users.users.romaingrx = {
     isNormalUser = true;
     home = "/home/romaingrx";
-    extraGroups = [ "wheel" "networkmanager" "video" "input" ];
+    extraGroups = [ "wheel" "networkmanager" "video" "input" "docker" ];
     createHome = true;
     name = "romaingrx";
     hashedPassword =
