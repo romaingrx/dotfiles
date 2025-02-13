@@ -36,13 +36,14 @@
   # Configure hyprlock
   programs.hyprlock = {
     enable = true;
+    package = pkgs.hyprlock;
     general = {
       disable_loading_bar = false;
       hide_cursor = true;
       grace = 0;
       no_fade_in = false;
     };
-    backgrounds = [{
+    background = [{
       path = "~/.wallpapers/nixos.png";
       color = "rgba(25, 20, 20, 1.0)";
       blur_passes = 2;
@@ -53,52 +54,19 @@
       vibrancy = 0.1696;
       vibrancy_darkness = 0.0;
     }];
-    input-fields = [{
-      size = {
-        width = 300;
-        height = 50;
-      };
-      outline_thickness = 2;
-      dots_size = 0.2;
-      dots_spacing = 0.64;
+    input-field = [{
+      size = "200, 50";
+      position = "0, -80";
+      monitor = "";
       dots_center = true;
+      fade_on_empty = false;
       outer_color = "rgb(165, 151, 202)";
       inner_color = "rgb(30, 30, 46)";
       font_color = "rgb(200, 200, 200)";
-      fade_on_empty = true;
-      placeholder_text = "<i>Password...</i>";
-      hide_input = false;
-      position = {
-        x = 0;
-        y = -120;
-      };
-      halign = "center";
-      valign = "center";
+      outline_thickness = 5;
+      placeholder_text = ''<span foreground="#cad3f5">Password...</span>'';
+      shadow_passes = 2;
     }];
-    labels = [
-      {
-        text = "$TIME";
-        color = "rgb(165, 151, 202)";
-        font_size = 72;
-        position = {
-          x = 0;
-          y = -300;
-        };
-        halign = "center";
-        valign = "center";
-      }
-      {
-        text = "Type to unlock...";
-        color = "rgb(165, 151, 202)";
-        font_size = 16;
-        position = {
-          x = 0;
-          y = -60;
-        };
-        halign = "center";
-        valign = "center";
-      }
-    ];
   };
 
   # Configure hypridle
