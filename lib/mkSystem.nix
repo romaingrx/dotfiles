@@ -3,6 +3,8 @@ name:
 { system, user, darwin ? false, ... }:
 let
   hostConfig = ../hosts/${if darwin then "darwin" else "nixos"}/${name};
+  userOSConfig = ../users/${user}/${if darwin then "darwin" else "nixos"}.nix;
+  userHMConfig = ../users/${user}/home-manager.nix;
 
   # NixOS vs nix-darwin functions
   systemFunc = if darwin then
@@ -20,17 +22,13 @@ in systemFunc {
   inherit system;
   modules = [
     hostConfig
+    userOSConfig
     home-manager.home-manager
     {
       home-manager.useGlobalPkgs = true;
       home-manager.useUserPackages = true;
       home-manager.backupFileExtension = "bckp";
-      home-manager.users.${user} = import ../users/${user};
-      users.users.${user} = {
-        home = homeDirectory;
-        createHome = true;
-        name = user;
-      };
+      home-manager.users.${user} = import userHMConfig;
     }
     {
       config._module.args = {
