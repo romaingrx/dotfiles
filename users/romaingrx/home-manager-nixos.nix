@@ -65,7 +65,7 @@
         inner_color = "rgb(30, 30, 46)";
         font_color = "rgb(200, 200, 200)";
         outline_thickness = 5;
-        placeholder_text = ''<span foreground="#cad3f5">Password...</span>'';
+        placeholder_text = "Type to unlock...";
         shadow_passes = 2;
       }];
     };
