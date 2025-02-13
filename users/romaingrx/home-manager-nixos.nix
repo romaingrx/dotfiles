@@ -185,10 +185,11 @@
         margin-top = 6;
         margin-left = 8;
         margin-right = 8;
-        
-        modules-left = ["hyprland/workspaces" "hyprland/window"];
-        modules-center = ["clock"];
-        modules-right = ["pulseaudio" "network" "cpu" "memory" "battery" "tray"];
+
+        modules-left = [ "hyprland/workspaces" "hyprland/window" ];
+        modules-center = [ "clock" ];
+        modules-right =
+          [ "pulseaudio" "network" "cpu" "memory" "battery" "tray" ];
 
         "hyprland/workspaces" = {
           format = "{icon}";
@@ -216,7 +217,9 @@
         "clock" = {
           format = "{:%H:%M}";
           format-alt = "{:%Y-%m-%d %H:%M:%S}";
-          tooltip-format = "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>";
+          tooltip-format = ''
+            <big>{:%Y %B}</big>
+            <tt><small>{calendar}</small></tt>'';
         };
 
         "cpu" = {
@@ -250,7 +253,7 @@
             phone = "";
             portable = "";
             car = "";
-            default = ["" "" ""];
+            default = [ "" "" "" ];
           };
           on-click = "pavucontrol";
         };
@@ -261,7 +264,7 @@
         };
       };
     };
-    
+
     style = ''
       * {
         border: none;
