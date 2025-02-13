@@ -15,7 +15,7 @@
     };
   };
 
-  home.packages = with pkgs; [ hyprpaper ];
+  home.packages = with pkgs; [ hyprpaper rofi-wayland ];
 
   # Link wallpaper from dotfiles to the home directory
   home.file.".wallpapers/nixos.png".source = ../../assets/wallpapers/nixos.png;
@@ -110,7 +110,7 @@
         "$mod, M, exit,"
         "$mod, E, exec, thunar"
         "$mod, V, togglefloating,"
-        "$mod, R, exec, wofi --show drun"
+        "$mod, R, exec, rofi -show drun"
         "$mod, P, pseudo,"
         "$mod, D, togglesplit,"
 
@@ -386,4 +386,97 @@
       }
     '';
   };
+
+  # Add Rofi configuration
+  xdg.configFile."rofi/config.rasi".text = ''
+    configuration {
+      modi: "drun,run,window";
+      show-icons: true;
+      terminal: "alacritty";
+      drun-display-format: "{icon} {name}";
+      location: 0;
+      disable-history: false;
+      hide-scrollbar: true;
+      display-drun: "   Apps ";
+      display-run: "   Run ";
+      display-window: " 﩯  Window";
+      display-Network: " 󰤨  Network";
+      sidebar-mode: true;
+    }
+
+    @theme "catppuccin-mocha"
+
+    window {
+      width: 1000px;
+      border: 2px;
+      border-color: #a597ca;
+      border-radius: 10px;
+      background-color: #1e1e2e;
+    }
+
+    mainbox {
+      background-color: transparent;
+    }
+
+    inputbar {
+      children: [prompt,entry];
+      background-color: transparent;
+      border-radius: 5px;
+      padding: 2px;
+    }
+
+    prompt {
+      background-color: #a597ca;
+      padding: 6px;
+      text-color: #1e1e2e;
+      border-radius: 8px;
+      margin: 20px 0px 0px 20px;
+    }
+
+    textbox-prompt-colon {
+      expand: false;
+      str: ":";
+    }
+
+    entry {
+      padding: 6px;
+      margin: 20px 0px 0px 10px;
+      text-color: #a597ca;
+      background-color: #1e1e2e;
+    }
+
+    listview {
+      border: 0px 0px 0px;
+      padding: 6px 0px 0px;
+      margin: 10px 0px 0px 20px;
+      columns: 2;
+      background-color: transparent;
+    }
+
+    element {
+      padding: 5px;
+      background-color: transparent;
+      text-color: #a597ca;
+    }
+
+    element-icon {
+      size: 25px;
+    }
+
+    element selected {
+      text-color: #1e1e2e;
+      background-color: #a597ca;
+      border-radius: 8px;
+    }
+
+    element-text {
+      background-color: transparent;
+      text-color: inherit;
+      vertical-align: 0.5;
+    }
+
+    element-text selected {
+      background-color: transparent;
+    }
+  '';
 }
