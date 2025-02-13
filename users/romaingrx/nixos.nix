@@ -15,6 +15,32 @@
     xwayland.enable = true;
   };
 
+  # Enable display manager
+  services.xserver = {
+    enable = true; # needed for SDDM
+    displayManager.sddm = {
+      enable = true;
+      wayland.enable = true; # Enable Wayland support in SDDM
+    };
+  };
+
+  # Wayland-specific packages
+  environment.systemPackages = with pkgs; [
+    # Core Wayland utilities
+    wl-clipboard
+    wf-recorder
+    slurp
+    grim # screenshot
+    swaylock # lockscreen
+    swayidle
+    wofi # application launcher
+    waybar # status bar
+    dunst # notification daemon
+    libnotify
+    brightnessctl # brightness control
+    pamixer # pulseaudio control
+  ];
+
   # Enable common Wayland programs
   security.pam.services.swaylock = { };
   xdg.portal = {

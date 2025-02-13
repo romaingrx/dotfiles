@@ -18,24 +18,7 @@
       SDL_VIDEODRIVER = "wayland";
       CLUTTER_BACKEND = "wayland";
     };
-    packages = with pkgs; [
-      ollama
-      tor
-      mitmproxy
-      # Wayland utilities
-      wl-clipboard
-      wf-recorder
-      slurp
-      grim # screenshot
-      swaylock # lockscreen
-      swayidle
-      wofi # application launcher
-      waybar # status bar
-      dunst # notification daemon
-      libnotify
-      brightnessctl # brightness control
-      pamixer # pulseaudio control
-    ];
+    packages = with pkgs; [ ollama tor mitmproxy ];
   };
 
   # Let Home Manager install and manage itself.
