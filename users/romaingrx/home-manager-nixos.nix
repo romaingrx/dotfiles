@@ -15,7 +15,13 @@
     };
   };
 
-  home.packages = with pkgs; [ hyprpaper rofi-wayland code-cursor ];
+  home.packages = with pkgs; [
+    hyprpaper
+    rofi-wayland
+    code-cursor
+    hypridle
+    hyprlock
+  ];
 
   # Link wallpaper from dotfiles to the home directory
   home.file.".wallpapers/nixos.png".source = ../../assets/wallpapers/nixos.png;
@@ -25,6 +31,105 @@
     preload = ~/.wallpapers/nixos.png
     wallpaper = ,~/.wallpapers/nixos.png
     ipc = off
+  '';
+
+  # Configure hyprlock
+  programs.hyprlock = {
+    enable = true;
+    general = {
+      disable_loading_bar = false;
+      hide_cursor = true;
+      grace = 0;
+      no_fade_in = false;
+    };
+    backgrounds = [{
+      path = "~/.wallpapers/nixos.png";
+      color = "rgba(25, 20, 20, 1.0)";
+      blur_passes = 2;
+      blur_size = 7;
+      noise = 1.17e-2;
+      contrast = 0.8916;
+      brightness = 0.8172;
+      vibrancy = 0.1696;
+      vibrancy_darkness = 0.0;
+    }];
+    input-fields = [{
+      size = {
+        width = 300;
+        height = 50;
+      };
+      outline_thickness = 2;
+      dots_size = 0.2;
+      dots_spacing = 0.64;
+      dots_center = true;
+      outer_color = "rgb(165, 151, 202)";
+      inner_color = "rgb(30, 30, 46)";
+      font_color = "rgb(200, 200, 200)";
+      fade_on_empty = true;
+      placeholder_text = "<i>Password...</i>";
+      hide_input = false;
+      position = {
+        x = 0;
+        y = -120;
+      };
+      halign = "center";
+      valign = "center";
+    }];
+    labels = [
+      {
+        text = "$TIME";
+        color = "rgb(165, 151, 202)";
+        font_size = 72;
+        position = {
+          x = 0;
+          y = -300;
+        };
+        halign = "center";
+        valign = "center";
+      }
+      {
+        text = "Type to unlock...";
+        color = "rgb(165, 151, 202)";
+        font_size = 16;
+        position = {
+          x = 0;
+          y = -60;
+        };
+        halign = "center";
+        valign = "center";
+      }
+    ];
+  };
+
+  # Configure hypridle
+  xdg.configFile."hypr/hypridle.conf".text = ''
+    general {
+        lock_cmd = pidof hyprlock || hyprlock     # avoid starting multiple hyprlock instances
+        before_sleep_cmd = loginctl lock-session  # lock before suspend
+        after_sleep_cmd = hyprctl dispatch dpms on  # to avoid having to press a key twice to turn on the display
+    }
+
+    listener {
+        timeout = 150                                # 2.5min
+        on-timeout = brightnessctl -s set 10        # set monitor backlight to minimum
+        on-resume = brightnessctl -r                # monitor backlight restore
+    }
+
+    listener {
+        timeout = 300                               # 5min
+        on-timeout = loginctl lock-session          # lock screen when timeout has passed
+    }
+
+    listener {
+        timeout = 330                               # 5.5min
+        on-timeout = hyprctl dispatch dpms off      # screen off when timeout has passed
+        on-resume = hyprctl dispatch dpms on        # screen on when activity is detected
+    }
+
+    listener {
+        timeout = 1800                              # 30min
+        on-timeout = systemctl suspend              # suspend pc
+    }
   '';
 
   # Hyprland Configuration
@@ -162,11 +267,7 @@
       ];
 
       # Startup applications
-      exec-once = [
-        "dunst"
-        "hyprpaper"
-        "swayidle -w timeout 300 'swaylock -f' timeout 600 'hyprctl dispatch dpms off' resume 'hyprctl dispatch dpms on' before-sleep 'swaylock -f'"
-      ];
+      exec-once = [ "dunst" "hyprpaper" "hypridle" ];
     };
   };
 
