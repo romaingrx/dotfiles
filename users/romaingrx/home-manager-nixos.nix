@@ -15,7 +15,7 @@
     };
   };
 
-  home.packages = with pkgs; [ hyprpaper rofi-wayland ];
+  home.packages = with pkgs; [ hyprpaper rofi-wayland code-cursor ];
 
   # Link wallpaper from dotfiles to the home directory
   home.file.".wallpapers/nixos.png".source = ../../assets/wallpapers/nixos.png;
