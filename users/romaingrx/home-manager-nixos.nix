@@ -53,8 +53,6 @@
         force_split =
           2; # 0 = split follows mouse, 1 = always split to the left/top, 2 = always split to the right/bottom
         default_split_ratio = 1.0; # default split ratio when opening a window
-        no_gaps_when_only =
-          false; # whether to show gaps when there is only one window
         use_active_for_splits = true;
         special_scale_factor = 0.8;
       };
@@ -165,7 +163,6 @@
 
       # Startup applications
       exec-once = [
-        "waybar"
         "dunst"
         "hyprpaper"
         "swayidle -w timeout 300 'swaylock -f' timeout 600 'hyprctl dispatch dpms off' resume 'hyprctl dispatch dpms on' before-sleep 'swaylock -f'"
@@ -195,16 +192,16 @@
           format = "{icon}";
           on-click = "activate";
           format-icons = {
-            "1" = "一";
-            "2" = "二";
-            "3" = "三";
-            "4" = "四";
-            "5" = "五";
-            "6" = "六";
-            "7" = "七";
-            "8" = "八";
-            "9" = "九";
-            "10" = "十";
+            "1" = "1";
+            "2" = "2";
+            "3" = "3";
+            "4" = "4";
+            "5" = "5";
+            "6" = "6";
+            "7" = "7";
+            "8" = "8";
+            "9" = "9";
+            "10" = "10";
           };
           sort-by-number = true;
         };
