@@ -11,8 +11,7 @@
   };
 
   outputs = inputs@{ self, nixpkgs, nix-darwin, home-manager, }:
-    let
-      mkSystem = import ./lib/mkSystem.nix { inherit inputs; };
+    let mkSystem = import ./lib/mkSystem.nix { inherit inputs; };
     in {
       nixosConfigurations = {
         "carl" = (mkSystem "carl") {

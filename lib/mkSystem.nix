@@ -22,9 +22,7 @@ in systemFunc {
   inherit system;
   modules = [
     # Allow unfree packages globally
-    {
-      nixpkgs.config.allowUnfree = true;
-    }
+    { nixpkgs.config.allowUnfree = true; }
     hostConfig
     userOSConfig
     home-manager.home-manager
