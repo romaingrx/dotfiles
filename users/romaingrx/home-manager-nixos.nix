@@ -39,7 +39,7 @@
     package = pkgs.hyprlock;
     settings = {
       general = {
-        disable_loading_bar = false;
+        disable_loading_bar = true;
         hide_cursor = true;
         grace = 0;
         no_fade_in = false;
@@ -47,27 +47,63 @@
       background = [{
         path = "~/.wallpapers/nixos.png";
         color = "rgba(25, 20, 20, 1.0)";
-        blur_passes = 2;
-        blur_size = 7;
+        blur_passes = 3;
+        blur_size = 5;
         noise = 1.17e-2;
-        contrast = 0.8916;
-        brightness = 0.8172;
-        vibrancy = 0.1696;
+        contrast = 0.9;
+        brightness = 0.8;
+        vibrancy = 0.17;
         vibrancy_darkness = 0.0;
       }];
       input-field = [{
-        size = "200, 50";
-        position = "0, -80";
+        size = "250, 50";
+        position = "0, -20";
         monitor = "";
+        halign = "center";
+        valign = "center";
         dots_center = true;
-        fade_on_empty = false;
+        dots_size = 0.2;
+        dots_spacing = 0.2;
+        fade_on_empty = true;
+        fade_timeout = 1000;
+        placeholder_text = "<i>Type to unlock...</i>";
+        hide_input = false;
+        rounding = 10;
+        check_color = "rgb(165, 151, 202)";
+        fail_color = "rgb(204, 34, 34)";
+        fail_text = "<i>$FAIL <b>($ATTEMPTS)</b></i>";
+        fail_transition = 300;
+        capslock_color = "rgb(235, 160, 172)";
+        numlock_color = "rgb(201, 203, 255)";
+        bothlock_color = "rgb(235, 160, 172)";
+        invert_numlock = false;
+        swap_font_color = true;
         outer_color = "rgb(165, 151, 202)";
         inner_color = "rgb(30, 30, 46)";
         font_color = "rgb(200, 200, 200)";
-        outline_thickness = 5;
-        placeholder_text = "Type to unlock...";
+        outline_thickness = 2;
         shadow_passes = 2;
       }];
+      label = [
+        {
+          text = "$TIME";
+          color = "rgb(200, 200, 200)";
+          font_size = 65;
+          font_family = "JetBrainsMono Nerd Font";
+          position = "0, -140";
+          halign = "center";
+          valign = "center";
+        }
+        {
+          text = "<i>Type to unlock...</i>";
+          color = "rgb(165, 151, 202)";
+          font_size = 16;
+          font_family = "JetBrainsMono Nerd Font";
+          position = "0, -70";
+          halign = "center";
+          valign = "center";
+        }
+      ];
     };
   };
 
