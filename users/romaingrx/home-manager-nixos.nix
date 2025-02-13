@@ -41,9 +41,22 @@
         gaps_in = 5;
         gaps_out = 10;
         border_size = 2;
-        "col.active_border" = "rgba(33ccffee) rgba(00ff99ee) 45deg";
+        "col.active_border" = "rgba(a597caee) rgba(b3d8faee) 45deg";
         "col.inactive_border" = "rgba(595959aa)";
         layout = "dwindle";
+      };
+
+      # Dwindle layout configuration
+      dwindle = {
+        pseudotile = true;
+        preserve_split = true;
+        force_split =
+          2; # 0 = split follows mouse, 1 = always split to the left/top, 2 = always split to the right/bottom
+        default_split_ratio = 1.0; # default split ratio when opening a window
+        no_gaps_when_only =
+          false; # whether to show gaps when there is only one window
+        use_active_for_splits = true;
+        special_scale_factor = 0.8;
       };
 
       # Decoration configuration
@@ -101,13 +114,18 @@
         "$mod, V, togglefloating,"
         "$mod, R, exec, wofi --show drun"
         "$mod, P, pseudo,"
-        "$mod, J, togglesplit,"
+        "$mod, D, togglesplit,"
 
         # Move focus
         "$mod, left, movefocus, l"
         "$mod, right, movefocus, r"
         "$mod, up, movefocus, u"
         "$mod, down, movefocus, d"
+        # Move focus with vim-style bindings as well
+        "$mod, h, movefocus, l"
+        "$mod, l, movefocus, r"
+        "$mod, k, movefocus, u"
+        "$mod, j, movefocus, d"
 
         # Switch workspaces
         "$mod, 1, workspace, 1"
