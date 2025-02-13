@@ -18,11 +18,21 @@
       SDL_VIDEODRIVER = "wayland";
       CLUTTER_BACKEND = "wayland";
     };
-    packages = with pkgs; [ ollama tor mitmproxy ];
+    packages = with pkgs; [ ollama tor mitmproxy hyprpaper ];
   };
 
   # Let Home Manager install and manage itself.
   programs.home-manager.enable = true;
+
+  # Link wallpaper from dotfiles to the home directory
+  home.file.".wallpapers/nixos.png".source = ../../assets/wallpapers/nixos.png;
+
+  # Create hyprpaper config file
+  xdg.configFile."hypr/hyprpaper.conf".text = ''
+    preload = ~/.wallpapers/nixos.png
+    wallpaper = ,~/.wallpapers/nixos.png
+    ipc = off
+  '';
 
   # Hyprland Configuration
   wayland.windowManager.hyprland = {
@@ -149,6 +159,7 @@
       exec-once = [
         "waybar"
         "dunst"
+        "hyprpaper"
         "swayidle -w timeout 300 'swaylock -f' timeout 600 'hyprctl dispatch dpms off' resume 'hyprctl dispatch dpms on' before-sleep 'swaylock -f'"
       ];
     };
