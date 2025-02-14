@@ -69,17 +69,15 @@
         font_family = "JetBrainsMono Nerd Font";
         shadow_passes = 2;
       }];
-      label = [
-        {
-          text = "$TIME";
-          color = "rgb(200, 200, 200)";
-          font_size = 65;
-          font_family = "JetBrainsMono Nerd Font";
-          position = "0, 140";
-          halign = "center";
-          valign = "center";
-        }
-      ];
+      label = [{
+        text = "$TIME";
+        color = "rgb(200, 200, 200)";
+        font_size = 65;
+        font_family = "JetBrainsMono Nerd Font";
+        position = "0, 140";
+        halign = "center";
+        valign = "center";
+      }];
     };
   };
 
