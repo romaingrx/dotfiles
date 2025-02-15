@@ -11,6 +11,12 @@ let
     inputs.nix-darwin.lib.darwinSystem
   else
     inputs.nixpkgs.lib.nixosSystem;
+
+  sops-nix = if darwin then
+    inputs.sops-nix.darwinModules
+  else
+    inputs.sops-nix.nixosModules;
+
   home-manager = if darwin then
     inputs.home-manager.darwinModules
   else
@@ -21,10 +27,22 @@ let
 in systemFunc {
   inherit system;
   modules = [
+    {
+      config._module.args = {
+        homeDirectory = homeDirectory;
+        inputs = inputs;
+      };
+    }
     # Allow unfree packages globally
-    { nixpkgs.config.allowUnfree = true; }
+    {
+      nixpkgs.config.allowUnfree = true;
+    }
+
+    # Sops
+    sops-nix.sops
     hostConfig
     userOSConfig
+    ../modules/core
     home-manager.home-manager
     {
       home-manager.useGlobalPkgs = true;
@@ -32,11 +50,6 @@ in systemFunc {
       home-manager.backupFileExtension = "bckp";
       home-manager.users.${user} = import userHMConfig { isLinux = !darwin; };
     }
-    {
-      config._module.args = {
-        homeDirectory = homeDirectory;
-        inputs = inputs;
-      };
-    }
+
   ];
 }

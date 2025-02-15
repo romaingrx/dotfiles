@@ -8,9 +8,11 @@
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    sops-nix.url = "github:Mic92/sops-nix";
+    sops-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = inputs@{ self, nixpkgs, nix-darwin, home-manager, }:
+  outputs = inputs@{ self, nixpkgs, nix-darwin, home-manager, sops-nix }:
     let mkSystem = import ./lib/mkSystem.nix { inherit inputs; };
     in {
       nixosConfigurations = {

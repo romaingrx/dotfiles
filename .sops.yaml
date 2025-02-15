@@ -1,0 +1,10 @@
+keys:
+  - &default age18r9akfvujxryr4kpc4a34agsvkqczkl6gf8aaq98jmaqyl4tt42snpac6f
+  - &romaingrx age1md2t0hzlag085jflzvk2unss9v2gqpe8qscxzzeues2nzpfgt3nqeu2h9h
+
+creation_rules:
+  - path_regex: secrets/.*
+    key_groups:
+      - age:
+          - *default
+          - *romaingrx

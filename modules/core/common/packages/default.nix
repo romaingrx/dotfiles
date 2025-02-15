@@ -2,6 +2,7 @@
   home.packages = with pkgs; [
     nixfmt-classic
     nil # Nix LSP
+    sops
     docker
     docker-compose
     ffmpeg
