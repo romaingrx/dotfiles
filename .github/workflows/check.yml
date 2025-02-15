@@ -4,9 +4,15 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - macos-latest # ARM64
+          - ubuntu-latest # x86_64
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v30
-      
+
       - run: "nix flake check"
