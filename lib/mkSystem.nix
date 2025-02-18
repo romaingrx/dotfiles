@@ -42,7 +42,6 @@ in systemFunc {
     sops-nix.sops
     hostConfig
     userOSConfig
-    ../modules/core
     home-manager.home-manager
     {
       home-manager.useGlobalPkgs = true;
