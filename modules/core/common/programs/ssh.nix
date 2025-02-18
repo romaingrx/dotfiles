@@ -1,5 +1,7 @@
 { pkgs, ... }: {
   enable = true;
+  forwardAgent = true;
+  addKeysToAgent = "1h";
   matchBlocks = {
     "github.com" = {
       user = "git";
