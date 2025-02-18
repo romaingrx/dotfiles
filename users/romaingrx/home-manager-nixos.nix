@@ -171,7 +171,7 @@
         follow_mouse = 1;
         natural_scroll = false;
         sensitivity = 0;
-        repeat_rate = 120;
+        repeat_rate = 90;
         repeat_delay = 200;
       };
 
