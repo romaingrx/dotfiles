@@ -1,7 +1,7 @@
 { config, pkgs, ... }: {
   # TODO romaingrx: Make this way cleaner
   programs = {
-    git = import ./git.nix;
+    git = import ./git.nix { inherit config; };
     zsh = import ./zsh.nix { inherit config pkgs; };
     fzf = {
       enable = true;

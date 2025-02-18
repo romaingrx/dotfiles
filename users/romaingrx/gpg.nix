@@ -1,19 +1,20 @@
 { pkgs, ... }:
 let
   pinentryPackage =
-    if pkgs.stdenv.isDarwin then pkgs.pinentry_mac else pkgs.pinentry-gtk2;
+    if pkgs.stdenv.isDarwin then pkgs.pinentry_mac else pkgs.pinentry-curses;
 in {
   programs.gpg = {
     enable = true;
     settings = { trust-model = "tofu+pgp"; };
-    # Enable gpg-agent with proper pinentry program
-    mutableKeys = false;
-    mutableTrust = false;
+    # Disable automatic key management to prevent import errors during activation
+    mutableKeys = true;
+    mutableTrust = true;
 
     # Configure gpg-agent
     scdaemonSettings = { disable-ccid = true; };
 
-    publicKeys = [{ source = ./pubkeys/github.asc; }];
+    # Comment out the public keys to prevent automatic import during activation
+    # publicKeys = [{ source = ./pubkeys/github.asc; }];
   };
 
   services.gpg-agent = {
@@ -23,16 +24,18 @@ in {
     pinentryPackage = pinentryPackage;
     defaultCacheTtl = 3600;
     maxCacheTtl = 7200;
-    # Add extra configuration to help with the ioctl error
+    # Configure gpg-agent to use the TTY
     extraConfig = ''
       allow-loopback-pinentry
+      allow-emacs-pinentry
+      pinentry-program ${pinentryPackage}/bin/pinentry
     '';
   };
 
   # Add required environment variables
   home.sessionVariables = {
     GPG_TTY = "$(tty)";
-    # Ensure proper GUI pinentry on Wayland
-    PINENTRY_USER_DATA = "USE_TTY=1";
+    # Remove PINENTRY_USER_DATA since we're using pinentry-curses
+    SSH_AUTH_SOCK = "$(gpgconf --list-dirs agent-ssh-socket)";
   };
 }

@@ -1,11 +1,11 @@
-{
+{ config, ... }: {
   enable = true;
   userName = "Romain Graux";
-  userEmail = "48758915+romaingrx@users.noreply.github.com";
+  userEmail = config.home.github.gpg.email;
 
   # Add GPG signing
   signing = {
-    key = "EE706544613BE505"; # GitHub-specific GPG key
+    key = config.home.github.gpg.key;
     signByDefault = true;
   };
 

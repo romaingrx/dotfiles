@@ -169,8 +169,10 @@
       input = {
         kb_layout = "us";
         follow_mouse = 1;
-        touchpad = { natural_scroll = true; };
+        natural_scroll = false;
         sensitivity = 0;
+        repeat_rate = 120;
+        repeat_delay = 200;
       };
 
       # Gestures
