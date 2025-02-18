@@ -1,4 +1,4 @@
-{ ... }: {
+{ pkgs, ... }: {
   enable = true;
   matchBlocks = {
     "github.com" = {
@@ -7,7 +7,7 @@
     };
   };
   extraConfig = ''
-    UseKeychain yes
     AddKeysToAgent yes
+    ${pkgs.lib.optionalString pkgs.stdenv.isDarwin "UseKeychain yes"}
   '';
 }
