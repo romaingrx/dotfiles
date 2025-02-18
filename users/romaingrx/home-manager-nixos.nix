@@ -200,7 +200,24 @@
         "$mod, R, exec, rofi -show drun"
         "$mod, P, pseudo,"
         "$mod, D, togglesplit,"
-        "$mod, L, exec, hyprlock"
+        "$mod CTRL, Q, exec, hyprlock" # Mac-style lock
+
+        # Layout control
+        # COMMA (,) cycles between horizontal and vertical splits
+        "$mod, comma, layoutmsg, orientationnext"
+        # SLASH (/) toggles between split and stacked layout
+        "$mod, slash, layoutmsg, togglesplit"
+        
+        # Move workspace to other monitor
+        "$mod ALT, left, movecurrentworkspacetomonitor, l"
+        "$mod ALT, right, movecurrentworkspacetomonitor, r"
+        "$mod ALT, up, movecurrentworkspacetomonitor, u"
+        "$mod ALT, down, movecurrentworkspacetomonitor, d"
+        # Vim-style bindings for moving workspaces
+        "$mod ALT, h, movecurrentworkspacetomonitor, l"
+        "$mod ALT, l, movecurrentworkspacetomonitor, r" 
+        "$mod ALT, k, movecurrentworkspacetomonitor, u"
+        "$mod ALT, j, movecurrentworkspacetomonitor, d"
 
         # Move focus
         "$mod, left, movefocus, l"

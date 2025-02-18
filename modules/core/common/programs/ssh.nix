@@ -1,6 +1,7 @@
 { pkgs, ... }: {
   enable = true;
   forwardAgent = true;
+  package = pkgs.openssh;
   addKeysToAgent = "confirm";
   matchBlocks = {
     "github.com" = {
