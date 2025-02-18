@@ -1,7 +1,7 @@
 { pkgs, ... }: {
   enable = true;
   forwardAgent = true;
-  addKeysToAgent = "1h";
+  addKeysToAgent = "confirm";
   matchBlocks = {
     "github.com" = {
       user = "git";
@@ -9,7 +9,9 @@
     };
   };
   extraConfig = ''
-    AddKeysToAgent yes
+    # Keep connections alive
+    ServerAliveInterval 60
+    ServerAliveCountMax 2
     ${pkgs.lib.optionalString pkgs.stdenv.isDarwin "UseKeychain yes"}
   '';
 }

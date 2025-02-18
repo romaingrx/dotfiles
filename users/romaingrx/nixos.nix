@@ -15,6 +15,8 @@
   # TODO romaingrx: Make sure that the programs are user specific
   programs.zsh.enable = true;
 
+  virtualisation.docker.enable = true;
+
   # Enable Wayland compositor (Hyprland)
   programs.hyprland = {
     enable = true;
