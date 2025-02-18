@@ -3,7 +3,7 @@ keys:
   - &romaingrx age1md2t0hzlag085jflzvk2unss9v2gqpe8qscxzzeues2nzpfgt3nqeu2h9h
 
 creation_rules:
-  - path_regex: secrets/.*
+  - path_regex: users/romaingrx/secrets/.*
     key_groups:
       - age:
           - *default

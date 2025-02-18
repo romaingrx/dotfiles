@@ -1,11 +1,11 @@
-{ homeDirectory, ... }: {
-  sops = {
-    defaultSopsFile = ../../secrets/default.yaml;
-    age = {
-      sshKeyPaths = [ "${homeDirectory}/.ssh/id_host" ];
-      keyFile = "${homeDirectory}/.config/sops/age/key.txt";
-      generateKey = true;
-    };
-    secrets = { test = { }; };
-  };
+{ homeDirectory, ... }:
+{
+  # sops = {
+  #   defaultSopsFile = ../../secrets/default.yaml;
+  #   age = {
+  #     keyFile = "${homeDirectory}/.config/sops/age/keys.txt";
+  #     # Also set the environment variable for the sops command
+  #     sshKeyPaths = [ ];
+  #   };
+  # };
 }
