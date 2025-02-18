@@ -5,7 +5,7 @@
 
   # Add GPG signing
   signing = {
-    key = null; # Default key based on email and name
+    key = "EE706544613BE505"; # GitHub-specific GPG key
     signByDefault = true;
   };
 
