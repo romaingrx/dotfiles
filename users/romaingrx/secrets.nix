@@ -22,8 +22,7 @@ in {
 
   # Add an activation script to import the GPG key
   home.activation = {
-    importGpgKey = let
-      gpg = "${pkgs.gnupg}/bin/gpg";
+    importGpgKey = let gpg = "${pkgs.gnupg}/bin/gpg";
     in ''
       if [ -f "${config.sops.secrets.gpg_github_private_key.path}" ]; then
         $DRY_RUN_CMD ${gpg} --import "${config.sops.secrets.gpg_github_private_key.path}"
