@@ -13,6 +13,8 @@
     # Keep connections alive
     ServerAliveInterval 60
     ServerAliveCountMax 2
-    ${pkgs.lib.optionalString pkgs.stdenv.isDarwin "UseKeychain yes"}
+  '' + pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
+    IgnoreUnknown UseKeychain
+    UseKeychain yes
   '';
 }
