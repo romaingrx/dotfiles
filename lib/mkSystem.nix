@@ -48,7 +48,10 @@ in systemFunc {
       home-manager.useUserPackages = true;
       home-manager.backupFileExtension = "bckp";
       home-manager.users.${user} = import userHMConfig { isLinux = !darwin; };
-      home-manager.sharedModules = [ inputs.sops-nix.homeManagerModules.sops ];
+      home-manager.sharedModules = [
+        inputs.sops-nix.homeManagerModules.sops
+        inputs.nixvim.homeManagerModules.nixvim
+      ];
     }
   ];
 }
