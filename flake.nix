@@ -26,6 +26,16 @@
     inputs@{ self, nixpkgs, nix-darwin, home-manager, sops-nix, nixvim }:
     let mkSystem = import ./lib/mkSystem.nix { inherit inputs; };
     in {
+      # In configuration.nix
+      nixpkgs.overlays = [
+        (final: prev: {
+          openssh = prev.openssh.overrideAttrs (old: {
+            patches = (old.patches or [ ]) ++ [ ./overlays/openssh.patch ];
+            doCheck = false;
+          });
+        })
+      ];
+
       nixosConfigurations = {
         "carl" = (mkSystem "carl") {
           system = "x86_64-linux";
