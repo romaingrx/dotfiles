@@ -1,6 +1,6 @@
 { ... }:
 { pkgs, ... }: {
-  imports = [ ../../modules/core/common ];
+  imports = [ ../../modules/core/common ../romaingrx/neovim.nix ];
 
   # State version
   home.packages = with pkgs; [ openbabel zoom-us just biome ];
