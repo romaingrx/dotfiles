@@ -3,7 +3,7 @@
   imports = [ ../../modules/core/common ];
 
   # State version
-  home.packages = with pkgs; [ openbabel zoom-us ];
+  home.packages = with pkgs; [ openbabel zoom-us just biome ];
 
   # Set GitHub GPG configuration values
   home.github.gpg = {
