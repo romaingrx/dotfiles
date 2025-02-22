@@ -32,6 +32,7 @@
       "sf-symbols"
       "wifiman"
       "airtable"
+      "anytype"
       # Work related casks
       "avogadro"
       "onedrive"
