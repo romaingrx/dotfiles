@@ -24,7 +24,7 @@
 
   outputs =
     inputs@{ self, nixpkgs, nix-darwin, home-manager, sops-nix, nixvim }:
-    let 
+    let
       # Define overlays
       overlays = [
         # OpenSSH overlay
@@ -37,8 +37,8 @@
         # Claude Code overlay
         (import ./overlays/claude-code-overlay.nix)
       ];
-      
-      mkSystem = import ./lib/mkSystem.nix { 
+
+      mkSystem = import ./lib/mkSystem.nix {
         inherit inputs;
         overlays = overlays;
       };
