@@ -2,7 +2,7 @@
   enable = true;
   forwardAgent = true;
   package = pkgs.openssh;
-  addKeysToAgent = "confirm";
+  addKeysToAgent = "always";
   matchBlocks = {
     "github.com" = {
       user = "git";
