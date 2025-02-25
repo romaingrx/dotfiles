@@ -24,18 +24,25 @@
 
   outputs =
     inputs@{ self, nixpkgs, nix-darwin, home-manager, sops-nix, nixvim }:
-    let mkSystem = import ./lib/mkSystem.nix { inherit inputs; };
-    in {
-      # In configuration.nix
-      nixpkgs.overlays = [
+    let 
+      # Define overlays
+      overlays = [
+        # OpenSSH overlay
         (final: prev: {
           openssh = prev.openssh.overrideAttrs (old: {
             patches = (old.patches or [ ]) ++ [ ./overlays/openssh.patch ];
             doCheck = false;
           });
         })
+        # Claude Code overlay
+        (import ./overlays/claude-code-overlay.nix)
       ];
-
+      
+      mkSystem = import ./lib/mkSystem.nix { 
+        inherit inputs;
+        overlays = overlays;
+      };
+    in {
       nixosConfigurations = {
         "carl" = (mkSystem "carl") {
           system = "x86_64-linux";
