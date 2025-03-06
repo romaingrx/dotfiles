@@ -1,8 +1,6 @@
 { pkgs, homeDirectory, ... }: {
   imports = [ ./homebrew.nix ./packages.nix ];
 
-  # Enable TouchID for sudo
-  security.pam.enableSudoTouchIdAuth = true;
   # Necessary for using flakes on this system.
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 

@@ -34,8 +34,6 @@
             doCheck = false;
           });
         })
-        # Claude Code overlay
-        (import ./overlays/claude-code-overlay.nix)
       ];
 
       mkSystem = import ./lib/mkSystem.nix {

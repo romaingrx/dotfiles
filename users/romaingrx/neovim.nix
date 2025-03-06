@@ -35,9 +35,9 @@
     };
 
     plugins = {
+      toggleterm.enable = true;
       web-devicons.enable = true;
-
-      treesitter = { enable = true; };
+      treesitter.enable = true;
 
       telescope = {
         enable = true;

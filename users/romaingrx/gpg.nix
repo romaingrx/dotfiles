@@ -28,7 +28,6 @@ in {
     extraConfig = ''
       allow-loopback-pinentry
       allow-emacs-pinentry
-      pinentry-program ${pinentryPackage}/bin/pinentry
     '';
   };
 

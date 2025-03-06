@@ -3,7 +3,7 @@
     enable = true;
     global = {
       brewfile = true;
-      lockfiles = false; # Disable lockfiles to prevent permission issues
+      # The lockfiles option is removed completely as it's causing issues
     };
     onActivation = {
       cleanup = "zap"; # Remove non declared casks
