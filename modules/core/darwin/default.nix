@@ -1,5 +1,5 @@
 { pkgs, homeDirectory, ... }: {
-  imports = [ ./homebrew.nix ./packages.nix ];
+  imports = [ ./homebrew.nix ./packages.nix ./mitmproxy.nix ];
 
   # Necessary for using flakes on this system.
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
