@@ -58,7 +58,7 @@ in {
 
     autoConfig = mkOption {
       type = types.bool;
-      default = true;
+      default = false;
       description = "Whether to automatically configure system proxy settings";
     };
 
