@@ -3,7 +3,7 @@
   imports = [ ../../modules/core/common ../romaingrx/neovim.nix ];
 
   # State version
-  home.packages = with pkgs; [ openbabel zoom-us just biome ];
+  home.packages = with pkgs; [ openbabel zoom-us just biome ansible ];
 
   # Set GitHub GPG configuration values
   home.github.gpg = {
