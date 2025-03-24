@@ -1,7 +1,5 @@
 { ... }: {
-  imports = [ 
-    ../../../modules/core/darwin
-  ];
+  imports = [ ../../../modules/core/darwin ];
 
   # Host-specific settings
   networking.hostName = "goddard";
@@ -10,7 +8,7 @@
   # System-specific settings
   system.defaults.loginwindow.LoginwindowText =
     "Hi-tech, barking, Swiss army knife";
-    
+
   # Enable proxy service
   services.mitmproxy = {
     enable = true;

@@ -4,8 +4,19 @@
     ++ lib.optional isLinux ./home-manager-nixos.nix;
 
   home.packages = with pkgs;
-    [ ollama tor mitmproxy brave just biome tailscale claude-code zoxide ]
-    ++ lib.optional isLinux [ anytype ];
+    [
+      ollama
+      tor
+      mitmproxy
+      brave
+      just
+      biome
+      tailscale
+      claude-code
+      zoxide
+      terraform
+      awscli
+    ] ++ lib.optional isLinux [ anytype ];
 
   # Set GitHub GPG configuration values
   home.github.gpg = {

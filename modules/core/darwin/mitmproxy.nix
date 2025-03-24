@@ -4,15 +4,15 @@ with lib;
 
 let
   cfg = config.services.mitmproxy;
-  
+
   # Create a derivation for the certificate installation script
   certInstallScript = pkgs.writeShellScriptBin "install-mitmproxy-cert" ''
     #!/usr/bin/env bash
     set -e
-    
+
     CERT_DIR="$HOME/.mitmproxy"
     mkdir -p "$CERT_DIR"
-    
+
     # Generate certificates if they don't exist
     if [ ! -f "$CERT_DIR/mitmproxy-ca-cert.pem" ]; then
       echo "Generating new mitmproxy certificates..."
@@ -33,34 +33,35 @@ let
     else
       echo "Certificate already installed."
     fi
-    
+
     echo "Certificate setup complete."
   '';
-  
+
   # Create a derivation for the toggle-proxy script
-  toggleProxyScript = pkgs.writeShellScriptBin "toggle-proxy" (builtins.readFile ./bin/toggle-proxy.sh);
+  toggleProxyScript = pkgs.writeShellScriptBin "toggle-proxy"
+    (builtins.readFile ./bin/toggle-proxy.sh);
 in {
   options.services.mitmproxy = {
     enable = mkEnableOption "Enable proxy service";
-    
+
     port = mkOption {
       type = types.int;
       default = 8080;
       description = "Port for the proxy server";
     };
-    
+
     upstreamProxy = mkOption {
       type = types.nullOr types.str;
       default = null;
       description = "Upstream proxy URL (e.g., http://proxy.example.com:8080)";
     };
-    
+
     autoConfig = mkOption {
       type = types.bool;
       default = true;
       description = "Whether to automatically configure system proxy settings";
     };
-    
+
     interfaces = mkOption {
       type = types.listOf types.str;
       default = [ "Wi-Fi" ];
@@ -69,11 +70,11 @@ in {
 
     extraArgs = mkOption {
       type = types.listOf types.str;
-      default = [];
+      default = [ ];
       description = "Extra arguments to pass to mitmproxy";
     };
   };
-  
+
   config = mkIf cfg.enable {
     # Add mitmproxy to system packages
     environment.systemPackages = with pkgs; [
@@ -81,7 +82,7 @@ in {
       certInstallScript
       toggleProxyScript
     ];
-    
+
     # Create launchd service for mitmproxy
     launchd.user.agents.mitmproxy = {
       serviceConfig = {
@@ -89,12 +90,16 @@ in {
         ProgramArguments = let
           args = [
             "${pkgs.mitmproxy}/bin/mitmproxy"
-            "--listen-port" (toString cfg.port)
-            "--set" "confdir=$HOME/.mitmproxy"
-            "--mode" "regular"
+            "--listen-port"
+            (toString cfg.port)
+            "--set"
+            "confdir=$HOME/.mitmproxy"
+            "--mode"
+            "regular"
             "--showhost"
           ] ++ (optionals (cfg.upstreamProxy != null) [
-            "--mode" "upstream:${cfg.upstreamProxy}"
+            "--mode"
+            "upstream:${cfg.upstreamProxy}"
           ]) ++ cfg.extraArgs;
         in args;
         RunAtLoad = true;
@@ -103,19 +108,23 @@ in {
         StandardErrorPath = "/tmp/mitmproxy.error.log";
       };
     };
-    
+
     # Configure system proxy settings if autoConfig is enabled
     system.activationScripts.extraActivation.text = mkIf cfg.autoConfig ''
       # Display a message about certificate installation
       echo "Please run 'install-mitmproxy-cert' once to set up the proxy certificates"
       echo "You can use 'toggle-proxy on|off|status' to manage proxy settings"
-      
+
       # Configure network proxy settings
       ${optionalString cfg.autoConfig (concatStringsSep "\n" (map (interface: ''
         echo "Configuring proxy settings for ${interface}..."
-        networksetup -setwebproxy "${interface}" "127.0.0.1" ${toString cfg.port}
-        networksetup -setsecurewebproxy "${interface}" "127.0.0.1" ${toString cfg.port}
+        networksetup -setwebproxy "${interface}" "127.0.0.1" ${
+          toString cfg.port
+        }
+        networksetup -setsecurewebproxy "${interface}" "127.0.0.1" ${
+          toString cfg.port
+        }
       '') cfg.interfaces))}
     '';
   };
-} 
+}
