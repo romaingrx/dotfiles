@@ -1,4 +1,3 @@
-{ ... }:
 { pkgs, ... }: {
   imports = [ ../../modules/core/common ../romaingrx/neovim.nix ];
 
