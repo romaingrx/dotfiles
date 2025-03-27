@@ -39,12 +39,13 @@
       mkSystem = import ./lib/mkSystem.nix {
         inherit inputs;
         overlays = overlays;
+        lib = nixpkgs.lib;
       };
     in {
       nixosConfigurations = {
         "carl" = (mkSystem "carl") {
           system = "x86_64-linux";
-          user = "romaingrx";
+          users = [ "romaingrx" ];
         };
       };
 
@@ -52,14 +53,20 @@
         # Original goddard configuration
         "romaingrx@goddard" = (mkSystem "goddard") {
           system = "aarch64-darwin";
-          user = "romaingrx";
+          users = [ "romaingrx" ];
           darwin = true;
         };
 
         # Work configuration
         "lcmd@goddard" = (mkSystem "goddard") {
           system = "aarch64-darwin";
-          user = "lcmd";
+          users = [ "lcmd" ];
+          darwin = true;
+        };
+
+        "goddard" = (mkSystem "goddard") {
+          system = "aarch64-darwin";
+          users = [ "romaingrx" "lcmd" ];
           darwin = true;
         };
       };

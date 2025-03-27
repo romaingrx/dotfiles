@@ -1,7 +1,8 @@
-{ inputs, overlays }:
+{ inputs, overlays, lib }:
 name:
-{ system, user, darwin ? false, ... }:
+{ system, users, darwin ? false, ... }:
 let
+  user = lib.lists.last users;
   hostConfig = ../hosts/${if darwin then "darwin" else "nixos"}/${name};
   userOSConfig = ../users/${user}/${if darwin then "darwin" else "nixos"}.nix;
   userHMConfig = ../users/${user}/home-manager.nix;
