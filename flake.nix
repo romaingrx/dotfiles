@@ -50,20 +50,6 @@
       };
 
       darwinConfigurations = {
-        # Original goddard configuration
-        "romaingrx@goddard" = (mkSystem "goddard") {
-          system = "aarch64-darwin";
-          users = [ "romaingrx" ];
-          darwin = true;
-        };
-
-        # Work configuration
-        "lcmd@goddard" = (mkSystem "goddard") {
-          system = "aarch64-darwin";
-          users = [ "lcmd" ];
-          darwin = true;
-        };
-
         "goddard" = (mkSystem "goddard") {
           system = "aarch64-darwin";
           users = [ "romaingrx" "lcmd" ];

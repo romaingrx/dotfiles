@@ -1,4 +1,5 @@
-{ pkgs, ... }: {
+{ pkgs, lib, ... }:
+lib.mkIf pkgs.stdenv.isLinux {
   home = {
     sessionVariables = {
       # Wayland specific

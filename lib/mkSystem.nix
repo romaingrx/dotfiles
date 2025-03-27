@@ -6,7 +6,7 @@ let
   usersOSConfig = builtins.map
     (user: ../users/${user}/${if darwin then "darwin" else "nixos"}.nix) users;
   usersHMConfigList =
-    builtins.map (user: ../users/${user}/home-manager.nix) users;
+    builtins.map (user: import ../users/${user}/home-manager.nix) users;
   usersHMConfig = builtins.listToAttrs (lib.lists.imap0 (i: config: {
     name = builtins.elemAt users i;
     value = config;
@@ -63,6 +63,6 @@ in systemFunc {
         inputs.nixvim.homeManagerModules.nixvim
       ];
     }
-  # Reverse so that the first user overrides anything, also need to removes it once the PR is merged.
+    # Reverse so that the first user overrides anything, also need to removes it once the PR is merged.
   ] ++ lib.lists.reverseList usersOSConfig;
 }
