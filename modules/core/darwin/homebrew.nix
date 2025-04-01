@@ -44,7 +44,6 @@
       "mactop"
       "lightgbm"
       "libpq"
-      "helm"
       # Personal brews
       "awscli"
     ];

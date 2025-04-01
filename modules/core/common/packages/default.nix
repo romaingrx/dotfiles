@@ -19,6 +19,7 @@
     kubectl # Kubectl should be a dependency of minikube so might not be needed
     kustomize
     kubeseal
+    kubernetes-helm
     qemu # Used as the hypervisor for minikube
     pre-commit
     nodejs_23
