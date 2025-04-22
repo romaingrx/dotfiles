@@ -28,6 +28,9 @@ in {
     extraConfig = ''
       allow-loopback-pinentry
       allow-emacs-pinentry
+      allow-preset-passphrase
+      default-cache-ttl-ssh 28800
+      max-cache-ttl-ssh 86400
     '';
   };
 

@@ -15,6 +15,8 @@
     ServerAliveCountMax 2
   '' + pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
     IgnoreUnknown UseKeychain
+    AddKeysToAgent yes
+      UseKeychain yes
     UseKeychain yes
   '';
 }

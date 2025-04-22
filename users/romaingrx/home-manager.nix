@@ -19,6 +19,7 @@
     zoxide
     terraform
     awscli
+    cargo
   ];
   # Set GitHub GPG configuration values
   home.github.gpg = {

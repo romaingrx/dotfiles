@@ -39,6 +39,7 @@
       "mattermost"
     ];
     brews = [
+      "watch"
       "bitwarden-cli"
       "ffmpeg"
       "mactop"
