@@ -1,4 +1,4 @@
-{ inputs, pkgs, lib, config, ... }: {
+{ pkgs, ... }: {
   imports = [
     ../../modules/core/common
     ./secrets.nix
@@ -19,7 +19,8 @@
     zoxide
     terraform
     awscli
-    cargo
+    openjdk
+    #cargo
   ];
   # Set GitHub GPG configuration values
   home.github.gpg = {
