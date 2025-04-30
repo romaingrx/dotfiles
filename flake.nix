@@ -20,10 +20,14 @@
       url = "github:nix-community/nixvim";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    romaingrx-nixvim = {
+      url = "github:romaingrx/nixvim";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
-    inputs@{ self, nixpkgs, nix-darwin, home-manager, sops-nix, nixvim }:
+    inputs@{ self, nixpkgs, nix-darwin, home-manager, sops-nix, nixvim, romaingrx-nixvim }:
     let
       # Define overlays
       overlays = [
@@ -41,7 +45,9 @@
         overlays = overlays;
         lib = nixpkgs.lib;
       };
+
     in {
+
       nixosConfigurations = {
         "carl" = (mkSystem "carl") {
           system = "x86_64-linux";

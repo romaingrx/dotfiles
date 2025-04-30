@@ -1,13 +1,13 @@
-{ pkgs, ... }: {
+{ pkgs, inputs, ... }: {
   imports = [
     ../../modules/core/common
     ./secrets.nix
     ./gpg.nix
-    ./neovim.nix
     ./home-manager-nixos.nix
   ];
 
   home.packages = with pkgs; [
+    inputs.romaingrx-nixvim.packages.${system}.default
     ollama
     tor
     mitmproxy

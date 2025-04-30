@@ -1,6 +1,4 @@
 { pkgs, ... }: {
-  nixpkgs.config.allowUnfree = true;
-
   environment.systemPackages = with pkgs; [
     nixpkgs-fmt
     nix-prefetch-git
