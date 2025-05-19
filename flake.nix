@@ -24,10 +24,14 @@
       url = "github:romaingrx/nixvim";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs =
-    inputs@{ self, nixpkgs, nix-darwin, home-manager, sops-nix, nixvim, romaingrx-nixvim }:
+  outputs = inputs@{ self, nixpkgs, nix-darwin, home-manager, sops-nix, nixvim
+    , romaingrx-nixvim, fenix }:
     let
       # Define overlays
       overlays = [

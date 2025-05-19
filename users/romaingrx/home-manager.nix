@@ -4,6 +4,7 @@
     ./secrets.nix
     ./gpg.nix
     ./home-manager-nixos.nix
+    ./rust.nix
   ];
 
   home.packages = with pkgs; [
@@ -20,7 +21,6 @@
     terraform
     awscli
     openjdk
-    #cargo
   ];
   # Set GitHub GPG configuration values
   home.github.gpg = {

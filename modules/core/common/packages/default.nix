@@ -23,8 +23,9 @@
     qemu # Used as the hypervisor for minikube
     pre-commit
     nodejs_23
-    cargo
-    rustc
-    rustfmt
+    # cargo
+    # rustc
+    # rustfmt
+    # rust-analyzer
   ];
 }

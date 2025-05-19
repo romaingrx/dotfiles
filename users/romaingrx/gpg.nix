@@ -22,8 +22,8 @@ in {
     enableSshSupport = true;
     # Use OS specific pinentry
     pinentryPackage = pinentryPackage;
-    defaultCacheTtl = 3600;
-    maxCacheTtl = 7200;
+    defaultCacheTtl = 28800;
+    maxCacheTtl = 86400;
     # Configure gpg-agent to use the TTY
     extraConfig = ''
       allow-loopback-pinentry
