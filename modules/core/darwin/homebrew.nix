@@ -47,6 +47,7 @@
       "libpq"
       # Personal brews
       "awscli"
+      "yt-dlp"
     ];
   };
 }

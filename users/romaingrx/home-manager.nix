@@ -21,6 +21,7 @@
     terraform
     awscli
     openjdk
+    element-desktop
   ];
   # Set GitHub GPG configuration values
   home.github.gpg = {
