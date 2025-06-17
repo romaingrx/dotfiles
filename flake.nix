@@ -30,8 +30,17 @@
     };
   };
 
-  outputs = inputs@{ self, nixpkgs, nix-darwin, home-manager, sops-nix, nixvim
-    , romaingrx-nixvim, fenix }:
+  outputs =
+    inputs@{
+      self,
+      nixpkgs,
+      nix-darwin,
+      home-manager,
+      sops-nix,
+      nixvim,
+      romaingrx-nixvim,
+      fenix,
+    }:
     let
       # Define overlays
       overlays = [
@@ -50,7 +59,14 @@
         lib = nixpkgs.lib;
       };
 
-    in {
+    in
+    {
+
+      # Add formatter configuration
+      formatter = {
+        aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.nixfmt-rfc-style;
+        x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt-rfc-style;
+      };
 
       nixosConfigurations = {
         "carl" = (mkSystem "carl") {
@@ -62,7 +78,10 @@
       darwinConfigurations = {
         "goddard" = (mkSystem "goddard") {
           system = "aarch64-darwin";
-          users = [ "romaingrx" "lcmd" ];
+          users = [
+            "romaingrx"
+            "lcmd"
+          ];
           darwin = true;
         };
       };

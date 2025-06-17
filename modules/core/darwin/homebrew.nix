@@ -1,4 +1,5 @@
-{ ... }: {
+{ ... }:
+{
   homebrew = {
     enable = true;
     global = {
@@ -7,8 +8,8 @@
     };
     onActivation = {
       cleanup = "zap"; # Remove non declared casks
-      autoUpdate = true;
-      upgrade = true;
+      autoUpdate = false;
+      upgrade = false;
       extraFlags = [ "--force" ];
     };
 

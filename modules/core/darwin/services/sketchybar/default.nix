@@ -50,11 +50,16 @@ let
     mkdir -p $out/lib
     ln -s ${sbarLua}/lib/libsketchybar.so $out/lib/sketchybar.so
   '';
-in {
+in
+{
   enable = true;
   package = pkgs.sketchybar;
-  config =
-    builtins.replaceStrings [ "{{ CONFIG_DIR_DEFINITION }}" ] [ "${configDir}" ]
-    (builtins.readFile ./sketchybarrc);
-  extraPackages = with pkgs; [ lua jq tree ];
+  config = builtins.replaceStrings [ "{{ CONFIG_DIR_DEFINITION }}" ] [ "${configDir}" ] (
+    builtins.readFile ./sketchybarrc
+  );
+  extraPackages = with pkgs; [
+    lua
+    jq
+    tree
+  ];
 }

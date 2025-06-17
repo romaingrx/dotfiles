@@ -1,6 +1,7 @@
-{ pkgs, ... }: {
+{ pkgs, ... }:
+{
   home.packages = with pkgs; [
-    nixfmt-classic
+    nixfmt
     nil # Nix LSP
     sops
     docker

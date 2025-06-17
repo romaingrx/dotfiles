@@ -1,4 +1,5 @@
-{ pkgs, ... }: {
+{ pkgs, ... }:
+{
   enable = true;
   package = pkgs.jankyborders;
   active_color = "#EAC9FF";
