@@ -11,6 +11,8 @@ in
   imports = [
     ./packages.nix
     ./programs.nix
+    ./system-packages.nix
+    # ./external-packages.nix  # Temporarily disabled - should be at system level
   ];
   options.myConfig.common = {
     enable = lib.mkEnableOption "common configuration";

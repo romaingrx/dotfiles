@@ -10,7 +10,7 @@
     packages = {
       enable = true;
       core.enable = true;
-      development.enable = false; # lcmd doesn't need full dev setup
+      development.enable = true; # Enable basic dev tools for lcmd
       productivity.enable = true;
       media.enable = true;
       extraPackages = with pkgs; [
@@ -22,6 +22,26 @@
     };
 
     programs.enable = true;
+
+    # System packages (environment.systemPackages) - enable basic dev tools
+    systemPackages = {
+      enable = true;
+      core.enable = true;
+      development.enable = true; # Enable basic dev system packages for lcmd
+    };
+
+    # External packages (Homebrew on Darwin) - temporarily disabled
+    # Will be configured at system level in future phase
+    # externalPackages = {
+    #   enable = true;
+    #   homebrew = {
+    #     enable = true;
+    #     browsers.enable = true;
+    #     productivity.enable = true;
+    #     development.enable = false; # no dev apps
+    #     media.enable = true;
+    #   };
+    # };
   };
 
   # Compatibility configuration for original git.nix

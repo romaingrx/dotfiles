@@ -31,7 +31,9 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    environment.systemPackages =
+    # System packages are added through Home Manager when using home-manager.users.<user>
+    # but directly to environment.systemPackages when used at system level
+    home.packages =
       with pkgs;
       lib.flatten [
         # Core system infrastructure (always needed)
@@ -53,6 +55,6 @@ in
         cfg.extraPackages
       ];
 
-    environment.shellAliases = lib.mkIf cfg.enable { nixvim = "nix run ~/.config/nix/nixvim#default"; };
+    home.shellAliases = lib.mkIf cfg.enable { nixvim = "nix run ~/.config/nix/nixvim#default"; };
   };
 }
