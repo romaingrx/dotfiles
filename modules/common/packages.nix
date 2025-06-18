@@ -2,7 +2,14 @@
 let cfg = config.myConfig.packages;
 in {
   options.myConfig.packages = {
-    enable = lib.mkEnableOption "common packages";
+    enable = lib.mkEnableOption "user packages";
+
+    # User application categories
+    core.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Enable core user applications";
+    };
 
     development.enable = lib.mkOption {
       type = lib.types.bool;
@@ -16,6 +23,12 @@ in {
       description = "Enable media packages";
     };
 
+    productivity.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Enable productivity applications";
+    };
+
     extraPackages = lib.mkOption {
       type = lib.types.listOf lib.types.package;
       default = [ ];
@@ -26,49 +39,56 @@ in {
   config = lib.mkIf cfg.enable {
     home.packages = with pkgs;
       lib.flatten [
-        # Always include base packages from original common/packages
-        [
-          nixfmt
-          nil # Nix LSP
-          sops
-          docker
-          docker-compose
-          ffmpeg
-          uv
-          bun
-          pnpm
-          alacritty
-          signal-desktop
-          obsidian
-          gnupg
-          slack
-          git-lfs
-          pre-commit
-          nodejs_23
+        # Core user applications (essential tools)
+        (lib.optionals cfg.core.enable [
           git
           curl
           wget
+          gnupg
+          sops
           just
           biome
-        ]
+          nil # Nix LSP
+          nixfmt
+        ])
 
-        # Conditional package sets
+        # Development packages
         (lib.optionals cfg.development.enable [
+          # Development tools
+          git-lfs
+          pre-commit
+          uv
+          bun
+          pnpm
+          nodejs_23
+
+          # Infrastructure tools
+          docker
+          docker-compose
+          terraform
+          awscli
+          openjdk
+          zoxide
+
+          # Kubernetes tools
           minikube
           kubectl
           kustomize
           kubeseal
           kubernetes-helm
           qemu
-          zoxide
-          terraform
-          awscli
-          openjdk
         ])
 
-        (lib.optionals cfg.media.enable [
-          # Media packages can be added here
+        # Productivity applications
+        (lib.optionals cfg.productivity.enable [
+          alacritty
+          signal-desktop
+          obsidian
+          slack
         ])
+
+        # Media packages
+        (lib.optionals cfg.media.enable [ ffmpeg ])
 
         cfg.extraPackages
       ];

@@ -1,6 +1,13 @@
-{ config, lib, pkgs, ... }:
-let cfg = config.myConfig.programs;
-in {
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+let
+  cfg = config.myConfig.programs;
+in
+{
   options.myConfig.programs = {
     enable = lib.mkEnableOption "common programs";
   };
@@ -16,8 +23,7 @@ in {
       };
       ssh = import ../core/common/programs/ssh.nix { inherit pkgs; };
       gpg = import ../core/common/programs/gpg.nix;
-      alacritty =
-        import ../core/common/programs/alacritty.nix { inherit pkgs; };
+      alacritty = import ../core/common/programs/alacritty.nix { inherit pkgs; };
       tmux = import ../core/common/programs/tmux.nix { inherit pkgs; };
     };
   };

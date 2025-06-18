@@ -10,9 +10,13 @@
   # Enable the new configuration options
   myConfig = {
     common.enable = true;
+
+    # User packages (Home Manager)
     packages = {
       enable = true;
+      core.enable = true;
       development.enable = true;
+      productivity.enable = true;
       extraPackages = with pkgs; [
         inputs.romaingrx-nixvim.packages.${system}.default
         ollama
@@ -23,6 +27,7 @@
         claude-code
       ];
     };
+
     programs.enable = true;
   };
 

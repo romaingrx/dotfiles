@@ -1,7 +1,17 @@
-{ config, lib, pkgs, ... }:
-let cfg = config.myConfig.common;
-in {
-  imports = [ ./packages.nix ./programs.nix ];
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+let
+  cfg = config.myConfig.common;
+in
+{
+  imports = [
+    ./packages.nix
+    ./programs.nix
+  ];
   options.myConfig.common = {
     enable = lib.mkEnableOption "common configuration";
 

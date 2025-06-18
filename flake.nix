@@ -30,28 +30,14 @@
     };
   };
 
-  outputs =
-    inputs@{
-      self,
-      nixpkgs,
-      nix-darwin,
-      home-manager,
-      sops-nix,
-      nixvim,
-      romaingrx-nixvim,
-      fenix,
-    }:
+  outputs = inputs@{ self, nixpkgs, nix-darwin, home-manager, sops-nix, nixvim
+    , romaingrx-nixvim, fenix, }:
     let
-      # Define overlays
-      overlays = [
-        # OpenSSH overlay
-        (final: prev: {
-          openssh = prev.openssh.overrideAttrs (old: {
-            patches = (old.patches or [ ]) ++ [ ./overlays/openssh.patch ];
-            doCheck = false;
-          });
-        })
-      ];
+      # Import structured overlays
+      overlaySet = import ./overlays/default.nix;
+
+      # Convert overlay set to list of overlay functions
+      overlays = [ overlaySet.patches overlaySet.customPackages ];
 
       mkSystem = import ./lib/mkSystem.nix {
         inherit inputs;
@@ -59,8 +45,7 @@
         lib = nixpkgs.lib;
       };
 
-    in
-    {
+    in {
 
       # Add formatter configuration
       formatter = {
@@ -78,10 +63,7 @@
       darwinConfigurations = {
         "goddard" = (mkSystem "goddard") {
           system = "aarch64-darwin";
-          users = [
-            "romaingrx"
-            "lcmd"
-          ];
+          users = [ "romaingrx" "lcmd" ];
           darwin = true;
         };
       };
