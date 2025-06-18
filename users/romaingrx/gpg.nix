@@ -1,21 +1,17 @@
 { pkgs, ... }:
 let
-  pinentryPackage = if pkgs.stdenv.isDarwin then pkgs.pinentry_mac else pkgs.pinentry-curses;
-in
-{
+  pinentryPackage =
+    if pkgs.stdenv.isDarwin then pkgs.pinentry_mac else pkgs.pinentry-curses;
+in {
   programs.gpg = {
     enable = true;
-    settings = {
-      trust-model = "tofu+pgp";
-    };
+    settings = { trust-model = "tofu+pgp"; };
     # Disable automatic key management to prevent import errors during activation
     mutableKeys = true;
     mutableTrust = true;
 
     # Configure gpg-agent
-    scdaemonSettings = {
-      disable-ccid = true;
-    };
+    scdaemonSettings = { disable-ccid = true; };
 
     # Comment out the public keys to prevent automatic import during activation
     # publicKeys = [{ source = ./pubkeys/github.asc; }];

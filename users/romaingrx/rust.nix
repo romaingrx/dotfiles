@@ -3,9 +3,8 @@
 let
   # Using the stable toolchain from Fenix
   rustToolchain = inputs.fenix.packages.${pkgs.system}.stable.toolchain;
-in
-# rust-analyzer = inputs.fenix.packages.${pkgs.system}.rust-analyzer;
-{
+  # rust-analyzer = inputs.fenix.packages.${pkgs.system}.rust-analyzer;
+in {
   home.packages = [
     rustToolchain # Provides rustc, cargo, rustfmt, clippy
     # rust-analyzer # LSP server for Rust
