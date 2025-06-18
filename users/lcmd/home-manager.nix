@@ -1,18 +1,25 @@
 { pkgs, inputs, ... }:
 {
-  imports = [ ../../modules/core/common ];
+  imports = [ ../../modules/common ];
 
-  # State version
-  home.packages = with pkgs; [
-    inputs.romaingrx-nixvim.packages.${system}.default
-    openbabel
-    zoom-us
-    just
-    biome
-    ansible
-  ];
+  # Enable the new configuration options
+  myConfig = {
+    common.enable = true;
+    packages = {
+      enable = true;
+      development.enable = false; # lcmd doesn't need full dev setup
+      media.enable = true;
+      extraPackages = with pkgs; [
+        inputs.romaingrx-nixvim.packages.${system}.default
+        openbabel
+        zoom-us
+        ansible
+      ];
+    };
+    programs.enable = true;
+  };
 
-  # Set GitHub GPG configuration values
+  # Compatibility configuration for original git.nix
   home.github.gpg = {
     key = "44FDF809CFE3A012";
     email = "48758915+romaingrx@users.noreply.github.com";

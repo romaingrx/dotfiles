@@ -1,29 +1,32 @@
-{ pkgs, inputs, ... }:
-{
+{ pkgs, inputs, ... }: {
   imports = [
-    ../../modules/core/common
+    ../../modules/common
     ./secrets.nix
     ./gpg.nix
     ./home-manager-nixos.nix
     ./rust.nix
   ];
 
-  home.packages = with pkgs; [
-    inputs.romaingrx-nixvim.packages.${system}.default
-    ollama
-    tor
-    mitmproxy
-    brave
-    just
-    biome
-    tailscale
-    claude-code
-    zoxide
-    terraform
-    awscli
-    openjdk
-  ];
-  # Set GitHub GPG configuration values
+  # Enable the new configuration options
+  myConfig = {
+    common.enable = true;
+    packages = {
+      enable = true;
+      development.enable = true;
+      extraPackages = with pkgs; [
+        inputs.romaingrx-nixvim.packages.${system}.default
+        ollama
+        tor
+        mitmproxy
+        brave
+        tailscale
+        claude-code
+      ];
+    };
+    programs.enable = true;
+  };
+
+  # Compatibility configuration for original git.nix
   home.github.gpg = {
     key = "EE706544613BE505";
     email = "48758915+romaingrx@users.noreply.github.com";

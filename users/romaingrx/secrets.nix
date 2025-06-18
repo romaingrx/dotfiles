@@ -36,7 +36,7 @@ in
         ${exportGPGTTY}
         if [ -f "${config.sops.secrets.gpg_github_private_key.path}" ]; then
           # Check if the key is already imported
-          if ! ${gpg} --list-secret-keys | grep -q "${config.home.github.gpg.key}"; then
+          if ! ${gpg} --list-secret-keys | grep -q "${config.programs.git.signing.key}"; then
             echo "Importing GPG key..."
             # Add --batch mode to avoid pinentry issues
             $DRY_RUN_CMD ${gpg} --batch --import "${config.sops.secrets.gpg_github_private_key.path}"
