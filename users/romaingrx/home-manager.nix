@@ -37,18 +37,7 @@
       development.enable = true;
     };
 
-    # External packages (Homebrew on Darwin) - temporarily disabled
-    # Will be configured at system level in future phase
-    # externalPackages = {
-    #   enable = true;
-    #   homebrew = {
-    #     enable = true;
-    #     browsers.enable = true;
-    #     productivity.enable = true;
-    #     development.enable = true;
-    #     media.enable = true;
-    #   };
-    # };
+    # External packages (Homebrew) now configured at system level via modules/darwin/
   };
 
   # Compatibility configuration for original git.nix

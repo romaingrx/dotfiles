@@ -1,5 +1,5 @@
 { ... }: {
-  imports = [ ../../../modules/core/darwin ];
+  imports = [ ../../../modules/core/darwin ../../../modules/darwin ];
 
   # Host-specific settings
   networking.hostName = "goddard";

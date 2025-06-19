@@ -5,7 +5,7 @@ in {
     ./packages.nix
     ./programs.nix
     ./system-packages.nix
-    # ./external-packages.nix  # Temporarily disabled - should be at system level
+    # Note: external-packages.nix is imported at system level (modules/darwin/)
   ];
   options.myConfig.common = {
     enable = lib.mkEnableOption "common configuration";

@@ -1,5 +1,9 @@
 { pkgs, homeDirectory, ... }: {
-  imports = [ ./homebrew.nix ./packages.nix ./mitmproxy.nix ];
+  imports = [
+    # ./homebrew.nix  # Disabled - using new structured external packages
+    ./packages.nix
+    ./mitmproxy.nix
+  ];
 
   nix.optimise.automatic = true;
   # Necessary for using flakes on this system.
