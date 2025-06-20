@@ -60,7 +60,7 @@ in {
           uv
           bun
           pnpm
-          nodejs_23
+          nodejs
 
           # Infrastructure tools
           docker
@@ -79,13 +79,8 @@ in {
           qemu
         ])
 
-        # Productivity applications
-        (lib.optionals cfg.productivity.enable [
-          alacritty
-          signal-desktop
-          obsidian
-          slack
-        ])
+        # Productivity applications  
+        (lib.optionals cfg.productivity.enable [ alacritty obsidian slack ])
 
         # Media packages
         (lib.optionals cfg.media.enable [ ffmpeg ])

@@ -18,7 +18,7 @@
       development.enable = true;
       productivity.enable = true;
       extraPackages = with pkgs; [
-        inputs.romaingrx-nixvim.packages.${system}.default
+        inputs.nixvim.packages.${system}.default
         ollama
         tor
         mitmproxy

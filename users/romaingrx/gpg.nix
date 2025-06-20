@@ -21,7 +21,7 @@ in {
     enable = true;
     enableSshSupport = true;
     # Use OS specific pinentry
-    pinentryPackage = pinentryPackage;
+    pinentry.package = pinentryPackage;
     defaultCacheTtl = 28800;
     maxCacheTtl = 86400;
     # Configure gpg-agent to use the TTY

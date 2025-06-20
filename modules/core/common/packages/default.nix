@@ -10,7 +10,7 @@
     bun
     pnpm
     alacritty
-    signal-desktop
+    # signal-desktop  # Not available on ARM macOS
     obsidian
     gnupg
     slack
