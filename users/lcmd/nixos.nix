@@ -1,4 +1,4 @@
-{ ... }: {
+_: {
   users.users.romaingrx = {
     isNormalUser = true;
     home = "/home/lcmd";
