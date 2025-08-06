@@ -5,6 +5,7 @@
     ./gpg.nix
     ./home-manager-nixos.nix
     ./rust.nix
+    ./tmux.nix
   ];
 
   # Enable the new configuration options

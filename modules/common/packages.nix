@@ -77,6 +77,7 @@ in {
           kubeseal
           kubernetes-helm
           qemu
+          k9s
         ])
 
         # Productivity applications  
