@@ -75,7 +75,6 @@ in {
           # Productivity applications
           (lib.optionals cfg.homebrew.productivity.enable [
             "spotify"
-            "bitwarden"
             "font-fira-code-nerd-font"
             "font-sf-pro"
             "sf-symbols"
@@ -102,16 +101,7 @@ in {
 
         brews = lib.flatten [
           # Essential command-line tools
-          [
-            "watch"
-            "bitwarden-cli"
-            "ffmpeg"
-            "mactop"
-            "lightgbm"
-            "libpq"
-            "awscli"
-            "yt-dlp"
-          ]
+          [ "watch" "ffmpeg" "mactop" "lightgbm" "libpq" "awscli" "yt-dlp" ]
 
           cfg.homebrew.extraBrews
         ];

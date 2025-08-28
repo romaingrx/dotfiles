@@ -24,9 +24,7 @@ _: {
       "duckduckgo"
       "displaylink"
       "spotify"
-      "bitwarden"
       "docker" # Docker Desktop
-      "anaconda"
       "font-fira-code-nerd-font" # Needed for alacritty
       "font-sf-pro"
       "sf-symbols"
@@ -40,7 +38,6 @@ _: {
     ];
     brews = [
       "watch"
-      "bitwarden-cli"
       "ffmpeg"
       "mactop"
       "lightgbm"
