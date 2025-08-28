@@ -3,32 +3,36 @@
 { lib, ... }:
 
 {
-# User identification
-username, fullName ? username, email ? "${username}@users.noreply.github.com",
+  # User identification
+  username,
+  fullName ? username,
+  email ? "${username}@users.noreply.github.com",
 
-# Home configuration
-homeDirectory, stateVersion ? "24.11",
+  # Home configuration
+  homeDirectory,
+  stateVersion ? "24.11",
 
-# Feature flags for granular control
-features ? { },
+  # Feature flags for granular control
+  features ? { },
 
-# Profile selection (development, productivity, media, etc.)
-profiles ? [ ],
+  # Profile selection (development, productivity, media, etc.)
+  profiles ? [ ],
 
-# Package categories
-packages ? { },
+  # Package categories
+  packages ? { },
 
-# Program configurations
-programs ? { },
+  # Program configurations
+  programs ? { },
 
-# Service configurations  
-services ? { },
+  # Service configurations
+  services ? { },
 
-# Additional imports
-extraImports ? [ ],
+  # Additional imports
+  extraImports ? [ ],
 
-# Platform-specific overrides
-platformOverrides ? { } }:
+  # Platform-specific overrides
+  platformOverrides ? { },
+}:
 
 let
   # Available feature flags with defaults
@@ -69,12 +73,12 @@ let
   };
 
   # Merge profile features with explicit features
-  enabledProfiles =
-    lib.foldl' (acc: profile: acc // (profileFeatures.${profile} or { })) { }
-    profiles;
+  enabledProfiles = lib.foldl' (
+    acc: profile: acc // (profileFeatures.${profile} or { })
+  ) { } profiles;
   finalFeatures = defaultFeatures // enabledProfiles // features;
 
-  # Default package categories based on features  
+  # Default package categories based on features
   defaultPackages = {
     core.enable = true;
     development.enable = finalFeatures.development;
@@ -100,21 +104,23 @@ let
   };
 
   # Default service configurations
-  defaultServices = { enable = false; };
+  defaultServices = {
+    enable = false;
+  };
 
   # Platform-specific configurations
-  platformConfig = if lib.pathExists ../platforms then
-    import ../platforms { inherit lib; }
-  else
-    { };
+  platformConfig = if lib.pathExists ../platforms then import ../platforms { inherit lib; } else { };
 
-in {
-  imports = [
-    # Base common configuration
-    ../modules/common
+in
+{
+  imports =
+    [
+      # Base common configuration
+      ../modules/common
 
-    # Feature-based imports
-  ] ++ lib.optionals finalFeatures.development [ ../modules/development ]
+      # Feature-based imports
+    ]
+    ++ lib.optionals finalFeatures.development [ ../modules/development ]
     ++ lib.optionals finalFeatures.productivity [ ../modules/productivity ]
     ++ lib.optionals finalFeatures.media [ ../modules/media ]
     ++ lib.optionals finalFeatures.security [ ../modules/security ]
@@ -136,7 +142,7 @@ in {
     # Package configuration
     packages = defaultPackages // packages;
 
-    # Program configuration  
+    # Program configuration
     programs = defaultPrograms // programs;
 
     # Service configuration
@@ -153,7 +159,7 @@ in {
       };
     })
 
-    # Security features  
+    # Security features
     (lib.mkIf finalFeatures.security {
       # Enable GPG and SSH by default
       programs.gpg.enable = lib.mkDefault true;

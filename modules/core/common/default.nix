@@ -1,5 +1,10 @@
-{ ... }: {
-  imports = [ ./options.nix ./packages ./programs ];
+{ ... }:
+{
+  imports = [
+    ./options.nix
+    ./packages
+    ./programs
+  ];
   home.stateVersion = "24.11"; # Please read the comment before changing.
 
   home.sessionVariables = {

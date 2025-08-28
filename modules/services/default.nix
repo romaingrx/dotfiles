@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.myServices;
@@ -6,7 +11,8 @@ let
   # Import service creation helper
   mkService = import ../../lib/mkService.nix { inherit lib pkgs; };
 
-in {
+in
+{
   options.myServices = {
     enable = lib.mkEnableOption "custom services";
 
@@ -61,51 +67,61 @@ in {
     };
   };
 
-  config = lib.mkIf cfg.enable (lib.mkMerge [
-    # SketchyBar service
-    (lib.mkIf (cfg.sketchybar.enable && pkgs.stdenv.isDarwin) (mkService {
-      name = "sketchybar";
-      description = "SketchyBar status bar";
-      command = "${cfg.sketchybar.package}/bin/sketchybar";
-      args = [ "--config" "${cfg.sketchybar.configDir}/sketchybarrc" ];
-      environment = { PATH = "${pkgs.lua}/bin:${pkgs.jq}/bin"; };
-    }))
+  config = lib.mkIf cfg.enable (
+    lib.mkMerge [
+      # SketchyBar service
+      (lib.mkIf (cfg.sketchybar.enable && pkgs.stdenv.isDarwin) (mkService {
+        name = "sketchybar";
+        description = "SketchyBar status bar";
+        command = "${cfg.sketchybar.package}/bin/sketchybar";
+        args = [
+          "--config"
+          "${cfg.sketchybar.configDir}/sketchybarrc"
+        ];
+        environment = {
+          PATH = "${pkgs.lua}/bin:${pkgs.jq}/bin";
+        };
+      }))
 
-    # AeroSpace service
-    (lib.mkIf (cfg.aerospace.enable && pkgs.stdenv.isDarwin) {
-      services.aerospace = {
-        enable = true;
-        package = cfg.aerospace.package;
-        settings = cfg.aerospace.settings;
-      };
-    })
+      # AeroSpace service
+      (lib.mkIf (cfg.aerospace.enable && pkgs.stdenv.isDarwin) {
+        services.aerospace = {
+          enable = true;
+          package = cfg.aerospace.package;
+          settings = cfg.aerospace.settings;
+        };
+      })
 
-    # JankyBorders service
-    (lib.mkIf (cfg.jankyborders.enable && pkgs.stdenv.isDarwin) (mkService {
-      name = "jankyborders";
-      description = "JankyBorders window borders";
-      command = "${cfg.jankyborders.package}/bin/borders";
-      args = [ "width=${toString cfg.jankyborders.width}" ]
-        ++ lib.optional cfg.jankyborders.hidpi "hidpi=on";
-    }))
+      # JankyBorders service
+      (lib.mkIf (cfg.jankyborders.enable && pkgs.stdenv.isDarwin) (mkService {
+        name = "jankyborders";
+        description = "JankyBorders window borders";
+        command = "${cfg.jankyborders.package}/bin/borders";
+        args = [
+          "width=${toString cfg.jankyborders.width}"
+        ] ++ lib.optional cfg.jankyborders.hidpi "hidpi=on";
+      }))
 
-    # Mitmproxy service  
-    (lib.mkIf cfg.mitmproxy.enable (mkService {
-      name = "mitmproxy";
-      description = "Mitmproxy transparent proxy";
-      command = "${cfg.mitmproxy.package}/bin/mitmproxy";
-      args = [
-        "--listen-port"
-        (toString cfg.mitmproxy.port)
-        "--set"
-        "confdir=$HOME/.mitmproxy"
-        "--mode"
-        "regular"
-        "--showhost"
-      ];
-      environment = { HOME = "$HOME"; };
-      standardOutput = "/tmp/mitmproxy.log";
-      standardError = "/tmp/mitmproxy.error.log";
-    }))
-  ]);
+      # Mitmproxy service
+      (lib.mkIf cfg.mitmproxy.enable (mkService {
+        name = "mitmproxy";
+        description = "Mitmproxy transparent proxy";
+        command = "${cfg.mitmproxy.package}/bin/mitmproxy";
+        args = [
+          "--listen-port"
+          (toString cfg.mitmproxy.port)
+          "--set"
+          "confdir=$HOME/.mitmproxy"
+          "--mode"
+          "regular"
+          "--showhost"
+        ];
+        environment = {
+          HOME = "$HOME";
+        };
+        standardOutput = "/tmp/mitmproxy.log";
+        standardError = "/tmp/mitmproxy.error.log";
+      }))
+    ]
+  );
 }

@@ -45,40 +45,46 @@ lib.mkIf pkgs.stdenv.isLinux {
         grace = 0;
         no_fade_in = false;
       };
-      background = [{
-        path = "~/.wallpapers/nixos.png";
-        color = "rgba(25, 20, 20, 1.0)";
-        blur_passes = 2;
-        blur_size = 7;
-        noise = 1.17e-2;
-        contrast = 0.8916;
-        brightness = 0.8172;
-        vibrancy = 0.1696;
-        vibrancy_darkness = 0.0;
-      }];
-      input-field = [{
-        size = "200, 50";
-        position = "0, -80";
-        monitor = "";
-        dots_center = true;
-        outer_color = "rgb(165, 151, 202)";
-        inner_color = "rgb(30, 30, 46)";
-        font_color = "rgb(200, 200, 200)";
-        outline_thickness = 5;
-        fade_on_empty = true;
-        placeholder_text = "<i>Type to unlock...</i>";
-        font_family = "JetBrainsMono Nerd Font";
-        shadow_passes = 2;
-      }];
-      label = [{
-        text = "$TIME";
-        color = "rgb(200, 200, 200)";
-        font_size = 65;
-        font_family = "JetBrainsMono Nerd Font";
-        position = "0, 140";
-        halign = "center";
-        valign = "center";
-      }];
+      background = [
+        {
+          path = "~/.wallpapers/nixos.png";
+          color = "rgba(25, 20, 20, 1.0)";
+          blur_passes = 2;
+          blur_size = 7;
+          noise = 1.17e-2;
+          contrast = 0.8916;
+          brightness = 0.8172;
+          vibrancy = 0.1696;
+          vibrancy_darkness = 0.0;
+        }
+      ];
+      input-field = [
+        {
+          size = "200, 50";
+          position = "0, -80";
+          monitor = "";
+          dots_center = true;
+          outer_color = "rgb(165, 151, 202)";
+          inner_color = "rgb(30, 30, 46)";
+          font_color = "rgb(200, 200, 200)";
+          outline_thickness = 5;
+          fade_on_empty = true;
+          placeholder_text = "<i>Type to unlock...</i>";
+          font_family = "JetBrainsMono Nerd Font";
+          shadow_passes = 2;
+        }
+      ];
+      label = [
+        {
+          text = "$TIME";
+          color = "rgb(200, 200, 200)";
+          font_size = 65;
+          font_family = "JetBrainsMono Nerd Font";
+          position = "0, 140";
+          halign = "center";
+          valign = "center";
+        }
+      ];
     };
   };
 
@@ -136,8 +142,7 @@ lib.mkIf pkgs.stdenv.isLinux {
       dwindle = {
         pseudotile = true;
         preserve_split = true;
-        force_split =
-          2; # 0 = split follows mouse, 1 = always split to the left/top, 2 = always split to the right/bottom
+        force_split = 2; # 0 = split follows mouse, 1 = always split to the left/top, 2 = always split to the right/bottom
         default_split_ratio = 1.0; # default split ratio when opening a window
         use_active_for_splits = true;
         special_scale_factor = 0.8;
@@ -177,7 +182,9 @@ lib.mkIf pkgs.stdenv.isLinux {
       };
 
       # Gestures
-      gestures = { workspace_swipe = true; };
+      gestures = {
+        workspace_swipe = true;
+      };
 
       # Window rules
       windowrule = [
@@ -268,7 +275,12 @@ lib.mkIf pkgs.stdenv.isLinux {
       ];
 
       # Startup applications
-      exec-once = [ "waybar" "dunst" "hyprpaper" "hypridle" ];
+      exec-once = [
+        "waybar"
+        "dunst"
+        "hyprpaper"
+        "hypridle"
+      ];
     };
   };
 
@@ -285,10 +297,19 @@ lib.mkIf pkgs.stdenv.isLinux {
         margin-left = 8;
         margin-right = 8;
 
-        modules-left = [ "hyprland/workspaces" "hyprland/window" ];
+        modules-left = [
+          "hyprland/workspaces"
+          "hyprland/window"
+        ];
         modules-center = [ "clock" ];
-        modules-right =
-          [ "pulseaudio" "network" "cpu" "memory" "battery" "tray" ];
+        modules-right = [
+          "pulseaudio"
+          "network"
+          "cpu"
+          "memory"
+          "battery"
+          "tray"
+        ];
 
         "hyprland/workspaces" = {
           format = "{icon}";
@@ -352,7 +373,11 @@ lib.mkIf pkgs.stdenv.isLinux {
             phone = "";
             portable = "";
             car = "";
-            default = [ "" "" "" ];
+            default = [
+              ""
+              ""
+              ""
+            ];
           };
           on-click = "pavucontrol";
         };

@@ -30,15 +30,27 @@
     };
   };
 
-  outputs = inputs@{ self, nixpkgs, nix-darwin, home-manager, sops-nix, nixvim
-    , fenix, pre-commit-hooks, }:
+  outputs =
+    inputs@{
+      self,
+      nixpkgs,
+      nix-darwin,
+      home-manager,
+      sops-nix,
+      nixvim,
+      fenix,
+      pre-commit-hooks,
+    }:
     let
 
       # Import structured overlays
       overlaySet = import ./overlays/default.nix;
 
       # Convert overlay set to list of overlay functions
-      overlays = [ overlaySet.patches overlaySet.customPackages ];
+      overlays = [
+        overlaySet.patches
+        overlaySet.customPackages
+      ];
 
       mkSystem = import ./lib/mkSystem.nix {
         inherit inputs;
@@ -46,46 +58,54 @@
         lib = nixpkgs.lib;
       };
 
-    in {
+    in
+    {
 
       # Formatter configuration - matches CI workflow (.github/workflows/nixfmt.yml)
       formatter = {
-        aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.nixfmt-classic;
-        x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt-classic;
+        aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.nixfmt-rfc-style;
+        x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt-rfc-style;
       };
 
       # Pre-commit hooks
-      checks = nixpkgs.lib.genAttrs [ "aarch64-darwin" "x86_64-linux" ] (system:
-        let pkgs = nixpkgs.legacyPackages.${system};
-        in {
+      checks = nixpkgs.lib.genAttrs [ "aarch64-darwin" "x86_64-linux" ] (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
           pre-commit-check = pre-commit-hooks.lib.${system}.run {
             src = ./.;
             hooks = {
-              nixfmt-classic = {
+              nixfmt-rfc-style = {
                 enable = true;
-                package = pkgs.nixfmt-classic;
+                package = pkgs.nixfmt-rfc-style;
               };
               # deadnix.enable = true;  # Temporarily disabled
               # statix.enable = true;  # Temporarily disabled to allow build
             };
           };
-        });
+        }
+      );
 
       # Development shells with pre-commit
-      devShells = nixpkgs.lib.genAttrs [ "aarch64-darwin" "x86_64-linux" ]
-        (system:
-          let pkgs = nixpkgs.legacyPackages.${system};
-          in {
-            default = pkgs.mkShell {
-              inherit (self.checks.${system}.pre-commit-check) shellHook;
-              buildInputs = with pkgs; [
-                nixfmt-classic
-                deadnix
-                statix
-                pre-commit
-              ];
-            };
-          });
+      devShells = nixpkgs.lib.genAttrs [ "aarch64-darwin" "x86_64-linux" ] (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          default = pkgs.mkShell {
+            inherit (self.checks.${system}.pre-commit-check) shellHook;
+            buildInputs = with pkgs; [
+              nixfmt-rfc-style
+              deadnix
+              statix
+              pre-commit
+            ];
+          };
+        }
+      );
 
       nixosConfigurations = {
         "carl" = (mkSystem "carl") {
@@ -97,7 +117,10 @@
       darwinConfigurations = {
         "goddard" = (mkSystem "goddard") {
           system = "aarch64-darwin";
-          users = [ "romaingrx" "lcmd" ];
+          users = [
+            "romaingrx"
+            "lcmd"
+          ];
           darwin = true;
         };
       };
