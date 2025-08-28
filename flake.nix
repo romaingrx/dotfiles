@@ -17,7 +17,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nixvim = {
-      url = "git+file:///Users/romaingrx/.dotfiles/third-party/nixvim";
+      url = "github:romaingrx/nixvim";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     fenix = {

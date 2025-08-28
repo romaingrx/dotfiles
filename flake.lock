@@ -227,17 +227,17 @@
         "nixvim": "nixvim_2"
       },
       "locked": {
-        "lastModified": 1750420881,
-        "narHash": "sha256-2pF/uD0pOhZjWFevL3lC3OM7YQWhHnC18vJzaj0nLOA=",
-        "ref": "refs/heads/main",
-        "rev": "9b7f682e9810640d2a5e0c1a99983a3cf12a11f4",
-        "revCount": 482,
-        "type": "git",
-        "url": "file:///Users/romaingrx/.dotfiles/third-party/nixvim"
+        "lastModified": 1756389870,
+        "narHash": "sha256-eoapkB9D2BpJhymRQztgdb5HLfsS7qdF76lzrWVQOAk=",
+        "owner": "romaingrx",
+        "repo": "nixvim",
+        "rev": "757c08543fe540478faa9381cac288e2420b11ff",
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "file:///Users/romaingrx/.dotfiles/third-party/nixvim"
+        "owner": "romaingrx",
+        "repo": "nixvim",
+        "type": "github"
       }
     },
     "nixvim_2": {
