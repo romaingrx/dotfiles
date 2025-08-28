@@ -13,4 +13,5 @@
     alacritty = import ./alacritty.nix { inherit pkgs; };
     tmux = import ./tmux.nix { inherit pkgs; };
   };
+  services.ssh-agent.enable = true;
 }

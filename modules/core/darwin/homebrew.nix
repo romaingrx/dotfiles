@@ -1,5 +1,4 @@
-{ ... }:
-{
+_: {
   homebrew = {
     enable = true;
     global = {
@@ -25,9 +24,7 @@
       "duckduckgo"
       "displaylink"
       "spotify"
-      "bitwarden"
       "docker" # Docker Desktop
-      "anaconda"
       "font-fira-code-nerd-font" # Needed for alacritty
       "font-sf-pro"
       "sf-symbols"
@@ -41,7 +38,6 @@
     ];
     brews = [
       "watch"
-      "bitwarden-cli"
       "ffmpeg"
       "mactop"
       "lightgbm"
@@ -49,6 +45,7 @@
       # Personal brews
       "awscli"
       "yt-dlp"
+      "meetingbar"
     ];
   };
 }

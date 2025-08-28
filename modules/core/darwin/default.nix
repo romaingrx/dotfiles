@@ -1,7 +1,7 @@
 { pkgs, homeDirectory, ... }:
 {
   imports = [
-    ./homebrew.nix
+    # ./homebrew.nix  # Disabled - using new structured external packages
     ./packages.nix
     ./mitmproxy.nix
   ];
@@ -30,7 +30,7 @@
     stateVersion = 5;
     # activationScripts are executed every time you boot the system or run
     # `nixos-rebuild` / `darwin-rebuild`.
-    activationScripts.postUserActivation.text = ''
+    activationScripts.extraActivation.text = ''
       # activateSettings -u will reload the settings from the database and
       # apply them to the current session, so we do not need to logout and
       # login again to make the changes take effect.
@@ -58,7 +58,6 @@
         minimize-to-application = true;
         show-process-indicators = true;
         persistent-apps = [
-          "${pkgs.signal-desktop}/Applications/Signal.app"
           "/System/Applications/Mail.app"
           "/System/Applications/Calendar.app"
           "${pkgs.raycast}/Applications/Raycast.app"

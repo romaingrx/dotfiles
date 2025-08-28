@@ -1,7 +1,7 @@
 { pkgs, ... }:
 {
   home.packages = with pkgs; [
-    nixfmt
+    nixfmt-rfc-style
     nil # Nix LSP
     sops
     docker
@@ -11,7 +11,7 @@
     bun
     pnpm
     alacritty
-    signal-desktop
+    # signal-desktop  # Not available on ARM macOS
     obsidian
     gnupg
     slack

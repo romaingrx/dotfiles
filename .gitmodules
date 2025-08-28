@@ -1,0 +1,3 @@
+[submodule "third-party/nixvim"]
+	path = third-party/nixvim
+	url = git@github.com:romaingrx/nixvim.git

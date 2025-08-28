@@ -80,10 +80,7 @@ systemFunc {
           useUserPackages = true;
           backupFileExtension = "bckp";
           users = usersHMConfig;
-          sharedModules = [
-            inputs.sops-nix.homeManagerModules.sops
-            inputs.nixvim.homeManagerModules.nixvim
-          ];
+          sharedModules = [ inputs.sops-nix.homeManagerModules.sops ];
           extraSpecialArgs = { inherit inputs pkgs; };
         };
       }
