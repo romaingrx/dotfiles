@@ -48,6 +48,7 @@ _: {
       # Personal brews
       "awscli"
       "yt-dlp"
+      "meetingbar"
     ];
   };
 }
