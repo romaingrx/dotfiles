@@ -10,5 +10,5 @@ jobs:
 
       - uses: cachix/install-nix-action@v30
 
-      - run: "nix run nixpkgs#nixfmt-rfc-style -- --check **/*.nix"
+      - run: "find . -name '*.nix' -not -path './third-party/*' -print0 | xargs -0 nix fmt -- --check"
         id: check
