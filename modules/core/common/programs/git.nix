@@ -21,5 +21,12 @@
   extraConfig = {
     commit.gpgsign = true;
     safe.directory = "*";
+
+    # Performance optimizations
+    core.preloadindex = true;
+    core.fscache = true;
+
+    # Garbage collection settings
+    gc.auto = 256;
   };
 }
