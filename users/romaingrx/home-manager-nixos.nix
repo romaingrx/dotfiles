@@ -188,10 +188,6 @@ lib.mkIf pkgs.stdenv.isLinux {
 
       # Window rules
       windowrule = [
-        "float,^(pavucontrol)$"
-        "float,^(nm-connection-editor)$"
-        "float,^(chromium)$"
-        "float,^(thunar)$"
         "float,title:^(btop)$"
         "float,title:^(update-sys)$"
       ];
@@ -208,6 +204,7 @@ lib.mkIf pkgs.stdenv.isLinux {
         "$mod, R, exec, rofi -show drun"
         "$mod, P, pseudo,"
         "$mod, D, togglesplit,"
+        "$mod, O, exec, wdisplays"
         "$mod CTRL, Q, exec, hyprlock" # Mac-style lock
 
         # Layout control

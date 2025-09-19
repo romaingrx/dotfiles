@@ -57,6 +57,7 @@
     libnotify
     brightnessctl # brightness control
     pamixer # pulseaudio control
+    wdisplays # Display settings GUI for Wayland
   ];
 
   # Enable common Wayland programs
