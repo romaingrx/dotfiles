@@ -63,6 +63,6 @@
       nvidiaSettings = true;
       powerManagement.enable = true;
     };
-    nvidia-container-toolkit.enable = true;
+    # nvidia-container-toolkit.enable = true;
   };
 }
