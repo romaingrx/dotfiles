@@ -1,28 +1,68 @@
+# Edit this configuration file to define what should be installed on
+# your system. Help is available in the configuration.nix(5) man page, on
+# https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
+
 { ... }:
 {
-  imports = [ ./hardware-configuration.nix ];
+  imports = [
+    # Include the results of the hardware scan.
+    ./hardware-configuration.nix
+  ];
 
-  boot = {
-    loader = {
-      systemd-boot.enable = true;
-      efi.canTouchEfiVariables = true;
-    };
+  boot.loader = {
+    systemd-boot.enable = true;
+    efi.canTouchEfiVariables = true;
   };
 
   networking = {
+    firewall.enable = false;
     hostName = "carl";
-    networkmanager.enable = true;
+    interfaces.ens18 = {
+      useDHCP = false;
+      ipv4.addresses = [
+        {
+          address = "10.42.0.4";
+          prefixLength = 24;
+        }
+      ];
+    };
+    defaultGateway = "10.42.0.1";
+    nameservers = [ "10.42.0.1" ];
   };
-
   time.timeZone = "Europe/Zurich";
   i18n.defaultLocale = "en_US.UTF-8";
 
   services.xserver = {
+    enable = true;
+    videoDrivers = [ "nvidia" ];
     xkb = {
       layout = "us";
       variant = "";
     };
+    displayManager.sddm = {
+      enable = true;
+      wayland.enable = true;
+    };
   };
 
-  system.stateVersion = "24.11";
+  services.openssh = {
+    enable = true;
+    settings.PasswordAuthentication = true;
+    settings.PermitRootLogin = "yes";
+  };
+  services.qemuGuest.enable = true;
+
+  hardware = {
+    graphics = {
+      enable = true;
+      enable32Bit = true;
+    };
+    nvidia = {
+      modesetting.enable = true;
+      open = false;
+      nvidiaSettings = true;
+      powerManagement.enable = true;
+    };
+    nvidia-container-toolkit.enable = true;
+  };
 }
