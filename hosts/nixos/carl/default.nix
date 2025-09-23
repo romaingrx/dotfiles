@@ -12,6 +12,11 @@
   # See https://wiki.nixos.org/wiki/Python_quickstart_using_uv
   programs.nix-ld.enable = true;
 
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
+
   boot.loader = {
     systemd-boot.enable = true;
     efi.canTouchEfiVariables = true;
