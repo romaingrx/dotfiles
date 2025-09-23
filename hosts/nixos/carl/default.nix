@@ -2,29 +2,45 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 
-{ ... }:
-{
+{ pkgs, ... }: {
   imports = [
     # Include the results of the hardware scan.
     ./hardware-configuration.nix
   ];
+
+  # See https://wiki.nixos.org/wiki/Python_quickstart_using_uv
+  programs.nix-ld.enable = true;
 
   boot.loader = {
     systemd-boot.enable = true;
     efi.canTouchEfiVariables = true;
   };
 
+  environment.systemPackages = with pkgs.cudaPackages; [
+    cudatoolkit
+    cuda_cudart
+    cuda_cupti
+    cuda_nvrtc
+    cuda_nvtx
+    cudnn
+    libcublas
+    libcufft
+    libcurand
+    libcusolver
+    libcusparse
+    libnvjitlink
+    nccl
+  ];
+
   networking = {
     firewall.enable = false;
     hostName = "carl";
     interfaces.ens18 = {
       useDHCP = false;
-      ipv4.addresses = [
-        {
-          address = "10.42.0.4";
-          prefixLength = 24;
-        }
-      ];
+      ipv4.addresses = [{
+        address = "10.42.0.4";
+        prefixLength = 24;
+      }];
     };
     defaultGateway = "10.42.0.1";
     nameservers = [ "10.42.0.1" ];

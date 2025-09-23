@@ -27,98 +27,6 @@ lib.mkIf pkgs.stdenv.isLinux {
   # Link wallpaper from dotfiles to the home directory
   home.file.".wallpapers/nixos.png".source = ../../assets/wallpapers/nixos.png;
 
-  # Create hyprpaper config file
-  xdg.configFile."hypr/hyprpaper.conf".text = ''
-    preload = ~/.wallpapers/nixos.png
-    wallpaper = ,~/.wallpapers/nixos.png
-    ipc = off
-  '';
-
-  # Configure hyprlock
-  programs.hyprlock = {
-    enable = true;
-    package = pkgs.hyprlock;
-    settings = {
-      general = {
-        disable_loading_bar = false;
-        hide_cursor = true;
-        grace = 0;
-        no_fade_in = false;
-      };
-      background = [
-        {
-          path = "~/.wallpapers/nixos.png";
-          color = "rgba(25, 20, 20, 1.0)";
-          blur_passes = 2;
-          blur_size = 7;
-          noise = 1.17e-2;
-          contrast = 0.8916;
-          brightness = 0.8172;
-          vibrancy = 0.1696;
-          vibrancy_darkness = 0.0;
-        }
-      ];
-      input-field = [
-        {
-          size = "200, 50";
-          position = "0, -80";
-          monitor = "";
-          dots_center = true;
-          outer_color = "rgb(165, 151, 202)";
-          inner_color = "rgb(30, 30, 46)";
-          font_color = "rgb(200, 200, 200)";
-          outline_thickness = 5;
-          fade_on_empty = true;
-          placeholder_text = "<i>Type to unlock...</i>";
-          font_family = "JetBrainsMono Nerd Font";
-          shadow_passes = 2;
-        }
-      ];
-      label = [
-        {
-          text = "$TIME";
-          color = "rgb(200, 200, 200)";
-          font_size = 65;
-          font_family = "JetBrainsMono Nerd Font";
-          position = "0, 140";
-          halign = "center";
-          valign = "center";
-        }
-      ];
-    };
-  };
-
-  # Configure hypridle
-  xdg.configFile."hypr/hypridle.conf".text = ''
-    general {
-        lock_cmd = pidof hyprlock || hyprlock     # avoid starting multiple hyprlock instances
-        before_sleep_cmd = loginctl lock-session  # lock before suspend
-        after_sleep_cmd = hyprctl dispatch dpms on  # to avoid having to press a key twice to turn on the display
-    }
-
-    listener {
-        timeout = 150                                # 2.5min
-        on-timeout = brightnessctl -s set 10        # set monitor backlight to minimum
-        on-resume = brightnessctl -r                # monitor backlight restore
-    }
-
-    listener {
-        timeout = 300                               # 5min
-        on-timeout = loginctl lock-session          # lock screen when timeout has passed
-    }
-
-    listener {
-        timeout = 330                               # 5.5min
-        on-timeout = hyprctl dispatch dpms off      # screen off when timeout has passed
-        on-resume = hyprctl dispatch dpms on        # screen on when activity is detected
-    }
-
-    listener {
-        timeout = 1800                              # 30min
-        on-timeout = systemctl suspend              # suspend pc
-    }
-  '';
-
   # Hyprland - Package only, config in dotfiles
   wayland.windowManager.hyprland = {
     enable = true;
@@ -133,12 +41,12 @@ lib.mkIf pkgs.stdenv.isLinux {
 
   # Symlink dotfiles configs
   xdg.configFile = {
-    "hypr/hyprland.conf".source = ../../../.dotfiles/config/hyprland.conf;
-    "waybar/config.jsonc".source = ../../../.dotfiles/config/waybar.jsonc;
-    "waybar/style.css".source = ../../../.dotfiles/config/waybar.css;
-    "hypr/hyprpaper.conf".source = ../../../.dotfiles/config/hyprpaper.conf;
-    "hypr/hypridle.conf".source = ../../../.dotfiles/config/hypridle.conf;
-    "hypr/hyprlock.conf".source = ../../../.dotfiles/config/hyprlock.conf;
+    "hypr/hyprland.conf".source = ../../config/hyprland.conf;
+    "waybar/config.jsonc".source = ../../config/waybar.jsonc;
+    "waybar/style.css".source = ../../config/waybar.css;
+    "hypr/hyprpaper.conf".source = ../../config/hyprpaper.conf;
+    "hypr/hypridle.conf".source = ../../config/hypridle.conf;
+    "hypr/hyprlock.conf".source = ../../config/hyprlock.conf;
   };
 
   # Add Rofi configuration
