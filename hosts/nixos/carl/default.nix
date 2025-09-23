@@ -2,7 +2,8 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 
-{ pkgs, ... }: {
+{ pkgs, ... }:
+{
   imports = [
     # Include the results of the hardware scan.
     ./hardware-configuration.nix
@@ -37,10 +38,12 @@
     hostName = "carl";
     interfaces.ens18 = {
       useDHCP = false;
-      ipv4.addresses = [{
-        address = "10.42.0.4";
-        prefixLength = 24;
-      }];
+      ipv4.addresses = [
+        {
+          address = "10.42.0.4";
+          prefixLength = 24;
+        }
+      ];
     };
     defaultGateway = "10.42.0.1";
     nameservers = [ "10.42.0.1" ];
@@ -75,7 +78,9 @@
       nvidiaSettings = true;
       powerManagement.enable = true;
     };
-    bluetooth = { enable = true; };
+    bluetooth = {
+      enable = true;
+    };
     # nvidia-container-toolkit.enable = true;
   };
 }

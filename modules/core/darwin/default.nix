@@ -1,4 +1,5 @@
-{ pkgs, homeDirectory, ... }: {
+{ pkgs, homeDirectory, ... }:
+{
   imports = [
     # ./homebrew.nix  # Disabled - using new structured external packages
     ./packages.nix
@@ -8,7 +9,10 @@
   nix.optimise.automatic = true;
   # Necessary for using flakes on this system.
   nix.settings = {
-    experimental-features = [ "nix-command" "flakes" ];
+    experimental-features = [
+      "nix-command"
+      "flakes"
+    ];
     max-jobs = "auto";
     cores = 0; # Use all available cores
     keep-derivations = true;
@@ -34,7 +38,9 @@
       # sudo ln -sf "${pkgs.jdk17}/zulu-17.jdk" "/Library/Java/JavaVirtualMachines/"
     '';
     defaults = {
-      trackpad = { Clicking = true; };
+      trackpad = {
+        Clicking = true;
+      };
       NSGlobalDomain = {
         KeyRepeat = 2;
         InitialKeyRepeat = 12;
@@ -71,9 +77,15 @@
         ShowRemovableMediaOnDesktop = false;
         ShowPathbar = true;
       };
-      loginwindow = { GuestEnabled = false; };
-      screencapture = { location = "${homeDirectory}/Pictures/screenshots"; };
-      screensaver = { askForPasswordDelay = 0; };
+      loginwindow = {
+        GuestEnabled = false;
+      };
+      screencapture = {
+        location = "${homeDirectory}/Pictures/screenshots";
+      };
+      screensaver = {
+        askForPasswordDelay = 0;
+      };
     };
   };
   services = import ./services { inherit pkgs; };

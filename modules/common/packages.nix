@@ -1,6 +1,13 @@
-{ config, lib, pkgs, ... }:
-let cfg = config.myConfig.packages;
-in {
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+let
+  cfg = config.myConfig.packages;
+in
+{
   options.myConfig.packages = {
     enable = lib.mkEnableOption "user packages";
 
@@ -37,7 +44,8 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = with pkgs;
+    home.packages =
+      with pkgs;
       lib.flatten [
         # Core user applications (essential tools)
         (lib.optionals cfg.core.enable [
@@ -83,7 +91,11 @@ in {
         ])
 
         # Productivity applications
-        (lib.optionals cfg.productivity.enable [ alacritty obsidian slack ])
+        (lib.optionals cfg.productivity.enable [
+          alacritty
+          obsidian
+          slack
+        ])
 
         # Media packages
         (lib.optionals cfg.media.enable [ ffmpeg ])

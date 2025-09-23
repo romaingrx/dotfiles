@@ -9,34 +9,50 @@
 #   watchPaths = [ "/path/to/config/dir/" ];
 #   description = "Waybar with auto-restart on config changes";
 # })
-{ lib, config, pkgs, ... }:
+{
+  lib,
+  config,
+  pkgs,
+  ...
+}:
 
 {
-# Service identification
-name,
+  # Service identification
+  name,
 
-# Service to restart when files change
-serviceName, restartCommand,
+  # Service to restart when files change
+  serviceName,
+  restartCommand,
 
-# Files/directories to watch
-watchPaths, watchEvents ? [ "create" "modify" "delete" "moved_to" ],
+  # Files/directories to watch
+  watchPaths,
+  watchEvents ? [
+    "create"
+    "modify"
+    "delete"
+    "moved_to"
+  ],
 
-# Watch configuration
-recursive ? true, debounceMs ? 500, initialLaunch ? false,
+  # Watch configuration
+  recursive ? true,
+  debounceMs ? 500,
+  initialLaunch ? false,
 
-# Service configuration
-description ? "${serviceName} file watcher", enabled ? true
-, wantedBy ? [ "graphical-session.target" ]
-, after ? [ "graphical-session.target" ], requires ? [ ],
+  # Service configuration
+  description ? "${serviceName} file watcher",
+  enabled ? true,
+  wantedBy ? [ "graphical-session.target" ],
+  after ? [ "graphical-session.target" ],
+  requires ? [ ],
 
-# Environment
-environment ? { }, }:
+  # Environment
+  environment ? { },
+}:
 
 let
   watchEventsStr = lib.concatStringsSep "," watchEvents;
   watchFlags = if recursive then "-r" else "";
-  watchPathsStr =
-    lib.concatStringsSep " " (map (path: lib.escapeShellArg path) watchPaths);
+  watchPathsStr = lib.concatStringsSep " " (map (path: lib.escapeShellArg path) watchPaths);
 
   # Generate the watcher script
   watcherScript = pkgs.writeScript "file-watcher-${name}" ''
@@ -59,11 +75,15 @@ let
     trap cleanup SIGTERM SIGINT
 
     # Wait for service to start
-    ${if initialLaunch then ''
-      echo "${serviceName} not running, starting it..."
-      ${restartCommand}
-    '' else
-      ""}
+    ${
+      if initialLaunch then
+        ''
+          echo "${serviceName} not running, starting it..."
+          ${restartCommand}
+        ''
+      else
+        ""
+    }
 
     echo "Starting file watcher for ${serviceName}..."
     echo "Watching: ${lib.concatStringsSep " " watchPaths}"
@@ -76,7 +96,8 @@ let
     done
   '';
 
-in lib.mkMerge [
+in
+lib.mkMerge [
   # Linux (systemd) configuration
   (lib.mkIf pkgs.stdenv.isLinux {
     systemd.user.services."${name}-watcher" = {
@@ -91,12 +112,12 @@ in lib.mkMerge [
         ExecStart = "${watcherScript}";
         Restart = "always";
         RestartSec = 3;
-        Environment =
-          lib.mapAttrsToList (name: value: "${name}=${toString value}")
-          (environment // {
-            PATH =
-              "${config.home.profileDirectory}/bin:/run/wrappers/bin:/run/current-system/sw/bin:/etc/profiles/per-user/${config.home.username}/bin";
-          });
+        Environment = lib.mapAttrsToList (name: value: "${name}=${toString value}") (
+          environment
+          // {
+            PATH = "${config.home.profileDirectory}/bin:/run/wrappers/bin:/run/current-system/sw/bin:/etc/profiles/per-user/${config.home.username}/bin";
+          }
+        );
       };
 
       Install = lib.mkIf enabled { WantedBy = wantedBy; };
