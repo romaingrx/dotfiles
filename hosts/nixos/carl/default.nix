@@ -55,10 +55,6 @@
       layout = "us";
       variant = "";
     };
-    displayManager.sddm = {
-      enable = true;
-      wayland.enable = true;
-    };
   };
 
   services.openssh = {
@@ -79,6 +75,7 @@
       nvidiaSettings = true;
       powerManagement.enable = true;
     };
+    bluetooth = { enable = true; };
     # nvidia-container-toolkit.enable = true;
   };
 }

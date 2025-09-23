@@ -29,10 +29,12 @@
 
   # Enable display manager
   services.xserver = {
-    enable = true; # needed for SDDM
-    displayManager.sddm = {
-      enable = true;
-      wayland.enable = true; # Enable Wayland support in SDDM
+    enable = true;
+    displayManager = {
+      sddm = {
+        enable = true;
+        wayland.enable = true;
+      };
     };
   };
 

@@ -2,7 +2,7 @@
 let
   mkFileWatcher =
     import ../../lib/mkFileWatcher.nix { inherit config pkgs lib; };
-  configPath = "~/.dotfiles/config";
+  configPath = "${config.home.homeDirectory}/.dotfiles/config";
 in lib.mkMerge [
   (mkFileWatcher {
     name = "waybar";
@@ -42,30 +42,49 @@ in lib.mkMerge [
         SDL_VIDEODRIVER = "wayland";
         CLUTTER_BACKEND = "wayland";
         TERMINAL = "alacritty";
+        BROWSER = "firefox";
       };
+      sessionPath = [ "/home/romaingrx/.local/romaingrx-bin" ];
     };
 
     home.packages = with pkgs; [
+      uwsm
+      swayosd
       hyprpaper
       rofi-wayland
       code-cursor
       hypridle
       hyprlock
       hyprland
+      nautilus
+      spotify
+      signal-desktop
+      lazydocker
+      btop
+      _1password-gui
+      firefox
     ];
 
-    # Script to set HYPRLAND_INSTANCE_SIGNATURE for hyprctl
+    # TODO: Fix this, it's not clean
     programs.zsh.initExtra = ''
-      # Function to automatically set HYPRLAND_INSTANCE_SIGNATURE for hyprctl
-      # Check if HYPRLAND_INSTANCE_SIGNATURE is already set
-      if [ -z "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
-        # Try to find the Hyprland instance signature
-        if [ -n "$XDG_RUNTIME_DIR" ] && [ -d "$XDG_RUNTIME_DIR/hypr" ]; then
-          INSTANCE_SIG=$(ls "$XDG_RUNTIME_DIR/hypr" 2>/dev/null | head -1)
-          if [ -n "$INSTANCE_SIG" ]; then
-            export HYPRLAND_INSTANCE_SIGNATURE="$INSTANCE_SIG"
+      # Script to set HYPRLAND_INSTANCE_SIGNATURE for hyprctl
+        # Function to automatically set HYPRLAND_INSTANCE_SIGNATURE for hyprctl
+        # Check if HYPRLAND_INSTANCE_SIGNATURE is already set
+        if [ -z "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
+          # Try to find the Hyprland instance signature
+          if [ -n "$XDG_RUNTIME_DIR" ] && [ -d "$XDG_RUNTIME_DIR/hypr" ]; then
+            INSTANCE_SIG=$(ls "$XDG_RUNTIME_DIR/hypr" 2>/dev/null | head -1)
+            if [ -n "$INSTANCE_SIG" ]; then
+              export HYPRLAND_INSTANCE_SIGNATURE="$INSTANCE_SIG"
+            fi
           fi
         fi
+        export PATH="''${PATH}:/home/romaingrx/.local/romaingrx-bin"
+    '';
+
+    home.file.".profile".text = ''
+      if uwsm check may-start && uwsm select; then
+        exec uwsm start default
       fi
     '';
 
@@ -75,8 +94,9 @@ in lib.mkMerge [
 
     home.activation = {
       text = ''
-        ln -sf ${configPath}/hypr ~/.config/hypr
-        ln -sf ${configPath}/waybar ~/.config/waybar
+        [ -d ~/.config/hypr ] || ln -sf ${configPath}/hypr ~/.config/hypr
+        [ -d ~/.config/waybar ] || ln -sf ${configPath}/waybar ~/.config/waybar
+        [ -d ~/.local/romaingrx-bin ] || ln -sf ${configPath}/bin ~/.local/romaingrx-bin
       '';
     };
 
@@ -96,8 +116,6 @@ in lib.mkMerge [
         display-Network: " 󰤨  Network";
         sidebar-mode: true;
       }
-
-      @theme "themes/catppuccin-mocha"
 
       window {
         width: 1000px;

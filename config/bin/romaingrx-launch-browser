@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+default_browser=$(xdg-settings get default-web-browser)
+echo "Default browser: $default_browser"
+
+# Find the browser file
+IFS=':' read -ra dirs <<< "$XDG_DATA_DIRS"
+for dir in "${dirs[@]}"; do
+    browser_file="$dir/applications/$default_browser"
+    if [[ -f "$browser_file" ]]; then
+        break
+    fi
+done
+if [[ ! -f "$browser_file" ]]; then
+    echo "Error: Could not find desktop file for $default_browser"
+    exit 1
+fi
+
+echo "Browser file: $browser_file"
+
+browser_exec=$(grep -m1 '^Exec=' "$browser_file" | sed -E 's/^Exec=([^\ ]*).*/\1/')
+echo "Browser exec: $browser_exec"
+
+if [[ $browser_exec =~ (firefox|zen|librewolf) ]]; then
+  private_flag="--private-window"
+else
+  private_flag="--incognito"
+fi
+
+exec setsid uwsm app -- "$browser_exec" "${@/--private/$private_flag}"
+
