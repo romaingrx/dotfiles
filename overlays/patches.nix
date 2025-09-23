@@ -9,8 +9,6 @@ final: prev: {
 
   # Disable tests for fzf-lua vim plugin to avoid GUI test failures in Nix build
   vimPlugins = prev.vimPlugins // {
-    fzf-lua = prev.vimPlugins.fzf-lua.overrideAttrs (old: {
-      doCheck = false;
-    });
+    fzf-lua = prev.vimPlugins.fzf-lua.overrideAttrs (old: { doCheck = false; });
   };
 }

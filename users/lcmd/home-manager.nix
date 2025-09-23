@@ -1,5 +1,4 @@
-{ pkgs, inputs, ... }:
-{
+{ pkgs, inputs, ... }: {
   imports = [ ../../modules/common ];
 
   # Enable the new configuration options

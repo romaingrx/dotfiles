@@ -1,5 +1,4 @@
-{ config, pkgs, ... }:
-{
+{ config, pkgs, ... }: {
   enable = true;
   enableCompletion = true;
   autosuggestion.enable = true;

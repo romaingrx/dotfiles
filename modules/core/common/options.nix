@@ -1,5 +1,4 @@
-{ lib, ... }:
-{
+{ lib, ... }: {
   options.home.github.gpg = {
     key = lib.mkOption {
       type = lib.types.str;

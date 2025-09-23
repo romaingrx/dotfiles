@@ -14,6 +14,7 @@ in lib.mkMerge [
     '';
     watchPaths = [ "/home/romaingrx/.config/waybar/" ];
     description = "Waybar with auto-restart on config changes";
+
   })
   (mkFileWatcher {
     name = "hyprctl";

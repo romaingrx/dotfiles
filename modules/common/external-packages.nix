@@ -1,13 +1,6 @@
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
-let
-  cfg = config.myConfig.externalPackages;
-in
-{
+{ config, lib, pkgs, ... }:
+let cfg = config.myConfig.externalPackages;
+in {
   options.myConfig.externalPackages = {
     enable = lib.mkEnableOption "external packages (Homebrew, etc.)";
 
@@ -57,72 +50,61 @@ in
     };
   };
 
-  config = lib.mkIf (cfg.enable && cfg.homebrew.enable && pkgs.stdenv.isDarwin) {
-    homebrew = {
-      enable = true;
-      global = {
-        brewfile = true;
+  config =
+    lib.mkIf (cfg.enable && cfg.homebrew.enable && pkgs.stdenv.isDarwin) {
+      homebrew = {
+        enable = true;
+        global = { brewfile = true; };
+        onActivation = {
+          cleanup = "zap";
+          autoUpdate = false;
+          upgrade = false;
+          extraFlags = [ "--force" ];
+        };
+
+        # Mac App Store apps
+        masApps = { "harvest" = 506189836; };
+
+        casks = lib.flatten [
+          # Browser applications
+          (lib.optionals cfg.homebrew.browsers.enable [
+            "firefox"
+            "duckduckgo"
+          ])
+
+          # Productivity applications
+          (lib.optionals cfg.homebrew.productivity.enable [
+            "spotify"
+            "font-fira-code-nerd-font"
+            "font-sf-pro"
+            "sf-symbols"
+            "wifiman"
+            "airtable"
+            "anytype"
+            "onedrive"
+            "mattermost"
+          ])
+
+          # Development applications
+          (lib.optionals cfg.homebrew.development.enable [
+            "cursor"
+            "docker"
+            "anaconda"
+            "displaylink"
+          ])
+
+          # Media applications
+          (lib.optionals cfg.homebrew.media.enable [ "avogadro" ])
+
+          cfg.homebrew.extraCasks
+        ];
+
+        brews = lib.flatten [
+          # Essential command-line tools
+          [ "watch" "ffmpeg" "mactop" "lightgbm" "libpq" "awscli" "yt-dlp" ]
+
+          cfg.homebrew.extraBrews
+        ];
       };
-      onActivation = {
-        cleanup = "zap";
-        autoUpdate = false;
-        upgrade = false;
-        extraFlags = [ "--force" ];
-      };
-
-      # Mac App Store apps
-      masApps = {
-        "harvest" = 506189836;
-      };
-
-      casks = lib.flatten [
-        # Browser applications
-        (lib.optionals cfg.homebrew.browsers.enable [
-          "firefox"
-          "duckduckgo"
-        ])
-
-        # Productivity applications
-        (lib.optionals cfg.homebrew.productivity.enable [
-          "spotify"
-          "font-fira-code-nerd-font"
-          "font-sf-pro"
-          "sf-symbols"
-          "wifiman"
-          "airtable"
-          "anytype"
-          "onedrive"
-          "mattermost"
-        ])
-
-        # Development applications
-        (lib.optionals cfg.homebrew.development.enable [
-          "cursor"
-          "docker"
-          "anaconda"
-          "displaylink"
-        ])
-
-        # Media applications
-        (lib.optionals cfg.homebrew.media.enable [ "avogadro" ])
-
-        cfg.homebrew.extraCasks
-      ];
-
-      brews = lib.flatten [
-        # Essential command-line tools
-        [
-          "watch"
-          "ffmpeg"
-          "mactop"
-          "lightgbm"
-          "libpq"
-          "awscli"
-          "yt-dlp"
-        ]
-
-        cfg.homebrew.extraBrews
-      ];
     };
-  };
 }

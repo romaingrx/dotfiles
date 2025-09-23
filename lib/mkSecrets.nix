@@ -3,20 +3,17 @@
 { lib, ... }:
 
 {
-  # User identification
-  username,
-  homeDirectory,
+# User identification
+username, homeDirectory,
 
-  # Secrets configuration
-  secrets ? { },
+# Secrets configuration
+secrets ? { },
 
-  # Template configuration
-  templates ? { },
+# Template configuration
+templates ? { },
 
-  # Global sops settings
-  globalSopsFile ? null,
-  ageKeyFile ? null,
-}:
+# Global sops settings
+globalSopsFile ? null, ageKeyFile ? null, }:
 
 let
   # Default age key file location
@@ -26,31 +23,25 @@ let
   defaultSopsFile = ../users + "/${username}/secrets/secrets.yaml";
 
   # Generate secret configuration with intelligent defaults
-  mkSecret =
-    name: config:
+  mkSecret = name: config:
     let
       finalSopsFile = config.sopsFile or globalSopsFile;
-      secretConfig =
-        {
-          sopsFile = finalSopsFile;
-        }
-        // (lib.optionalAttrs (config ? path) { path = config.path; })
+      secretConfig = {
+        sopsFile = finalSopsFile;
+      } // (lib.optionalAttrs (config ? path) { path = config.path; })
         // (lib.optionalAttrs (config ? owner) { owner = config.owner; })
         // (lib.optionalAttrs (config ? mode) { mode = config.mode; });
-    in
-    lib.nameValuePair name secretConfig;
+    in lib.nameValuePair name secretConfig;
 
   # Generate template configuration
-  mkTemplate =
-    name: config:
+  mkTemplate = name: config:
     lib.nameValuePair name {
       content = config.content;
       owner = config.owner or username;
       mode = config.mode or "0644";
     };
 
-in
-{
+in {
   sops = {
     # Age configuration
     age.keyFile = ageKeyFile;

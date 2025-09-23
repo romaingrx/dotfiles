@@ -22,7 +22,7 @@ serviceName, restartCommand,
 watchPaths, watchEvents ? [ "create" "modify" "delete" "moved_to" ],
 
 # Watch configuration
-recursive ? true, debounceMs ? 500, initialLaunch ? true,
+recursive ? true, debounceMs ? 500, initialLaunch ? false,
 
 # Service configuration
 description ? "${serviceName} file watcher", enabled ? true

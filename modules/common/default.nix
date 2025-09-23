@@ -1,13 +1,6 @@
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
-let
-  cfg = config.myConfig.common;
-in
-{
+{ config, lib, pkgs, ... }:
+let cfg = config.myConfig.common;
+in {
   imports = [
     ./packages.nix
     ./programs.nix

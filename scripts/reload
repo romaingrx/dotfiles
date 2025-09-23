@@ -37,10 +37,10 @@ reload_waybar() {
         log "Restarting Waybar..."
         pkill -x waybar
         sleep 0.5
-        uwsm app -- waybar &
+        waybar &
     else
         warn "Waybar not running, starting it..."
-        uwsm app -- waybar &
+        waybar &
     fi
 }
 
@@ -50,10 +50,10 @@ reload_hyprpaper() {
         log "Restarting Hyprpaper..."
         pkill -x hyprpaper
         sleep 0.5
-        uwsm app -- hyprpaper &
+        hyprpaper &
     else
         warn "Hyprpaper not running, starting it..."
-        uwsm app -- hyprpaper &
+        hyprpaper &
     fi
 }
 
@@ -63,10 +63,10 @@ reload_hypridle() {
         log "Restarting Hypridle..."
         pkill -x hypridle
         sleep 0.5
-        uwsm app -- hypridle &
+        hypridle &
     else
         warn "Hypridle not running, starting it..."
-        uwsm app -- hypridle &
+        hypridle &
     fi
 }
 

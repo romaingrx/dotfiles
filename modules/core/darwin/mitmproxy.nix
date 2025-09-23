@@ -1,9 +1,4 @@
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
+{ config, lib, pkgs, ... }:
 
 with lib;
 
@@ -43,11 +38,9 @@ let
   '';
 
   # Create a derivation for the toggle-proxy script
-  toggleProxyScript = pkgs.writeShellScriptBin "toggle-proxy" (
-    builtins.readFile ./bin/toggle-proxy.sh
-  );
-in
-{
+  toggleProxyScript = pkgs.writeShellScriptBin "toggle-proxy"
+    (builtins.readFile ./bin/toggle-proxy.sh);
+in {
   options.services.mitmproxy = {
     enable = mkEnableOption "Enable proxy service";
 
@@ -94,26 +87,21 @@ in
     launchd.user.agents.mitmproxy = {
       serviceConfig = {
         Label = "com.user.mitmproxy";
-        ProgramArguments =
-          let
-            args =
-              [
-                "${pkgs.mitmproxy}/bin/mitmproxy"
-                "--listen-port"
-                (toString cfg.port)
-                "--set"
-                "confdir=$HOME/.mitmproxy"
-                "--mode"
-                "regular"
-                "--showhost"
-              ]
-              ++ (optionals (cfg.upstreamProxy != null) [
-                "--mode"
-                "upstream:${cfg.upstreamProxy}"
-              ])
-              ++ cfg.extraArgs;
-          in
-          args;
+        ProgramArguments = let
+          args = [
+            "${pkgs.mitmproxy}/bin/mitmproxy"
+            "--listen-port"
+            (toString cfg.port)
+            "--set"
+            "confdir=$HOME/.mitmproxy"
+            "--mode"
+            "regular"
+            "--showhost"
+          ] ++ (optionals (cfg.upstreamProxy != null) [
+            "--mode"
+            "upstream:${cfg.upstreamProxy}"
+          ]) ++ cfg.extraArgs;
+        in args;
         RunAtLoad = true;
         KeepAlive = true;
         StandardOutPath = "/tmp/mitmproxy.log";
@@ -128,15 +116,15 @@ in
       echo "You can use 'toggle-proxy on|off|status' to manage proxy settings"
 
       # Configure network proxy settings
-      ${optionalString cfg.autoConfig (
-        concatStringsSep "\n" (
-          map (interface: ''
-            echo "Configuring proxy settings for ${interface}..."
-            networksetup -setwebproxy "${interface}" "127.0.0.1" ${toString cfg.port}
-            networksetup -setsecurewebproxy "${interface}" "127.0.0.1" ${toString cfg.port}
-          '') cfg.interfaces
-        )
-      )}
+      ${optionalString cfg.autoConfig (concatStringsSep "\n" (map (interface: ''
+        echo "Configuring proxy settings for ${interface}..."
+        networksetup -setwebproxy "${interface}" "127.0.0.1" ${
+          toString cfg.port
+        }
+        networksetup -setsecurewebproxy "${interface}" "127.0.0.1" ${
+          toString cfg.port
+        }
+      '') cfg.interfaces))}
     '';
   };
 }
