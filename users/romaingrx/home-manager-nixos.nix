@@ -1,9 +1,14 @@
-{ pkgs, lib, config, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 let
-  mkFileWatcher =
-    import ../../lib/mkFileWatcher.nix { inherit config pkgs lib; };
+  mkFileWatcher = import ../../lib/mkFileWatcher.nix { inherit config pkgs lib; };
   configPath = "${config.home.homeDirectory}/.dotfiles/config";
-in lib.mkMerge [
+in
+lib.mkMerge [
   (mkFileWatcher {
     name = "waybar";
     serviceName = "waybar";
@@ -91,8 +96,7 @@ in lib.mkMerge [
     '';
 
     # Link wallpaper from dotfiles to the home directory
-    home.file.".wallpapers/nixos.png".source =
-      ../../assets/wallpapers/nixos.png;
+    home.file.".wallpapers/nixos.png".source = ../../assets/wallpapers/nixos.png;
 
     home.activation = {
       text = ''

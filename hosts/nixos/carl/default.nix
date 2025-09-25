@@ -83,9 +83,15 @@
       nvidiaSettings = true;
       powerManagement.enable = true;
     };
+    # nvidia-container-toolkit.enable = true;
     bluetooth = {
       enable = true;
     };
-    # nvidia-container-toolkit.enable = true;
+    logitech = {
+      wireless = {
+        enable = true;
+        enableGraphical = true;
+      };
+    };
   };
 }
