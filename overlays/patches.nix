@@ -13,4 +13,11 @@ final: prev: {
       doCheck = false;
     });
   };
+
+  # Fix nccl compilation with GCC 14 by using GCC 13
+  cudaPackages = prev.cudaPackages // {
+    nccl = prev.cudaPackages.nccl.overrideAttrs (old: {
+      stdenv = prev.gcc13Stdenv;
+    });
+  };
 }
