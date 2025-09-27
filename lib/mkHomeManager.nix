@@ -113,18 +113,17 @@ let
 
 in
 {
-  imports =
-    [
-      # Base common configuration
-      ../modules/common
+  imports = [
+    # Base common configuration
+    ../modules/common
 
-      # Feature-based imports
-    ]
-    ++ lib.optionals finalFeatures.development [ ../modules/development ]
-    ++ lib.optionals finalFeatures.productivity [ ../modules/productivity ]
-    ++ lib.optionals finalFeatures.media [ ../modules/media ]
-    ++ lib.optionals finalFeatures.security [ ../modules/security ]
-    ++ extraImports;
+    # Feature-based imports
+  ]
+  ++ lib.optionals finalFeatures.development [ ../modules/development ]
+  ++ lib.optionals finalFeatures.productivity [ ../modules/productivity ]
+  ++ lib.optionals finalFeatures.media [ ../modules/media ]
+  ++ lib.optionals finalFeatures.security [ ../modules/security ]
+  ++ extraImports;
 
   # Base home configuration
   home = {

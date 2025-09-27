@@ -47,48 +47,47 @@ let
 in
 systemFunc {
   inherit system;
-  modules =
-    [
-      # Basic system configuration
-      {
-        nixpkgs = {
-          config = {
-            allowUnfree = true;
-          };
-          inherit overlays;
+  modules = [
+    # Basic system configuration
+    {
+      nixpkgs = {
+        config = {
+          allowUnfree = true;
         };
-      }
+        inherit overlays;
+      };
+    }
 
-      # Module arguments
-      {
-        config._module.args = { inherit homeDirectory inputs; };
-      }
+    # Module arguments
+    {
+      config._module.args = { inherit homeDirectory inputs; };
+    }
 
-      # Core system configuration
-      hostConfig
+    # Core system configuration
+    hostConfig
 
-      # Home Manager configuration
-      (
-        if darwin then
-          inputs.home-manager.darwinModules.home-manager
-        else
-          inputs.home-manager.nixosModules.home-manager
-      )
-      {
-        home-manager = {
-          useGlobalPkgs = true;
-          useUserPackages = true;
-          backupFileExtension = "bckp";
-          users = usersHMConfig;
-          sharedModules = [ inputs.sops-nix.homeManagerModules.sops ];
-          extraSpecialArgs = { inherit inputs pkgs; };
-        };
-      }
+    # Home Manager configuration
+    (
+      if darwin then
+        inputs.home-manager.darwinModules.home-manager
+      else
+        inputs.home-manager.nixosModules.home-manager
+    )
+    {
+      home-manager = {
+        useGlobalPkgs = true;
+        useUserPackages = true;
+        backupFileExtension = "bckp";
+        users = usersHMConfig;
+        sharedModules = [ inputs.sops-nix.homeManagerModules.sops ];
+        extraSpecialArgs = { inherit inputs pkgs; };
+      };
+    }
 
-      # Sops configuration
-      (if darwin then inputs.sops-nix.darwinModules.sops else inputs.sops-nix.nixosModules.sops)
-    ]
-    # User OS configurations (reversed to maintain priority)
-    # ++ lib.lists.reverseList usersOSConfig;
-    ++ usersOSConfig;
+    # Sops configuration
+    (if darwin then inputs.sops-nix.darwinModules.sops else inputs.sops-nix.nixosModules.sops)
+  ]
+  # User OS configurations (reversed to maintain priority)
+  # ++ lib.lists.reverseList usersOSConfig;
+  ++ usersOSConfig;
 }
