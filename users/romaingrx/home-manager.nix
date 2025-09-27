@@ -1,4 +1,5 @@
-{ pkgs, inputs, ... }: {
+{ pkgs, inputs, ... }:
+{
   imports = [
     ../../modules/common
     ./secrets.nix
@@ -19,7 +20,8 @@
       development.enable = true;
       productivity.enable = true;
       extraPackages = with pkgs; [
-        inputs.nixvim.packages.${system}.default
+        # inputs.nixvim.packages.${system}.default
+        neovim
         ollama
         tor
         mitmproxy

@@ -14,10 +14,11 @@
       productivity.enable = true;
       media.enable = true;
       extraPackages = with pkgs; [
-        inputs.nixvim.packages.${system}.default
+        # inputs.nixvim.packages.${system}.default
         openbabel
         zoom-us
         ansible
+        neovim
       ];
     };
 

@@ -8,8 +8,4 @@
     gh
     raycast
   ];
-
-  environment.shellAliases = {
-    nixvim = "nix run ~/.config/nix/nixvim#default";
-  };
 }
