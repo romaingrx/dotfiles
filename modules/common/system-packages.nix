@@ -55,6 +55,5 @@ in
         cfg.extraPackages
       ];
 
-    home.shellAliases = lib.mkIf cfg.enable { nixvim = "nix run ~/.config/nix/nixvim#default"; };
   };
 }
