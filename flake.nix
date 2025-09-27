@@ -16,10 +16,10 @@
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    # nixvim = {
-    #   url = "github:romaingrx/nixvim";
-    #   inputs.nixpkgs.follows = "nixpkgs";
-    # };
+    nixvim = {
+      url = ./modules/nixvim;
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     fenix = {
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -37,7 +37,7 @@
       nix-darwin,
       home-manager,
       sops-nix,
-      # nixvim,
+      nixvim,
       fenix,
       pre-commit-hooks,
     }:
