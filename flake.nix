@@ -17,7 +17,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nixvim = {
-      url = ./modules/nixvim;
+      url = "path:./modules/nixvim";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     fenix = {

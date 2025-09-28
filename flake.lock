@@ -227,11 +227,11 @@
         "nixvim": "nixvim_2"
       },
       "locked": {
-        "path": "modules/nixvim",
+        "path": "./modules/nixvim",
         "type": "path"
       },
       "original": {
-        "path": "modules/nixvim",
+        "path": "./modules/nixvim",
         "type": "path"
       },
       "parent": []
