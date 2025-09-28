@@ -60,6 +60,7 @@
 
     in
     {
+      nix.extraOptions = "allow-dirty-locks";
 
       # Formatter configuration - matches CI workflow (.github/workflows/nixfmt.yml)
       formatter = {
