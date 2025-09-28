@@ -34,13 +34,15 @@
   # };
 
   # Enable display manager
-  services.xserver = {
-    enable = true;
+  services = {
     displayManager = {
       sddm = {
         enable = true;
         wayland.enable = true;
       };
+    };
+    xserver = {
+      enable = true;
     };
   };
 
@@ -66,7 +68,14 @@
   security.pam.services.swaylock = { };
   xdg.portal = {
     enable = true;
-    extraPortals = [ pkgs.xdg-desktop-portal-hyprland ];
+    config.common.default = [
+      "wlr"
+      "gtk"
+    ];
+    extraPortals = [
+      pkgs.xdg-desktop-portal-wlr
+      pkgs.xdg-desktop-portal-gtk
+    ];
   };
 
   # Enable sound

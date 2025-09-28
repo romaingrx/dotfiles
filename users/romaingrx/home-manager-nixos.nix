@@ -73,7 +73,7 @@ lib.mkMerge [
     ];
 
     # TODO: Fix this, it's not clean
-    programs.zsh.initExtra = ''
+    programs.zsh.initContent = ''
       # Script to set HYPRLAND_INSTANCE_SIGNATURE for hyprctl
         # Function to automatically set HYPRLAND_INSTANCE_SIGNATURE for hyprctl
         # Check if HYPRLAND_INSTANCE_SIGNATURE is already set

@@ -1,13 +1,14 @@
 { pkgs, ... }:
 {
   enable = true;
-  forwardAgent = true;
   package = pkgs.openssh;
-  addKeysToAgent = "yes";
+  enableDefaultConfig = true;
   matchBlocks = {
     "github.com" = {
       user = "git";
       identityFile = "~/.ssh/github";
+      addKeysToAgent = "yes";
+      forwardAgent = true;
     };
   };
   extraConfig = ''
@@ -18,7 +19,6 @@
   + pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
     IgnoreUnknown UseKeychain
     AddKeysToAgent yes
-      UseKeychain yes
     UseKeychain yes
   '';
 }
