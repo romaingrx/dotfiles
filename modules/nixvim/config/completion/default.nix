@@ -1,4 +1,5 @@
-{ lib, config, ... }: {
+{ lib, config, ... }:
+{
   imports = [
     ./cmp.nix
     ./codeium.nix

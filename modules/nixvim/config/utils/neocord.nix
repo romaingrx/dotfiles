@@ -1,5 +1,8 @@
-{ lib, config, ... }: {
-  options = { neocord.enable = lib.mkEnableOption "Enable neocord module"; };
+{ lib, config, ... }:
+{
+  options = {
+    neocord.enable = lib.mkEnableOption "Enable neocord module";
+  };
   config = lib.mkIf config.neocord.enable {
     plugins.neocord = {
       enable = true;
@@ -10,8 +13,7 @@
         debounce_timeout = 10;
         editing_text = "Editing...";
         enable_line_number = true;
-        logo =
-          "https://repository-images.githubusercontent.com/325421844/ecb73f47-cb89-4ee0-a0fd-9743c2f3569a";
+        logo = "https://repository-images.githubusercontent.com/325421844/ecb73f47-cb89-4ee0-a0fd-9743c2f3569a";
         logo_tooltip = "NixVim";
         file_assets = null;
         file_explorer_text = "Browsing...";

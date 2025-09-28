@@ -1,15 +1,22 @@
-{ lib, config, ... }: {
-  options = { oil.enable = lib.mkEnableOption "Enable oil module"; };
+{ lib, config, ... }:
+{
+  options = {
+    oil.enable = lib.mkEnableOption "Enable oil module";
+  };
   config = lib.mkIf config.oil.enable {
     plugins.oil = {
       enable = true;
       settings = {
         deleteToTrash = true;
         useDefaultKeymaps = true;
-        viewOptions = { showHidden = true; };
+        viewOptions = {
+          showHidden = true;
+        };
         preview = {
           border = "rounded";
-          win_options = { winblend = 0; };
+          win_options = {
+            winblend = 0;
+          };
 
         };
 
@@ -17,9 +24,10 @@
           padding = 2;
           maxWidth = 0; # ''math.ceil(vim.o.lines * 0.8 - 4)'';
           maxHeight = 0; # ''math.ceil(vim.o.columns * 0.8)'';
-          border =
-            "rounded"; # 'single' | 'double' | 'shadow' | 'curved' | ... other options supported by win open
-          winOptions = { winblend = 0; };
+          border = "rounded"; # 'single' | 'double' | 'shadow' | 'curved' | ... other options supported by win open
+          winOptions = {
+            winblend = 0;
+          };
         };
         keymaps = {
           "g?" = "actions.show_help";
@@ -41,14 +49,16 @@
         };
       };
     };
-    keymaps = [{
-      mode = "n";
-      key = "<leader>o";
-      action = ":Oil --float<CR>";
-      options = {
-        desc = "Open parent directory";
-        silent = true;
-      };
-    }];
+    keymaps = [
+      {
+        mode = "n";
+        key = "<leader>o";
+        action = ":Oil --float<CR>";
+        options = {
+          desc = "Open parent directory";
+          silent = true;
+        };
+      }
+    ];
   };
 }

@@ -1,4 +1,10 @@
-{ lib, config, pkgs, ... }: {
+{
+  lib,
+  config,
+  pkgs,
+  ...
+}:
+{
   options = {
     dressing-nvim.enable = lib.mkEnableOption "Enable dressing-nvim module";
   };

@@ -1,5 +1,13 @@
-{ lib, config, pkgs, ... }: {
-  options = { nvterm.enable = lib.mkEnableOption "Enable nvterm module"; };
+{
+  lib,
+  config,
+  pkgs,
+  ...
+}:
+{
+  options = {
+    nvterm.enable = lib.mkEnableOption "Enable nvterm module";
+  };
   config = lib.mkIf config.nvterm.enable {
     extraPlugins = [ pkgs.vimPlugins.nvterm ];
     extraConfigLua = ''

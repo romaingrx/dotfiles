@@ -1,9 +1,14 @@
-{ lib, config, ... }: {
-  options = { trouble.enable = lib.mkEnableOption "Enable trouble module"; };
+{ lib, config, ... }:
+{
+  options = {
+    trouble.enable = lib.mkEnableOption "Enable trouble module";
+  };
   config = lib.mkIf config.trouble.enable {
     plugins.trouble = {
       enable = true;
-      settings = { auto_close = true; };
+      settings = {
+        auto_close = true;
+      };
     };
     # TODO: Add keybinds to close trouble (q would be nice), rn I need to use :x to close it...
     keymaps = [

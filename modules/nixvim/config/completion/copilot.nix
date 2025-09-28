@@ -1,5 +1,13 @@
-{ lib, config, pkgs, ... }: {
-  options = { copilot.enable = lib.mkEnableOption "Enable copilot module"; };
+{
+  lib,
+  config,
+  pkgs,
+  ...
+}:
+{
+  options = {
+    copilot.enable = lib.mkEnableOption "Enable copilot module";
+  };
   config = lib.mkIf config.copilot.enable {
     plugins.copilot-lua = {
       enable = true;

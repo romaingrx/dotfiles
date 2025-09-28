@@ -1,4 +1,5 @@
-{ lib, config, ... }: {
+{ lib, config, ... }:
+{
   imports = [
     ./better-escape.nix
     ./cloak.nix
@@ -25,7 +26,9 @@
     ./wilder.nix
   ];
 
-  options = { utils.enable = lib.mkEnableOption "Enable utils module"; };
+  options = {
+    utils.enable = lib.mkEnableOption "Enable utils module";
+  };
   config = lib.mkIf config.utils.enable {
     better-escape.enable = lib.mkDefault true;
     cloak.enable = lib.mkDefault true;
@@ -41,7 +44,7 @@
     oil.enable = lib.mkDefault true;
     persistence.enable = lib.mkDefault true;
     plenary.enable = lib.mkDefault true;
-    project-nvim.enable = lib.mkDefault true;
+    project-nvim.enable = lib.mkDefault false;
     sidebar.enable = lib.mkDefault false;
     tmux-navigator.enable = lib.mkDefault true;
     todo-comments.enable = lib.mkDefault true;

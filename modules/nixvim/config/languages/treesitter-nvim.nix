@@ -1,4 +1,5 @@
-{ lib, config, ... }: {
+{ lib, config, ... }:
+{
   options = {
     treesitter-nvim.enable = lib.mkEnableOption "Enable treesitter-nvim module";
   };
@@ -6,10 +7,18 @@
     plugins.treesitter = {
       enable = true;
       settings = {
-        highlight = { enable = true; };
-        indent = { enable = true; };
-        autopairs = { enable = true; };
-        folding = { enable = true; };
+        highlight = {
+          enable = true;
+        };
+        indent = {
+          enable = true;
+        };
+        autopairs = {
+          enable = true;
+        };
+        folding = {
+          enable = true;
+        };
         ensure_installed = [
           "bash"
           "c"
@@ -90,14 +99,22 @@
       };
       swap = {
         enable = true;
-        swapNext = { "<leader>a" = "@parameters.inner"; };
-        swapPrevious = { "<leader>A" = "@parameter.outer"; };
+        swapNext = {
+          "<leader>a" = "@parameters.inner";
+        };
+        swapPrevious = {
+          "<leader>A" = "@parameter.outer";
+        };
       };
     };
 
-    plugins.ts-autotag = { enable = true; };
+    plugins.ts-autotag = {
+      enable = true;
+    };
 
-    plugins.treesitter-context = { enable = true; };
+    plugins.treesitter-context = {
+      enable = true;
+    };
 
     plugins.ts-context-commentstring = {
       enable = true;

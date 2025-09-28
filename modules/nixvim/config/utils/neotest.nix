@@ -1,6 +1,14 @@
-{ lib, config, pkgs, ... }: {
+{
+  lib,
+  config,
+  pkgs,
+  ...
+}:
+{
   # TODO: Refactor this as neotest is supported on nixvim now
-  options = { neotest.enable = lib.mkEnableOption "Enable neotest module"; };
+  options = {
+    neotest.enable = lib.mkEnableOption "Enable neotest module";
+  };
   config = lib.mkIf config.neotest.enable {
     plugins = {
       neotest = {
@@ -16,11 +24,16 @@
             enabled = true;
             open_on_run = true;
           };
-          summary = { enabled = true; };
+          summary = {
+            enabled = true;
+          };
         };
       };
     };
-    extraPlugins = with pkgs.vimPlugins; [ FixCursorHold-nvim nvim-nio ];
+    extraPlugins = with pkgs.vimPlugins; [
+      FixCursorHold-nvim
+      nvim-nio
+    ];
     keymaps = [
       {
         mode = "n";
@@ -70,8 +83,7 @@
       {
         mode = "n";
         key = "<leader>to";
-        action =
-          "<cmd>lua require('neotest').output.open{ enter = true, auto_close = true }<CR>";
+        action = "<cmd>lua require('neotest').output.open{ enter = true, auto_close = true }<CR>";
         options = {
           desc = "Show Output";
           silent = true;

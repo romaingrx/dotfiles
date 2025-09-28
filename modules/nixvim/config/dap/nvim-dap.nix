@@ -1,4 +1,5 @@
-{ lib, config, ... }: {
+{ lib, config, ... }:
+{
   options = {
     nvim-dap.enable = lib.mkEnableOption "Enable Debug Adapter Protocol module";
   };
@@ -21,28 +22,40 @@
           };
         };
         configurations = {
-          java = [{
-            type = "java";
-            request = "launch";
-            name = "Debug (Attach) - Remote";
-            hostName = "127.0.0.1";
-            port = 5005;
-          }];
+          java = [
+            {
+              type = "java";
+              request = "launch";
+              name = "Debug (Attach) - Remote";
+              hostName = "127.0.0.1";
+              port = 5005;
+            }
+          ];
         };
       };
-      dap-virtual-text = { enable = true; };
+      dap-virtual-text = {
+        enable = true;
+      };
       dap-ui = {
         enable = true;
-        settings = { floating.mappings = { close = [ "<ESC>" "q" ]; }; };
+        settings = {
+          floating.mappings = {
+            close = [
+              "<ESC>"
+              "q"
+            ];
+          };
+        };
       };
-      dap-python = { enable = true; };
+      dap-python = {
+        enable = true;
+      };
     };
     keymaps = [
       {
         mode = "n";
         key = "<leader>dB";
-        action =
-          "\n        <cmd>lua require('dap').set_breakpoint(vim.fn.input('Breakpoint condition: '))<cr>\n      ";
+        action = "\n        <cmd>lua require('dap').set_breakpoint(vim.fn.input('Breakpoint condition: '))<cr>\n      ";
         options = {
           silent = true;
           desc = "Breakpoint Condition";
@@ -202,7 +215,10 @@
         };
       }
       {
-        mode = [ "n" "v" ];
+        mode = [
+          "n"
+          "v"
+        ];
         key = "<leader>de";
         action = "<cmd>lua require('dapui').eval()<cr>";
         options = {

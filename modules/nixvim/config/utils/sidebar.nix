@@ -1,19 +1,26 @@
-{ lib, config, pkgs, ... }: {
-  options = { sidebar.enable = lib.mkEnableOption "Enable sidebar module"; };
+{
+  lib,
+  config,
+  pkgs,
+  ...
+}:
+{
+  options = {
+    sidebar.enable = lib.mkEnableOption "Enable sidebar module";
+  };
   config = lib.mkIf config.sidebar.enable {
-    extraPlugins = with pkgs.vimUtils;
-      [
-        (buildVimPlugin {
-          pname = "sidebar.nvim";
-          version = "2024-02-07";
-          src = pkgs.fetchFromGitHub {
-            owner = "sidebar-nvim";
-            repo = "sidebar.nvim";
-            rev = "5695712eef6288fff667343c4ae77c54911bdb1b";
-            sha256 = "1p12189367x0x26cys9wxipzwr3i0bmz4lb0s79ki0a49d6zja2c";
-          };
-        })
-      ];
+    extraPlugins = with pkgs.vimUtils; [
+      (buildVimPlugin {
+        pname = "sidebar.nvim";
+        version = "2024-02-07";
+        src = pkgs.fetchFromGitHub {
+          owner = "sidebar-nvim";
+          repo = "sidebar.nvim";
+          rev = "5695712eef6288fff667343c4ae77c54911bdb1b";
+          sha256 = "1p12189367x0x26cys9wxipzwr3i0bmz4lb0s79ki0a49d6zja2c";
+        };
+      })
+    ];
     extraConfigLua = ''
           local sidebar = require("sidebar-nvim")
           sidebar.setup({
@@ -44,14 +51,16 @@
             },
     '';
 
-    keymaps = [{
-      mode = "n";
-      key = "<leader>e";
-      action = ":SidebarNvimToggle<CR>";
-      options = {
-        desc = "Toggle Explorer";
-        silent = true;
-      };
-    }];
+    keymaps = [
+      {
+        mode = "n";
+        key = "<leader>e";
+        action = ":SidebarNvimToggle<CR>";
+        options = {
+          desc = "Toggle Explorer";
+          silent = true;
+        };
+      }
+    ];
   };
 }

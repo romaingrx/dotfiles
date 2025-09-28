@@ -1,5 +1,8 @@
-{ lib, config, ... }: {
-  options = { mini.enable = lib.mkEnableOption "Enable mini module"; };
+{ lib, config, ... }:
+{
+  options = {
+    mini.enable = lib.mkEnableOption "Enable mini module";
+  };
   config = lib.mkIf config.mini.enable {
     plugins.mini = {
       enable = true;
@@ -11,7 +14,11 @@
             '';
           };
         };
-        cursorword = { opts = { delay = 100; }; };
+        cursorword = {
+          opts = {
+            delay = 100;
+          };
+        };
       };
     };
   };

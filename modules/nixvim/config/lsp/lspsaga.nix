@@ -1,12 +1,16 @@
-{ lib, config, ... }: {
-  options = { lspsaga.enable = lib.mkEnableOption "Enable lspsaga module"; };
+{ lib, config, ... }:
+{
+  options = {
+    lspsaga.enable = lib.mkEnableOption "Enable lspsaga module";
+  };
   config = lib.mkIf config.lspsaga.enable {
     plugins.lspsaga = {
       enable = true;
-      beacon = { enable = true; };
+      beacon = {
+        enable = true;
+      };
       ui = {
-        border =
-          "rounded"; # One of none, single, double, rounded, solid, shadow
+        border = "rounded"; # One of none, single, double, rounded, solid, shadow
         codeAction = "💡"; # Can be any symbol you want 💡
       };
       hover = {
@@ -28,7 +32,10 @@
         numShortcut = true;
         keys = {
           exec = "<CR>";
-          quit = [ "<Esc>" "q" ];
+          quit = [
+            "<Esc>"
+            "q"
+          ];
         };
       };
       lightbulb = {
@@ -36,12 +43,17 @@
         sign = false;
         virtualText = true;
       };
-      implement = { enable = false; };
+      implement = {
+        enable = false;
+      };
       rename = {
         autoSave = false;
         keys = {
           exec = "<CR>";
-          quit = [ "<C-k>" "<Esc>" ];
+          quit = [
+            "<C-k>"
+            "<Esc>"
+          ];
           select = "x";
         };
       };

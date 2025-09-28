@@ -1,5 +1,8 @@
-{ lib, config, ... }: {
-  options = { lualine.enable = lib.mkEnableOption "Enable lualine module"; };
+{ lib, config, ... }:
+{
+  options = {
+    lualine.enable = lib.mkEnableOption "Enable lualine module";
+  };
   config = lib.mkIf config.lualine.enable {
     plugins.lualine = {
       enable = true;
@@ -19,7 +22,12 @@
         };
         sections = {
           lualine_a = [ "mode" ];
-          lualine_b = [ "branch" "" "diff" "diagnostics" ];
+          lualine_b = [
+            "branch"
+            ""
+            "diff"
+            "diagnostics"
+          ];
           lualine_c = [ "filename" ];
           lualine_x = [ "filetype" ];
           lualine_y = [ "progress" ];

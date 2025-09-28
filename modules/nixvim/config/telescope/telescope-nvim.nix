@@ -1,4 +1,5 @@
-{ lib, config, ... }: {
+{ lib, config, ... }:
+{
   options = {
     telescope-nvim.enable = lib.mkEnableOption "Enable telescope-nvim module";
   };
@@ -17,7 +18,14 @@
         };
         ui-select = {
           enable = true;
-          settings = { specific_opts = { codeactions = true; }; };
+          settings = {
+            specific_opts = {
+              codeactions = true;
+            };
+          };
+        };
+        project = {
+          enable = true;
         };
       };
       # If you'd prefer Telescope not to enter a normal-like mode when hitting escape (and instead exiting), you can map <Esc> to do so via:
@@ -35,7 +43,9 @@
           };
         };
         pickers = {
-          colorscheme = { enable_preview = true; };
+          colorscheme = {
+            enable_preview = true;
+          };
           # find_files = {
           #   theme = "ivy";
           # };

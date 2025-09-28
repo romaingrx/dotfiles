@@ -1,4 +1,5 @@
-{ lib, config, ... }: {
+{ lib, config, ... }:
+{
   options = {
     catppuccin.enable = lib.mkEnableOption "Enable catppuccin module";
   };
@@ -11,8 +12,7 @@
             light = "macchiato";
             dark = "mocha";
           };
-          flavour =
-            "mocha"; # "latte", "mocha", "frappe", "macchiato" or raw lua code
+          flavour = "mocha"; # "latte", "mocha", "frappe", "macchiato" or raw lua code
           disable_bold = false;
           disable_italic = false;
           disable_underline = false;
@@ -26,7 +26,9 @@
             harpoon = true;
             gitsigns = true;
             which_key = true;
-            illuminate = { enabled = true; };
+            illuminate = {
+              enabled = true;
+            };
             treesitter = true;
             treesitter_context = true;
             telescope.enabled = true;
@@ -34,7 +36,9 @@
             mini.enabled = true;
             native_lsp = {
               enabled = true;
-              inlay_hints = { background = true; };
+              inlay_hints = {
+                background = true;
+              };
               underlines = {
                 errors = [ "underline" ];
                 hints = [ "underline" ];

@@ -1,4 +1,5 @@
-{ lib, config, ... }: {
+{ lib, config, ... }:
+{
   imports = [
     ./alpha.nix
     ./barbecue.nix
@@ -10,7 +11,9 @@
     ./web-devicons.nix
   ];
 
-  options = { ui.enable = lib.mkEnableOption "Enable ui module"; };
+  options = {
+    ui.enable = lib.mkEnableOption "Enable ui module";
+  };
   config = lib.mkIf config.ui.enable {
     alpha.enable = lib.mkDefault true;
     barbecue.enable = lib.mkDefault true;

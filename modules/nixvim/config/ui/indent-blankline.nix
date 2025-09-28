@@ -1,7 +1,7 @@
-{ lib, config, ... }: {
+{ lib, config, ... }:
+{
   options = {
-    indent-blankline.enable =
-      lib.mkEnableOption "Enable indent-blankline module";
+    indent-blankline.enable = lib.mkEnableOption "Enable indent-blankline module";
   };
   config = lib.mkIf config.indent-blankline.enable {
 
@@ -17,7 +17,10 @@
             show_start = true;
           };
           exclude = {
-            buftypes = [ "terminal" "nofile" ];
+            buftypes = [
+              "terminal"
+              "nofile"
+            ];
             filetypes = [
               "help"
               "alpha"

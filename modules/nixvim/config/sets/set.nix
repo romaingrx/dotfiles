@@ -1,5 +1,8 @@
-{ lib, config, ... }: {
-  options = { set.enable = lib.mkEnableOption "Enable set module"; };
+{ lib, config, ... }:
+{
+  options = {
+    set.enable = lib.mkEnableOption "Enable set module";
+  };
   config = lib.mkIf config.set.enable {
     opts = {
       # Enable relative line numbers
@@ -43,7 +46,11 @@
       updatetime = 50; # faster completion (4000ms default)
 
       # Set completeopt to have a better completion experience
-      completeopt = [ "menuone" "noselect" "noinsert" ]; # mostly just for cmp
+      completeopt = [
+        "menuone"
+        "noselect"
+        "noinsert"
+      ]; # mostly just for cmp
 
       # Enable persistent undo history
       swapfile = false;
@@ -75,7 +82,7 @@
       # Place a column line
       colorcolumn = "80";
 
-      # Reduce which-key timeout 
+      # Reduce which-key timeout
       timeoutlen = 200;
 
       # Set encoding type
@@ -94,8 +101,7 @@
 
       # Enable chars list
       list = true; # Show invisible characters (tabs, eol, ...)
-      listchars =
-        "eol:↲,tab:|->,lead:·,space: ,trail:•,extends:→,precedes:←,nbsp:␣";
+      listchars = "eol:↲,tab:|->,lead:·,space: ,trail:•,extends:→,precedes:←,nbsp:␣";
 
       # More space in the neovim command line for displaying messages
       cmdheight = 2;
@@ -111,8 +117,7 @@
 
       laststatus = 3; # (https://neovim.io/doc/user/options.html#'laststatus')
 
-      inccommand =
-        "split"; # (https://neovim.io/doc/user/options.html#'inccommand')
+      inccommand = "split"; # (https://neovim.io/doc/user/options.html#'inccommand')
     };
 
     extraConfigLua = ''
