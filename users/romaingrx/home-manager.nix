@@ -2,6 +2,7 @@
 {
   imports = [
     ../../modules/common
+    ../../modules/nixvim.nix
     ./secrets.nix
     ./gpg.nix
     ./home-manager-nixos.nix
@@ -20,7 +21,6 @@
       development.enable = true;
       productivity.enable = true;
       extraPackages = with pkgs; [
-        inputs.nixvim.packages.${system}.default
         ollama
         tor
         mitmproxy
@@ -40,6 +40,13 @@
     };
 
     # External packages (Homebrew) now configured at system level via modules/darwin/
+  };
+
+  # Neve (Nixvim-based Neovim configuration)
+  programs.neve = {
+    enable = true;
+    # All features enabled by default, customize as needed
+    # filetrees.enable = false;  # Example: disable file trees
   };
 
   # Compatibility configuration for original git.nix
