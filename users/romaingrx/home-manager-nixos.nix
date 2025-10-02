@@ -70,6 +70,8 @@ lib.mkMerge [
       btop
       _1password-gui
       firefox
+      cliphist
+      wl-clipboard
     ];
 
     # TODO: Fix this, it's not clean
@@ -201,6 +203,22 @@ lib.mkMerge [
       extraConfig = ''
         source = ~/.config/hypr/hyprland-core.conf
       '';
+    };
+
+    # Clipboard history service
+    systemd.user.services.cliphist = {
+      Unit = {
+        Description = "Clipboard history service";
+        After = [ "graphical-session-pre.target" ];
+        PartOf = [ "graphical-session.target" ];
+      };
+      Service = {
+        ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist store";
+        Restart = "always";
+      };
+      Install = {
+        WantedBy = [ "graphical-session.target" ];
+      };
     };
   })
 ]

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+# Script to show clipboard history using rofi and cliphist
+
+# Check if cliphist has any entries
+if ! cliphist list >/dev/null 2>&1; then
+    notify-send "Clipboard History" "No clipboard history available" -t 2000
+    exit 1
+fi
+
+# Get clipboard history from cliphist, format it for rofi
+# Show preview of clipboard content, truncate long lines
+selected=$(cliphist list | while IFS=$'\t' read -r id content; do
+    # Truncate content for display, replace newlines with spaces
+    preview=$(echo "$content" | tr '\n' ' ' | cut -c1-100)
+    if [ ${#content} -gt 100 ]; then
+        preview="$preview..."
+    fi
+    printf "%s\t%s\n" "$id" "$preview"
+done | rofi -dmenu -i -p "Clipboard History" -theme-str 'window { width: 1200px; } listview { lines: 10; }')
+
+# If something was selected, decode and copy it back to clipboard
+if [ -n "$selected" ]; then
+    # Extract the ID from the selected line (first field before tab)
+    id=$(echo "$selected" | cut -d'	' -f1)
+    # Decode and copy to clipboard
+    if cliphist decode "$id" | wl-copy; then
+        notify-send "Clipboard" "Selected item copied to clipboard" -t 1000
+    else
+        notify-send "Clipboard" "Failed to copy selected item" -t 2000
+    fi
+fi
