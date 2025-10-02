@@ -38,6 +38,10 @@
     nccl
   ];
 
+  services.tailscale = {
+    enable = true;
+  };
+
   networking = {
     firewall.enable = false;
     hostName = "carl";
