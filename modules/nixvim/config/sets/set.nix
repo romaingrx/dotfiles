@@ -79,8 +79,11 @@
       # Always keep 8 lines above/below cursor unless at start/end of file
       scrolloff = 8;
 
-      # Place a column line
-      colorcolumn = "80";
+      # Remove color column to allow full width usage
+      # colorcolumn = "80";
+
+      # Disable text width limit to allow full width usage
+      textwidth = 0;
 
       # Reduce which-key timeout
       timeoutlen = 200;
@@ -124,6 +127,11 @@
       local opt = vim.opt
       local g = vim.g
       local o = vim.o
+
+      -- Hide scrollbars in GUI clients
+      opt.guioptions:remove("r")  -- Remove right scrollbar
+      opt.guioptions:remove("L")  -- Remove left scrollbar
+
         -- Neovide
       if g.neovide then
         g.neovide_fullscreen = false
