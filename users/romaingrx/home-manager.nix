@@ -46,7 +46,7 @@
   programs.neve = {
     enable = true;
     # All features enabled by default, customize as needed
-    # filetrees.enable = false;  # Example: disable file trees
+    filetrees.enable = true; # Explicitly enable file trees
   };
 
   # Compatibility configuration for original git.nix
