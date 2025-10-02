@@ -10,7 +10,7 @@
         c = [ "cpplint" ];
         cpp = [ "cpplint" ];
         go = [ "golangci-lint" ];
-        nix = [ "statix" ];
+        # nix = [ "statix" ];  # Disabled due to statix running on all file types
         lua = [ "selene" ];
         python = [ "flake8" ];
         javascript = [ "eslint_d" ];

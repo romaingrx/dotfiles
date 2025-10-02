@@ -27,15 +27,15 @@
       sources = {
         code_actions = {
           gitsigns.enable = true;
-          statix.enable = true;
+          # statix.enable = true;  # Disabled due to statix running on all file types
         };
         diagnostics = {
           checkstyle = {
             enable = true;
           };
-          statix = {
-            enable = true;
-          };
+          # statix = {
+          #   enable = true;
+          # };
         };
         formatting = {
           alejandra = {
