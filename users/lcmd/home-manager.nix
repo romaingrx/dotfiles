@@ -46,7 +46,7 @@
 
   # Compatibility configuration for original git.nix
   home.github.gpg = {
-    key = "44FDF809CFE3A012";
+    key = "383E2222E1BEFDAD";
     email = "48758915+romaingrx@users.noreply.github.com";
   };
 }
