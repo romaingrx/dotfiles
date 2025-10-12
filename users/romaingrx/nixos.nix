@@ -57,7 +57,7 @@
     swayidle
     wofi # application launcher
     waybar # status bar
-    dunst # notification daemon
+    swaynotificationcenter
     libnotify
     brightnessctl # brightness control
     pamixer # pulseaudio control

@@ -47,8 +47,10 @@ lib.mkMerge [
         GDK_BACKEND = "wayland";
         SDL_VIDEODRIVER = "wayland";
         CLUTTER_BACKEND = "wayland";
+        # Preferences
         TERMINAL = "alacritty";
         BROWSER = "firefox";
+        XDG_PICTURES_DIR = "~/Pictures/";
       };
       sessionPath = [ "/home/romaingrx/.local/romaingrx-bin" ];
     };
@@ -59,19 +61,20 @@ lib.mkMerge [
       swayosd
       hyprpaper
       rofi
-      code-cursor
       hypridle
       hyprlock
       hyprland
+      hyprshot
       nautilus
+      cliphist
+      wl-clipboard
       spotify
+      code-cursor
       signal-desktop
       lazydocker
       btop
       _1password-gui
       firefox
-      cliphist
-      wl-clipboard
     ];
 
     # TODO: Fix this, it's not clean
@@ -198,6 +201,7 @@ lib.mkMerge [
         background-color: transparent;
       }
     '';
+
     wayland.windowManager.hyprland = {
       enable = true;
       extraConfig = ''

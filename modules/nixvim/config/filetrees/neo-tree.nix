@@ -8,7 +8,7 @@
     plugins.neo-tree = {
       enable = true;
       enableDiagnostics = true;
-      enableGitStatus = true;
+      enableGitStatus = false;
       enableModifiedMarkers = true;
       enableRefreshOnWrite = true;
       closeIfLastWindow = true;
