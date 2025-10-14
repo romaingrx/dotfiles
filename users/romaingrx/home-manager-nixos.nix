@@ -50,7 +50,7 @@ lib.mkMerge [
         # Preferences
         TERMINAL = "alacritty";
         BROWSER = "firefox";
-        XDG_PICTURES_DIR = "~/Pictures/";
+        XDG_PICTURES_DIR = "/home/romaingrx/Pictures";
       };
       sessionPath = [ "/home/romaingrx/.local/romaingrx-bin" ];
     };
@@ -68,6 +68,7 @@ lib.mkMerge [
       nautilus
       cliphist
       wl-clipboard
+      bibata-cursors
       spotify
       code-cursor
       signal-desktop
@@ -75,7 +76,15 @@ lib.mkMerge [
       btop
       _1password-gui
       firefox
+      thunderbird-latest
     ];
+
+    # home.pointerCursor = {
+    #   package = pkgs.bibata-cursors;
+    #   name = "Bibata-Modern-Classic";
+    #   size = 24;
+    #   gtk.enable = true;
+    # };
 
     # TODO: Fix this, it's not clean
     programs.zsh.initContent = ''
