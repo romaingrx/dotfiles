@@ -7,8 +7,8 @@
     plugins.tmux-navigator = {
       enable = true;
       settings = {
-        disable_when_zoomed = true;
-        no_mappings = false;
+        disable_when_zoomed = 1;
+        no_mappings = 0;
       };
     };
 

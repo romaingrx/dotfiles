@@ -1,6 +1,6 @@
 { pkgs, ... }:
 let
-  sbarLua = pkgs.stdenv.mkDerivation rec {
+  sbarLua = pkgs.stdenv.mkDerivation {
     pname = "sketchybar-lua";
     version = "0.1.0";
 
@@ -52,7 +52,7 @@ let
   '';
 in
 {
-  enable = true;
+  enable = false; # Temporarily disabled due to SDK issues
   package = pkgs.sketchybar;
   config = builtins.replaceStrings [ "{{ CONFIG_DIR_DEFINITION }}" ] [ "${configDir}" ] (
     builtins.readFile ./sketchybarrc
