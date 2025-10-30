@@ -1,8 +1,9 @@
 { pkgs, ... }:
 let
-  sbarLua = pkgs.stdenv.mkDerivation {
-    pname = "sketchybar-lua";
-    version = "0.1.0";
+  sbarLua = pkgs.lua54Packages.buildLuaPackage {
+    name = "sbar";
+    pname = "sbar";
+    version = "1";
 
     src = pkgs.fetchFromGitHub {
       owner = "FelixKratz";
@@ -11,31 +12,19 @@ let
       sha256 = "sha256-F0UfNxHM389GhiPQ6/GFbeKQq5EvpiqQdvyf7ygzkPg=";
     };
 
-    nativeBuildInputs = [ pkgs.gcc ];
-    buildInputs = with pkgs; [
-      lua
-      readline
-      darwin.apple_sdk.frameworks.CoreFoundation
-    ];
-
-    preBuildPhase = ''
-      substituteInPlace makefile \
-        --replace "cd lua-5.4.7 && make" "echo 'Skipping lua build...'" \
-        --replace "bin/liblua.a" ""
-    '';
-
-    buildPhase = ''
-      mkdir -p bin
-      $CC -shared -o libsketchybar.so src/*.c \
-        -I${pkgs.lua}/include \
-        -L${pkgs.lua}/lib \
-        -llua \
-        -framework CoreFoundation
-    '';
+    nativeBuildInputs =
+      with pkgs;
+      [
+        gcc
+        readline
+        clang
+        stdenv
+      ]
+      ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [ pkgs.apple-sdk ];
 
     installPhase = ''
-      mkdir -p $out/lib
-      cp libsketchybar.so $out/lib/
+      mkdir -p $out/lib/lua/5.4
+      cp bin/sketchybar.so $out/lib/lua/5.4/
     '';
   };
 
@@ -48,17 +37,26 @@ let
 
     # Create lib directory and link the Lua module
     mkdir -p $out/lib
-    ln -s ${sbarLua}/lib/libsketchybar.so $out/lib/sketchybar.so
+    ln -s ${sbarLua}/lib/lua/5.4/sketchybar.so $out/lib/sketchybar.so
+  '';
+
+  # Create the sketchybar config script using lua5_4
+  sketchybarConfig = pkgs.writeScriptBin "sketchybarrc" ''
+    #!${pkgs.lua5_4}/bin/lua
+    package.path = "${configDir}/?.lua;" .. package.path
+    package.cpath = "${configDir}/lib/?.so;" .. package.cpath
+
+    ${builtins.replaceStrings [ "{{ CONFIG_DIR_DEFINITION }}" ] [ "${configDir}" ] (
+      builtins.elemAt (builtins.split "#!/usr/bin/env lua\n" (builtins.readFile ./sketchybarrc)) 2
+    )}
   '';
 in
 {
-  enable = false; # Temporarily disabled due to SDK issues
+  enable = true;
   package = pkgs.sketchybar;
-  config = builtins.replaceStrings [ "{{ CONFIG_DIR_DEFINITION }}" ] [ "${configDir}" ] (
-    builtins.readFile ./sketchybarrc
-  );
+  config = "${sketchybarConfig}/bin/sketchybarrc";
   extraPackages = with pkgs; [
-    lua
+    lua5_4
     jq
     tree
   ];
