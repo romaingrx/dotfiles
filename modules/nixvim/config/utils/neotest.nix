@@ -27,6 +27,7 @@
           summary = {
             enabled = true;
           };
+          consumers = { };
         };
       };
     };

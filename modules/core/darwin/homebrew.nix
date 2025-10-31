@@ -1,4 +1,5 @@
-_: {
+{ ... }:
+{
   homebrew = {
     enable = true;
     global = {
@@ -19,22 +20,19 @@ _: {
     taps = [ ]; # Specify additional taps if needed
 
     casks = [
-      "firefox"
-      "cursor"
-      "duckduckgo"
-      "displaylink"
-      "spotify"
-      "docker" # Docker Desktop
       "font-fira-code-nerd-font" # Needed for alacritty
       "font-sf-pro"
       "sf-symbols"
+      "firefox"
+      "duckduckgo"
+      "displaylink"
       "wifiman"
+      "avogadro"
+      "cursor"
+      "docker" # Docker Desktop
       "airtable"
       "anytype"
-      # Work related casks
-      "avogadro"
-      "onedrive"
-      "mattermost"
+      "spotify"
     ];
     brews = [
       "watch"

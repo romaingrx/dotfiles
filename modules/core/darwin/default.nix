@@ -1,7 +1,7 @@
 { pkgs, homeDirectory, ... }:
 {
   imports = [
-    # ./homebrew.nix  # Disabled - using new structured external packages
+    ./homebrew.nix
     ./packages.nix
     ./mitmproxy.nix
   ];
