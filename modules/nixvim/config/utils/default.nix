@@ -2,12 +2,10 @@
 {
   imports = [
     ./better-escape.nix
-    ./cloak.nix
     ./colorizer.nix
     ./harpoon.nix
     ./markdown-preview.nix
     ./mini.nix
-    ./neocord.nix
     ./neotest.nix
     ./nvim-autopairs.nix
     ./nvim-surround.nix
@@ -31,12 +29,10 @@
   };
   config = lib.mkIf config.utils.enable {
     better-escape.enable = lib.mkDefault true;
-    cloak.enable = lib.mkDefault true;
     harpoon.enable = lib.mkDefault true;
     markdown-preview.enable = lib.mkDefault false;
     mini.enable = lib.mkDefault true;
-    neocord.enable = lib.mkDefault true;
-    neotest.enable = lib.mkDefault true;
+    neotest.enable = lib.mkDefault false; # Disabled due to lua module path issues
     nvim-autopairs.enable = lib.mkDefault true;
     colorizer.enable = lib.mkDefault true;
     nvim-surround.enable = lib.mkDefault true;

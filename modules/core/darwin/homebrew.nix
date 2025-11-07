@@ -29,7 +29,7 @@
       "wifiman"
       "avogadro"
       "cursor"
-      "docker" # Docker Desktop
+      "docker-desktop" # Docker Desktop (must use exact cask name)
       "airtable"
       "anytype"
       "spotify"
@@ -43,7 +43,6 @@
       # Personal brews
       "awscli"
       "yt-dlp"
-      "meetingbar"
     ];
   };
 }

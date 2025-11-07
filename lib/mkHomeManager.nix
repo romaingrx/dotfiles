@@ -113,17 +113,18 @@ let
 
 in
 {
-  imports = [
-    # Base common configuration
-    ../modules/common
+  imports =
+    [
+      # Base common configuration
+      ../modules/common
 
-    # Feature-based imports
-  ]
-  ++ lib.optionals finalFeatures.development [ ../modules/development ]
-  ++ lib.optionals finalFeatures.productivity [ ../modules/productivity ]
-  ++ lib.optionals finalFeatures.media [ ../modules/media ]
-  ++ lib.optionals finalFeatures.security [ ../modules/security ]
-  ++ extraImports;
+      # Feature-based imports
+    ]
+    ++ lib.optionals finalFeatures.development [ ../modules/development ]
+    ++ lib.optionals finalFeatures.productivity [ ../modules/productivity ]
+    ++ lib.optionals finalFeatures.media [ ../modules/media ]
+    ++ lib.optionals finalFeatures.security [ ../modules/security ]
+    ++ extraImports;
 
   # Base home configuration
   home = {
@@ -162,7 +163,11 @@ in
     (lib.mkIf finalFeatures.security {
       # Enable GPG and SSH by default
       programs.gpg.enable = lib.mkDefault true;
-      programs.ssh.enable = lib.mkDefault true;
+      programs.ssh = {
+        enable = lib.mkDefault true;
+        # Disable default config to avoid future deprecation warning
+        enableDefaultConfig = false;
+      };
     })
 
     # Platform-specific overrides

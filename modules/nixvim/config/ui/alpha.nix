@@ -7,7 +7,7 @@
     plugins.alpha = {
       enable = true;
       theme = null;
-      layout =
+      settings.layout =
         let
           padding = val: {
             type = "padding";

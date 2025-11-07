@@ -19,15 +19,8 @@
           vitest.enable = true;
           plenary.enable = true;
         };
-        settings = {
-          output = {
-            enabled = true;
-            open_on_run = true;
-          };
-          summary = {
-            enabled = true;
-          };
-        };
+        # Removed settings block - let neotest use its defaults
+        # The quickfix consumer issue is due to version mismatch
       };
     };
     extraPlugins = with pkgs.vimPlugins; [
