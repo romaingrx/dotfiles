@@ -64,7 +64,7 @@ in
         brewfile = true;
       };
       onActivation = {
-        cleanup = "zap";
+        cleanup = "none";
         autoUpdate = false;
         upgrade = false;
         extraFlags = [ "--force" ];
@@ -98,8 +98,7 @@ in
         # Development applications
         (lib.optionals cfg.homebrew.development.enable [
           "cursor"
-          "docker"
-          "anaconda"
+          # "docker"
           "displaylink"
         ])
 

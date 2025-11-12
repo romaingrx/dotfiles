@@ -4,8 +4,8 @@
     nixfmt-rfc-style
     nil # Nix LSP
     sops
-    docker
-    docker-compose
+    # docker
+    # docker-compose
     ffmpeg
     uv
     bun

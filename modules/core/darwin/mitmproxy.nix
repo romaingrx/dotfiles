@@ -96,21 +96,22 @@ in
         Label = "com.user.mitmproxy";
         ProgramArguments =
           let
-            args = [
-              "${pkgs.mitmproxy}/bin/mitmproxy"
-              "--listen-port"
-              (toString cfg.port)
-              "--set"
-              "confdir=$HOME/.mitmproxy"
-              "--mode"
-              "regular"
-              "--showhost"
-            ]
-            ++ (optionals (cfg.upstreamProxy != null) [
-              "--mode"
-              "upstream:${cfg.upstreamProxy}"
-            ])
-            ++ cfg.extraArgs;
+            args =
+              [
+                "${pkgs.mitmproxy}/bin/mitmproxy"
+                "--listen-port"
+                (toString cfg.port)
+                "--set"
+                "confdir=$HOME/.mitmproxy"
+                "--mode"
+                "regular"
+                "--showhost"
+              ]
+              ++ (optionals (cfg.upstreamProxy != null) [
+                "--mode"
+                "upstream:${cfg.upstreamProxy}"
+              ])
+              ++ cfg.extraArgs;
           in
           args;
         RunAtLoad = true;

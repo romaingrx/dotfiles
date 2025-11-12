@@ -2,7 +2,7 @@
 {
   imports = [
     ../../modules/common
-    ../../modules/nixvim.nix
+    ../../modules/nvim.nix
   ];
 
   # Enable the new configuration options
@@ -12,8 +12,8 @@
     # User packages (Home Manager)
     packages = {
       enable = true;
-      core.enable = true;
       development.enable = true; # Enable basic dev tools for lcmd
+      core.enable = true;
       productivity.enable = true;
       media.enable = true;
       extraPackages = with pkgs; [
@@ -33,15 +33,6 @@
     };
 
     # External packages (Homebrew) now configured at system level via modules/darwin/
-  };
-
-  # Neve (Nixvim-based Neovim configuration) - lighter configuration for lcmd
-  programs.neve = {
-    enable = true;
-    # Disable some features that might not be needed
-    dap.enable = false; # Disable debug adapter protocol
-    none-ls.enable = true; # Enable none-ls for basic linting/formatting
-    # Keep other features enabled for development work
   };
 
   # Compatibility configuration for original git.nix

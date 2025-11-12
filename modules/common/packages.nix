@@ -73,8 +73,8 @@ in
           nodejs
 
           # Infrastructure tools
-          docker
-          docker-compose
+          # docker
+          # docker-compose
           terraform
           awscli
           openjdk

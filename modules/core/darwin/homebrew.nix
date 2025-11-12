@@ -2,22 +2,17 @@
 {
   homebrew = {
     enable = true;
-    global = {
-      brewfile = true;
-      # The lockfiles option is removed completely as it's causing issues
-    };
+    global = { };
     onActivation = {
-      cleanup = "zap"; # Remove non declared casks
+      cleanup = "none"; # Remove non declared casks
       autoUpdate = false;
       upgrade = false;
       extraFlags = [ "--force" ];
     };
 
     # Homebrew permissions
-    masApps = {
-      "harvest" = 506189836;
-    }; # Specify Mac App Store apps here if needed
-    taps = [ ]; # Specify additional taps if needed
+    masApps = { };
+    taps = [ ];
 
     casks = [
       "font-fira-code-nerd-font" # Needed for alacritty
@@ -29,7 +24,6 @@
       "wifiman"
       "avogadro"
       "cursor"
-      "docker-desktop" # Docker Desktop (must use exact cask name)
       "airtable"
       "anytype"
       "spotify"
@@ -40,7 +34,6 @@
       "mactop"
       "lightgbm"
       "libpq"
-      # Personal brews
       "awscli"
       "yt-dlp"
     ];

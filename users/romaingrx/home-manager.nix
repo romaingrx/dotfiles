@@ -2,7 +2,7 @@
 {
   imports = [
     ../../modules/common
-    ../../modules/nixvim.nix
+    ../../modules/nvim.nix
     ./secrets.nix
     ./gpg.nix
     ./home-manager-nixos.nix
@@ -38,18 +38,8 @@
       core.enable = true;
       development.enable = true;
     };
-
-    # External packages (Homebrew) now configured at system level via modules/darwin/
   };
 
-  # Neve (Nixvim-based Neovim configuration)
-  programs.neve = {
-    enable = true;
-    # All features enabled by default, customize as needed
-    filetrees.enable = true; # Explicitly enable file trees
-  };
-
-  # Compatibility configuration for original git.nix
   home.github.gpg = {
     key = "383E2222E1BEFDAD";
     email = "48758915+romaingrx@users.noreply.github.com";

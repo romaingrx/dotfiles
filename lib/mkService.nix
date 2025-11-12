@@ -54,26 +54,28 @@ lib.mkMerge [
   # Darwin (launchd) configuration
   (lib.mkIf pkgs.stdenv.isDarwin {
     launchd.user.agents.${name} = {
-      serviceConfig = {
-        Label = "org.nixos.${name}";
-        ProgramArguments = [
-          pkgs.bash
-          "-c"
-        ]
-        ++ lib.optional (envString != "") "export ${envString}; "
-        ++ [ fullCommand ];
-        KeepAlive = keepAlive;
-        RunAtLoad = runAtLoad;
-      }
-      // lib.optionalAttrs (workingDirectory != null) {
-        WorkingDirectory = workingDirectory;
-      }
-      // lib.optionalAttrs (standardOutput != null) {
-        StandardOutPath = standardOutput;
-      }
-      // lib.optionalAttrs (standardError != null) {
-        StandardErrorPath = standardError;
-      };
+      serviceConfig =
+        {
+          Label = "org.nixos.${name}";
+          ProgramArguments =
+            [
+              pkgs.bash
+              "-c"
+            ]
+            ++ lib.optional (envString != "") "export ${envString}; "
+            ++ [ fullCommand ];
+          KeepAlive = keepAlive;
+          RunAtLoad = runAtLoad;
+        }
+        // lib.optionalAttrs (workingDirectory != null) {
+          WorkingDirectory = workingDirectory;
+        }
+        // lib.optionalAttrs (standardOutput != null) {
+          StandardOutPath = standardOutput;
+        }
+        // lib.optionalAttrs (standardError != null) {
+          StandardErrorPath = standardError;
+        };
     };
   })
 
@@ -86,24 +88,25 @@ lib.mkMerge [
         Requires = requires;
       };
 
-      Service = {
-        Type = serviceType;
-        ExecStart = fullCommand;
-        Restart = restart;
-        RestartSec = restartSec;
-        Environment = lib.mapAttrsToList (name: value: "${name}=${toString value}") environment;
-      }
-      // lib.optionalAttrs (user != null) { User = user; }
-      // lib.optionalAttrs (group != null) { Group = group; }
-      // lib.optionalAttrs (workingDirectory != null) {
-        WorkingDirectory = workingDirectory;
-      }
-      // lib.optionalAttrs (standardOutput != null) {
-        StandardOutput = standardOutput;
-      }
-      // lib.optionalAttrs (standardError != null) {
-        StandardError = standardError;
-      };
+      Service =
+        {
+          Type = serviceType;
+          ExecStart = fullCommand;
+          Restart = restart;
+          RestartSec = restartSec;
+          Environment = lib.mapAttrsToList (name: value: "${name}=${toString value}") environment;
+        }
+        // lib.optionalAttrs (user != null) { User = user; }
+        // lib.optionalAttrs (group != null) { Group = group; }
+        // lib.optionalAttrs (workingDirectory != null) {
+          WorkingDirectory = workingDirectory;
+        }
+        // lib.optionalAttrs (standardOutput != null) {
+          StandardOutput = standardOutput;
+        }
+        // lib.optionalAttrs (standardError != null) {
+          StandardError = standardError;
+        };
 
       Install = lib.mkIf enabled { WantedBy = wantedBy; };
     };
