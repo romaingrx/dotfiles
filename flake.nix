@@ -60,8 +60,6 @@
 
     in
     {
-      nix.extraOptions = "allow-dirty-locks";
-
       # Formatter configuration - matches CI workflow (.github/workflows/nixfmt.yml)
       formatter = {
         aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.nixfmt-rfc-style;

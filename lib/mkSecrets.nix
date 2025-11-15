@@ -30,13 +30,12 @@ let
     name: config:
     let
       finalSopsFile = config.sopsFile or globalSopsFile;
-      secretConfig =
-        {
-          sopsFile = finalSopsFile;
-        }
-        // (lib.optionalAttrs (config ? path) { path = config.path; })
-        // (lib.optionalAttrs (config ? owner) { owner = config.owner; })
-        // (lib.optionalAttrs (config ? mode) { mode = config.mode; });
+      secretConfig = {
+        sopsFile = finalSopsFile;
+      }
+      // (lib.optionalAttrs (config ? path) { path = config.path; })
+      // (lib.optionalAttrs (config ? owner) { owner = config.owner; })
+      // (lib.optionalAttrs (config ? mode) { mode = config.mode; });
     in
     lib.nameValuePair name secretConfig;
 

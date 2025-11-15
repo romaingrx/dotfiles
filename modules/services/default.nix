@@ -99,7 +99,8 @@ in
         command = "${cfg.jankyborders.package}/bin/borders";
         args = [
           "width=${toString cfg.jankyborders.width}"
-        ] ++ lib.optional cfg.jankyborders.hidpi "hidpi=on";
+        ]
+        ++ lib.optional cfg.jankyborders.hidpi "hidpi=on";
       }))
 
       # Mitmproxy service
