@@ -65,9 +65,11 @@ in
         # Development packages
         (lib.optionals cfg.development.enable [
           # Development tools
+          lazygit
           git-lfs
           pre-commit
           uv
+          pixi
           bun
           pnpm
           nodejs
