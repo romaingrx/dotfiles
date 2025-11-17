@@ -4,6 +4,7 @@
     ./homebrew.nix
     ./packages.nix
     ./mitmproxy.nix
+    ./services
   ];
 
   nix.optimise.automatic = true;
@@ -88,5 +89,4 @@
       };
     };
   };
-  services = import ./services { inherit pkgs; };
 }

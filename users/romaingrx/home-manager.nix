@@ -1,4 +1,4 @@
-{ pkgs, inputs, ... }:
+{ pkgs, ... }:
 {
   imports = [
     ../../modules/common
@@ -6,6 +6,7 @@
     ./secrets.nix
     ./gpg.nix
     ./home-manager-nixos.nix
+    ./home-manager-darwin.nix
     ./rust.nix
     ./tmux.nix
   ];

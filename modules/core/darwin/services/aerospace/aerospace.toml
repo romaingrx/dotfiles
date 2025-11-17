@@ -7,9 +7,9 @@ after-login-command = []
 # Notify Sketchybar about workspace chang
 # TODO romaingrx: Get the location of sketchybar from the system
 exec-on-workspace-change = [
-    '/bin/bash',
-    '-c',
-    '/run/current-system/sw/bin/sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE',
+  '/bin/bash',
+  '-c',
+  'sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE PREV_WORKSPACE=$AEROSPACE_PREV_WORKSPACE',
 ]
 
 enable-normalization-flatten-containers = true
@@ -63,7 +63,7 @@ alt-3 = 'workspace 3'
 alt-b = 'workspace B' # Browser workspace
 alt-c = 'workspace C' # Code workspace
 alt-m = 'workspace M' # Music
-alt-u = 'workspace U' # Utilities 
+alt-u = 'workspace U' # Utilities
 alt-s = 'workspace S' # Social (Email, Slack, ...)
 
 alt-shift-1 = ['move-node-to-workspace 1', 'workspace 1']
