@@ -119,7 +119,6 @@
           system = "aarch64-darwin";
           users = [
             "romaingrx"
-            "lcmd"
           ];
           darwin = true;
         };

@@ -78,7 +78,7 @@ in
           # docker
           # docker-compose
           terraform
-          awscli
+          awscli2
           openjdk
           zoxide
 

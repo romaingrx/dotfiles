@@ -119,7 +119,6 @@ in
           "awscli"
           "yt-dlp"
         ]
-
         cfg.homebrew.extraBrews
       ];
     };

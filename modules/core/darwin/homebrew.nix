@@ -34,7 +34,6 @@
       "mactop"
       "lightgbm"
       "libpq"
-      "awscli"
       "yt-dlp"
     ];
   };
