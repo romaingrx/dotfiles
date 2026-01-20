@@ -69,26 +69,15 @@ in
           git-lfs
           pre-commit
           uv
-          pixi
-          bun
           pnpm
           nodejs
 
           # Infrastructure tools
-          # docker
-          # docker-compose
-          terraform
           awscli2
-          openjdk
           zoxide
 
-          # Kubernetes tools
-          minikube
+          # Kubernetes tools (basics only)
           kubectl
-          kustomize
-          kubeseal
-          kubernetes-helm
-          qemu
           k9s
         ])
 

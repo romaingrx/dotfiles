@@ -22,9 +22,7 @@
       development.enable = true;
       productivity.enable = true;
       extraPackages = with pkgs; [
-        ollama
         tor
-        mitmproxy
         brave
         tailscale
         claude-code

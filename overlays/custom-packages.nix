@@ -5,5 +5,14 @@ final: prev: {
   # Example:
   # myCustomPackage = final.callPackage ./packages/my-custom-package { };
 
-  # No custom packages needed currently
+  # Pin Claude Code to version 2.0.62
+  # Commented out - using nixpkgs version instead
+  # claude-code = prev.claude-code.overrideAttrs (oldAttrs: rec {
+  #   version = "2.0.62";
+  #   src = prev.fetchurl {
+  #     url = "https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-${version}.tgz";
+  #     hash = "";
+  #   };
+  #   npmDepsHash = "";
+  # });
 }

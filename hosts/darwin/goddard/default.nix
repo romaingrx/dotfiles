@@ -15,9 +15,9 @@
   # System-specific settings
   system.defaults.loginwindow.LoginwindowText = "Hi-tech, barking, Swiss army knife";
 
-  # Enable proxy service
+  # Proxy service (disabled - hash mismatch in nixpkgs)
   services.mitmproxy = {
-    enable = true;
+    enable = false;
     port = 8080;
     interfaces = [
       "Wi-Fi"
