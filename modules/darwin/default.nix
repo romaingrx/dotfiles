@@ -6,6 +6,8 @@
     ./services
   ];
 
+  security.pam.services.sudo_local.touchIdAuth = true;
+
   nix.optimise.automatic = true;
   # Necessary for using flakes on this system.
   nix.settings = {
