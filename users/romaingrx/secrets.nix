@@ -1,7 +1,6 @@
 { config, pkgs, ... }:
 let
   gpg_sops_file = ./secrets/gpg.yaml;
-  ssh_sops_file = ./secrets/ssh.yaml;
   homeDirectory = config.home.homeDirectory;
 in
 {
@@ -9,16 +8,12 @@ in
     age = {
       keyFile = "${homeDirectory}/.config/sops/age/keys.txt";
     };
+
     secrets = {
       "gpg_github_private_key" = {
         path = "${homeDirectory}/.config/gnupg/private.key";
         sopsFile = gpg_sops_file;
         mode = "0600";
-      };
-
-      "ssh_github_private_key" = {
-        path = "${homeDirectory}/.ssh/github";
-        sopsFile = ssh_sops_file;
       };
     };
   };
