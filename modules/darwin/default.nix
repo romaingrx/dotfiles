@@ -3,7 +3,6 @@
   imports = [
     ./homebrew.nix
     ./packages.nix
-    ./mitmproxy.nix
     ./services
   ];
 
