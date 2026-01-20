@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ pkgs, ... }:
 {
   enable = true;
   enableCompletion = true;
@@ -67,9 +67,8 @@
   };
 
   completionInit = ''
-    # Add zcompdump to .gitignore
     autoload -Uz compinit
-    if [[ -n ${config.home.homeDirectory}/.zcompdump(#qN.mh+24) ]]; then
+    if [[ -n $HOME/.zcompdump(#qN.mh+24) ]]; then
       compinit -u;
     else
       compinit -u -C;
@@ -122,8 +121,8 @@
 
     # GPG configuration
     export GPG_TTY=$(tty)
-    if [ -f "${config.home.homeDirectory}/.gpg-agent-info" ]; then
-      . "${config.home.homeDirectory}/.gpg-agent-info"
+    if [ -f "$HOME/.gpg-agent-info" ]; then
+      . "$HOME/.gpg-agent-info"
       export GPG_AGENT_INFO
     fi
 
@@ -135,9 +134,5 @@
     if [ -x "$(command -v uv)" ]; then
       source <(uv generate-shell-completion zsh)
     fi
-
-    # TODO romaingrx: Add this in the profile
-    export EDITOR=nvim
-    export VISUAL=nvim
   '';
 }

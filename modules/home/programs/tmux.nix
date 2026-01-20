@@ -30,15 +30,16 @@
     }
   ];
   extraConfig = ''
-    # Open new windows/panes in the current directory
-    bind '"' split-window -c "#{pane_current_path}"
+    set -g mouse on
+
+    bind '"' split-window -v -c "#{pane_current_path}"
     bind % split-window -h -c "#{pane_current_path}"
     bind c new-window -c "#{pane_current_path}"
 
-    # Add shortcut to change base directory for new windows
     bind C attach-session -c "#{pane_current_path}" \; display-message "New working directory: #{pane_current_path}"
 
-    # Allow ctrl+L to clear screen
+    bind r source-file ~/.config/tmux/tmux.conf \; display-message "Config reloaded!"
+
     bind -n C-l send-keys C-l \; clear-history
   '';
 }

@@ -1,46 +1,30 @@
 { pkgs, ... }:
 {
   imports = [
-    ../../modules/common
+    ../../modules/home
     ../../modules/nvim.nix
     ./secrets.nix
     ./gpg.nix
     ./home-manager-nixos.nix
     ./home-manager-darwin.nix
     ./rust.nix
-    ./tmux.nix
   ];
 
-  # Enable the new configuration options
-  myConfig = {
-    common.enable = true;
-
-    # User packages (Home Manager)
-    packages = {
-      enable = true;
-      core.enable = true;
-      development.enable = true;
-      productivity.enable = true;
-      extraPackages = with pkgs; [
-        tor
-        brave
-        tailscale
-        claude-code
-      ];
-    };
-
-    programs.enable = true;
-
-    # System packages (environment.systemPackages)
-    systemPackages = {
-      enable = true;
-      core.enable = true;
-      development.enable = true;
-    };
-  };
-
-  home.github.gpg = {
+  programs.git.signing = {
     key = "383E2222E1BEFDAD";
-    email = "48758915+romaingrx@users.noreply.github.com";
+    signByDefault = true;
   };
+
+  programs.git.settings = {
+    user.name = "Romain Graux";
+    user.email = "48758915+romaingrx@users.noreply.github.com";
+    commit.gpgsign = true;
+  };
+
+  home.packages = with pkgs; [
+    tor
+    brave
+    tailscale
+    claude-code
+  ];
 }
