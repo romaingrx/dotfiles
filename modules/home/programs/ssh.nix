@@ -11,16 +11,15 @@
       extraOptions.AddKeysToAgent = "yes";
     };
     "*" = {
-      extraOptions =
-        {
-          ServerAliveInterval = "60";
-          ServerAliveCountMax = "2";
-        }
-        // pkgs.lib.optionalAttrs pkgs.stdenv.isDarwin {
-          IgnoreUnknown = "UseKeychain";
-          AddKeysToAgent = "yes";
-          UseKeychain = "yes";
-        };
+      extraOptions = {
+        ServerAliveInterval = "60";
+        ServerAliveCountMax = "2";
+      }
+      // pkgs.lib.optionalAttrs pkgs.stdenv.isDarwin {
+        IgnoreUnknown = "UseKeychain";
+        AddKeysToAgent = "yes";
+        UseKeychain = "yes";
+      };
     };
   };
 }
