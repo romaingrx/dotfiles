@@ -18,4 +18,7 @@ in
 
   home.file.".config/sketchybar".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/config/sketchybar";
+
+  home.sessionPath = [ "$HOME/.local/bin" ];
+
 })
