@@ -11,6 +11,8 @@
       lg = ''log --pretty=format:"%C(magenta)%h%Creset -%C(red)%d%Creset %s %C(dim green)(%cr) [%an]" --abbrev-commit -30'';
     };
 
+    gpg.openpgp.program = "gpg";
+
     safe.directory = "*";
     core.preloadindex = true;
     core.fscache = true;

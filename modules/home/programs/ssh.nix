@@ -7,6 +7,8 @@
   matchBlocks = {
     "github.com" = {
       user = "git";
+      hostname = "ssh.github.com";
+      port = 443;
       identityFile = "~/.ssh/github";
       extraOptions.AddKeysToAgent = "yes";
     };
