@@ -1,6 +1,11 @@
 name: build
 on:
   push:
+  workflow_call:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # Check NixOS configurations
@@ -27,14 +32,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v30
+      - uses: cachix/cachix-action@v15
+        with:
+          name: romaingrx-dotfiles
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Build ${{ matrix.config }}
         run: |
           echo "Building NixOS configuration: ${{ matrix.config }}"
-          nix build .#nixosConfigurations.${{ matrix.config }}.config.system.build.toplevel --dry-run
+          nix build .#nixosConfigurations.${{ matrix.config }}.config.system.build.toplevel --print-build-logs
 
   # Check Darwin configurations
   darwin:
-    runs-on: macos-latest
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v30
@@ -48,7 +57,7 @@ jobs:
 
   build-darwin:
     needs: darwin
-    runs-on: macos-latest
+    runs-on: macos-14
     strategy:
       fail-fast: false
       matrix:
@@ -56,7 +65,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v30
+      - uses: cachix/cachix-action@v15
+        with:
+          name: romaingrx-dotfiles
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Build ${{ matrix.config }}
         run: |
           echo "Building Darwin configuration: ${{ matrix.config }}"
-          nix build .#darwinConfigurations.\"${{ matrix.config }}\".system --dry-run
+          nix build .#darwinConfigurations."${{ matrix.config }}".system --print-build-logs

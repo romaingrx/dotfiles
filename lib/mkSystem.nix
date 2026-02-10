@@ -66,6 +66,9 @@ systemFunc {
     # Core system configuration
     hostConfig
 
+    # Cachix binary cache
+    ../modules/cachix.nix
+
     # Home Manager configuration
     (
       if darwin then
