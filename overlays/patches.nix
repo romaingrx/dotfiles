@@ -14,6 +14,11 @@ final: prev: {
     });
   };
 
+  # Disable tests for xdg-desktop-portal to avoid sandbox failures in CI
+  xdg-desktop-portal = prev.xdg-desktop-portal.overrideAttrs (old: {
+    doCheck = false;
+  });
+
   # Fix nccl compilation with GCC 14 by using GCC 13
   cudaPackages = prev.cudaPackages // {
     nccl = prev.cudaPackages.nccl.overrideAttrs (old: {
