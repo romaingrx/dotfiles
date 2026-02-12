@@ -45,94 +45,18 @@
     }
   ];
 
-  shellAliases = {
-    ll = "ls -l";
-    la = "ls -la";
-    update = "nix run nix-darwin -- switch --flake /opt/dotfiles";
-    # Add some useful git aliases
-    gs = "git status";
-    gc = "git commit";
-    gp = "git push";
-    gl = "git pull";
-  };
-
-  history = {
-    size = 50000;
-    save = 50000;
-    path = "$HOME/.zsh_history";
-    ignoreDups = true;
-    share = false;
-    extended = true;
-    ignoreSpace = true;
-  };
-
-  completionInit = ''
-    autoload -Uz compinit
-    if [[ -n $HOME/.zcompdump(#qN.mh+24) ]]; then
-      compinit -u;
-    else
-      compinit -u -C;
-    fi
-  '';
-
   initContent = ''
-    # Load and configure powerlevel10k
+    # Shared portable config (aliases, options, keybindings, history)
+    source ${builtins.toPath ../../../config/zsh/zshrc}
+
+    # Nix-specific: powerlevel10k theme
     source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme
     [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
-    # Better directory navigation
-    setopt AUTO_CD
-    setopt AUTO_PUSHD
-    setopt PUSHD_IGNORE_DUPS
-    setopt PUSHD_MINUS
-
-    # Command history improvements
-    setopt HIST_EXPIRE_DUPS_FIRST
-    setopt HIST_IGNORE_SPACE
-    setopt HIST_VERIFY
-    setopt HIST_FIND_NO_DUPS
-    setopt HIST_SAVE_NO_DUPS
-    setopt LOCAL_OPTIONS
-    setopt INC_APPEND_HISTORY_TIME   # Append commands to history file immediately with timestamp
-    unsetopt SHARE_HISTORY
-    unsetopt INC_APPEND_HISTORY      # Disable simple append to have better timestamp control
-
-    # Setup fzf for better history search
+    # Nix-specific: fzf integration
     if [ -n "$(command -v fzf)" ]; then
       source ${pkgs.fzf}/share/fzf/key-bindings.zsh
       source ${pkgs.fzf}/share/fzf/completion.zsh
-      
-      export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"
-      export FZF_CTRL_R_OPTS="--sort --exact"
-    fi
-
-    # Better completion
-    zstyle ':completion:*' menu select
-    zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
-
-    # Key bindings
-    bindkey "^[[A" up-line-or-search
-    bindkey "^[[B" down-line-or-search
-    bindkey '^[[H' beginning-of-line
-    bindkey '^[[F' end-of-line
-    bindkey '^[[3~' delete-char
-    bindkey '^[[1;5C' forward-word
-    bindkey '^[[1;5D' backward-word
-
-    # GPG configuration
-    export GPG_TTY=$(tty)
-    if [ -f "$HOME/.gpg-agent-info" ]; then
-      . "$HOME/.gpg-agent-info"
-      export GPG_AGENT_INFO
-    fi
-
-    # Set colored output
-    export CLICOLOR=1
-    export LSCOLORS=ExFxBxDxCxegedabagacad
-
-    # Generate UV completion
-    if [ -x "$(command -v uv)" ]; then
-      source <(uv generate-shell-completion zsh)
     fi
   '';
 }
