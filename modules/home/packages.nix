@@ -13,6 +13,7 @@
       biome
       nil
       nixfmt-rfc-style
+      bat
       jq
       yq
       nix-prefetch-git

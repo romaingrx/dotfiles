@@ -24,7 +24,6 @@
   home.packages = with pkgs; [
     tor
     brave
-    tailscale
     # claude-code # Install it manually to keep it up-to-date
   ];
 }
