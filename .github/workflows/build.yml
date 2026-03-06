@@ -79,3 +79,13 @@ jobs:
         run: |
           echo "Building Darwin configuration: ${{ matrix.config }}"
           nix build .#darwinConfigurations."${{ matrix.config }}".system --print-build-logs
+
+  build-status:
+    if: always()
+    needs: [build-nixos, build-darwin]
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          if [[ "${{ needs.build-nixos.result }}" == "failure" || "${{ needs.build-darwin.result }}" == "failure" ]]; then
+            exit 1
+          fi
