@@ -2,6 +2,7 @@
   pkgs,
   lib,
   config,
+  dotfilesPath,
   ...
 }:
 let
@@ -17,8 +18,23 @@ in
   };
 
   home.file.".config/sketchybar".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/config/sketchybar";
+    config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/sketchybar";
 
   home.sessionPath = [ "$HOME/.local/bin" ];
+
+  launchd.agents.alacritty-theme-switcher = {
+    enable = true;
+    config = {
+      Label = "com.romaingrx.alacritty-theme-switcher";
+      ProgramArguments = [
+        "${pkgs.bash}/bin/bash"
+        "${config.home.homeDirectory}/.config/alacritty/theme-switcher.sh"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      StandardOutPath = "/tmp/alacritty-theme-switcher.log";
+      StandardErrorPath = "/tmp/alacritty-theme-switcher.err";
+    };
+  };
 
 })
