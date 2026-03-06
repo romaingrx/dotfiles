@@ -4,6 +4,7 @@
   inputs = {
     # Remote
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-24.11";
     nix-darwin = {
       url = "github:LnL7/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -34,6 +35,7 @@
     inputs@{
       self,
       nixpkgs,
+      nixpkgs-stable,
       nix-darwin,
       home-manager,
       sops-nix,

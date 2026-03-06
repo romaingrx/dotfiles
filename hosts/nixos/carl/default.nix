@@ -2,7 +2,7 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 
-{ pkgs, ... }:
+{ pkgs, pkgs-stable, ... }:
 {
   imports = [
     # Include the results of the hardware scan.
@@ -24,20 +24,11 @@
     efi.canTouchEfiVariables = true;
   };
 
-  environment.systemPackages = with pkgs.cudaPackages; [
+  environment.systemPackages = with pkgs-stable.cudaPackages; [
     cudatoolkit
-    cuda_cudart
-    cuda_cupti
-    cuda_nvrtc
-    cuda_nvtx
     cudnn
-    libcublas
-    libcufft
-    libcurand
-    libcusolver
-    libcusparse
-    libnvjitlink
     nccl
+    libcublas
   ];
 
   services.tailscale = {

@@ -60,7 +60,13 @@ systemFunc {
 
     # Module arguments
     {
-      config._module.args = { inherit homeDirectory inputs; };
+      config._module.args = {
+        inherit homeDirectory inputs;
+        pkgs-stable = import inputs.nixpkgs-stable {
+          inherit system;
+          config.allowUnfree = true;
+        };
+      };
     }
 
     # Core system configuration
