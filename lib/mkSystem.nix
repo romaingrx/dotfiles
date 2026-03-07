@@ -3,6 +3,7 @@
   inputs,
   overlays,
   lib,
+  dotfilesPath,
 }:
 name:
 {
@@ -43,6 +44,7 @@ let
   # TODO: Remove once https://github.com/LnL7/nix-darwin/pull/1341 is merged
   primaryUser = builtins.head users;
   homeDirectory = "${if darwin then "/Users" else "/home"}/${primaryUser}";
+  absoluteDotfilesPath = "${homeDirectory}/${dotfilesPath}";
 
 in
 systemFunc {
@@ -92,7 +94,10 @@ systemFunc {
           inputs.sops-nix.homeManagerModules.sops
           inputs.nixvim.homeManagerModules.nixvim
         ];
-        extraSpecialArgs = { inherit inputs pkgs; };
+        extraSpecialArgs = {
+          inherit inputs pkgs;
+          dotfilesPath = absoluteDotfilesPath;
+        };
       };
     }
 

@@ -54,8 +54,10 @@
         overlaySet.customPackages
       ];
 
+      dotfilesPath = ".dotfiles";
+
       mkSystem = import ./lib/mkSystem.nix {
-        inherit inputs;
+        inherit inputs dotfilesPath;
         overlays = overlays;
         lib = nixpkgs.lib;
       };
