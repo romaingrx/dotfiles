@@ -18,6 +18,7 @@
       yq
       nix-prefetch-git
       gh
+      _1password-cli
 
       # Development
       lazygit
@@ -27,6 +28,7 @@
       pnpm
       nodejs
       awscli2
+      google-cloud-sdk
       zoxide
       kubectl
       k9s

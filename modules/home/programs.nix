@@ -2,6 +2,7 @@
 {
   imports = [
     ./programs/alacritty.nix
+    ./programs/tmux.nix
   ];
 
   programs = {
@@ -13,6 +14,5 @@
     };
     ssh = import ./programs/ssh.nix { inherit pkgs; };
     gpg = import ./programs/gpg.nix;
-    tmux = import ./programs/tmux.nix { inherit pkgs; };
   };
 }
