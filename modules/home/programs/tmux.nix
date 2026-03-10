@@ -1,21 +1,11 @@
-{ pkgs, ... }:
 {
-  enable = true;
-  shell = "${pkgs.zsh}/bin/zsh";
-  terminal = "tmux-256color";
-  plugins = with pkgs; [
-    {
-      plugin = tmuxPlugins.catppuccin;
-      extraConfig = "";
-    }
-    {
-      plugin = tmuxPlugins.resurrect;
-      extraConfig = "";
-    }
-    {
-      plugin = tmuxPlugins.continuum;
-      extraConfig = "";
-    }
-  ];
-  extraConfig = builtins.readFile ../../../config/tmux/tmux.conf;
+  pkgs,
+  config,
+  dotfilesPath,
+  ...
+}:
+{
+  home.packages = [ pkgs.tmux ];
+
+  home.file.".config/tmux".source = config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/tmux";
 }
