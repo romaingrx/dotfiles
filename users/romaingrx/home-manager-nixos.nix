@@ -2,11 +2,12 @@
   pkgs,
   lib,
   config,
+  dotfilesPath,
   ...
 }:
 let
   mkFileWatcher = import ../../lib/mkFileWatcher.nix { inherit config pkgs lib; };
-  configPath = "${config.home.homeDirectory}/.dotfiles/config";
+  configPath = "${dotfilesPath}/config";
 in
 lib.mkMerge [
   (mkFileWatcher {

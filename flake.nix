@@ -35,13 +35,8 @@
     inputs@{
       self,
       nixpkgs,
-      nixpkgs-stable,
-      nix-darwin,
-      home-manager,
-      sops-nix,
-      fenix,
       pre-commit-hooks,
-      nixvim,
+      ...
     }:
     let
 
@@ -57,9 +52,8 @@
       dotfilesPath = ".dotfiles";
 
       mkSystem = import ./lib/mkSystem.nix {
-        inherit inputs dotfilesPath;
-        overlays = overlays;
-        lib = nixpkgs.lib;
+        inherit inputs dotfilesPath overlays;
+        inherit (nixpkgs) lib;
       };
 
     in
@@ -85,6 +79,8 @@
                 package = pkgs.nixfmt;
                 excludes = [ "third-party/" ];
               };
+              deadnix.enable = true;
+              statix.enable = true;
             };
           };
         }

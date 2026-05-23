@@ -1,16 +1,14 @@
-{ ... }:
-{
+_: {
   homebrew = {
     enable = true;
     global = { };
     onActivation = {
-      cleanup = "none"; # Remove non declared casks
+      cleanup = "uninstall";
       autoUpdate = false;
       upgrade = false;
       extraFlags = [ "--force" ];
     };
 
-    # Homebrew permissions
     masApps = { };
     taps = [ ];
 
@@ -23,6 +21,8 @@
       "wifiman"
       "anytype"
       "spotify"
+      "avogadro"
+      "onedrive"
     ];
     brews = [
       "watch"
