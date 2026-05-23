@@ -10,17 +10,16 @@ let
     /usr/bin/osascript -e 'Tell application "System Events" to display dialog "'"$1"'" default answer "" with hidden answer' -e 'text returned of result'
   '';
 in
-(lib.mkIf pkgs.stdenv.isDarwin {
-  home.packages = [ askpass ];
-
-  home.sessionVariables = {
-    SUDO_ASKPASS = "${askpass}/bin/askpass";
+lib.mkIf pkgs.stdenv.isDarwin {
+  home = {
+    packages = [ askpass ];
+    sessionVariables = {
+      SUDO_ASKPASS = "${askpass}/bin/askpass";
+    };
+    sessionPath = [ "$HOME/.local/bin" ];
+    file.".config/sketchybar".source =
+      config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/sketchybar";
   };
-
-  home.file.".config/sketchybar".source =
-    config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/sketchybar";
-
-  home.sessionPath = [ "$HOME/.local/bin" ];
 
   launchd.agents.alacritty-theme-switcher = {
     enable = true;
@@ -36,5 +35,4 @@ in
       StandardErrorPath = "/tmp/alacritty-theme-switcher.err";
     };
   };
-
-})
+}

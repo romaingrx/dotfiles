@@ -1,5 +1,4 @@
-{ ... }:
-{
+_: {
   nix.settings = {
     substituters = [ "https://romaingrx-dotfiles.cachix.org" ];
     trusted-public-keys = [
