@@ -20,11 +20,7 @@
       "sf-symbols"
       "firefox"
       "duckduckgo"
-      "displaylink"
       "wifiman"
-      "avogadro"
-      "cursor"
-      "airtable"
       "anytype"
       "spotify"
     ];
@@ -32,9 +28,10 @@
       "watch"
       "ffmpeg"
       "mactop"
-      "lightgbm"
       "libpq"
       "yt-dlp"
+      "awscli"
+      "mas"
     ];
   };
 }

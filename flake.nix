@@ -85,8 +85,6 @@
                 package = pkgs.nixfmt-rfc-style;
                 excludes = [ "third-party/" ];
               };
-              # deadnix.enable = true;  # Temporarily disabled
-              # statix.enable = true;  # Temporarily disabled to allow build
             };
           };
         }
