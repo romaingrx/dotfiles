@@ -1,11 +1,16 @@
 name: build
-# Heavy: real `nix build` of each host's system closure. Only runs on
-# push to `main` (where it warms Cachix for everyone) and on demand via
-# workflow_call / workflow_dispatch. PRs get the fast eval-only check
-# in check.yml instead.
+# Heavy: real `nix build` of each host's system closure. Runs on:
+#   - push to main → keeps Cachix warm for everyone post-merge
+#   - push to automation/** branches → warms Cachix for bot-generated
+#     PRs (flake-lock updates) so the closure is ready before the user
+#     pulls and rebuilds locally
+#   - workflow_call / workflow_dispatch → manual or chained triggers
+# Regular PRs get the fast eval-only check in check.yml instead.
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - "automation/**"
   workflow_call:
   workflow_dispatch:
 
