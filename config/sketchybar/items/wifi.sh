@@ -5,7 +5,12 @@ sketchybar --add graph net.activity right 42 \
 	graph.color="$BLUE" \
 	graph.fill_color=0x208aadf4 \
 	graph.line_width=0.8 \
-	label.drawing=off \
+	label="0B" \
+	label.drawing=on \
+	label.font="$FONT:Medium:9.0" \
+	label.color="$BLUE" \
+	label.padding_left=2 \
+	label.padding_right=3 \
 	icon.drawing=off \
 	background.drawing=on \
 	background.color="$STATUS_GRAPH_BG" \

@@ -38,6 +38,7 @@ up_graph="${up_graph:-0}"
 down_label="${down_label:-0B/s}"
 up_label="${up_label:-0B/s}"
 activity_graph="$down_graph"
+activity_label="↓${down_label%/s}"
 activity_color="$BLUE"
 activity_fill_color=0x208aadf4
 
@@ -65,6 +66,7 @@ fi
 
 if awk -v down="$down_graph" -v up="$up_graph" 'BEGIN { exit !(up > down) }'; then
 	activity_graph="$up_graph"
+	activity_label="↑${up_label%/s}"
 	activity_color="$GREEN"
 	activity_fill_color=0x20a6da95
 fi
@@ -77,6 +79,8 @@ sketchybar --set wifi.control \
 	label.color="$vpn_color" \
 	label.drawing="$wifi_label_drawing" \
 	--set net.activity \
+	label="$activity_label" \
+	label.color="$activity_color" \
 	graph.color="$activity_color" \
 	graph.fill_color="$activity_fill_color" \
 	--push net.activity "$activity_graph" \
