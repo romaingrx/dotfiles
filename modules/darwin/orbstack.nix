@@ -1,6 +1,4 @@
-# Bridge OrbStack's docker CLI into /usr/local/bin so callers that hardcode
-# that path (historically populated by docker-desktop) keep working.
-# No-op on machines without OrbStack installed.
+# Restore /usr/local/bin/docker etc. (lost when the docker-desktop cask was removed).
 { lib, ... }:
 {
   system.activationScripts.extraActivation.text = lib.mkAfter ''

@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
-# Bootstrap a fresh machine into this dotfiles configuration.
-# Idempotent: safe to re-run after partial failures.
-#
-# Override defaults via env vars:
-#   REPO_URL=git@github.com:romaingrx/dotfiles.git
-#   DOTFILES_PATH=$HOME/code/dotfiles
-#   HOST=goddard       # bypass hostname detection
+# Override REPO_URL / DOTFILES_PATH / HOST to customize.
 set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://github.com/romaingrx/dotfiles.git}"
@@ -19,7 +13,6 @@ if ! command -v nix >/dev/null 2>&1; then
   log "Nix not found; installing via Determinate Systems installer..."
   curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix \
     | sh -s -- install --no-confirm
-  # shellcheck disable=SC1091
   . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 fi
 
