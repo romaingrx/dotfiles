@@ -6,7 +6,6 @@ _: {
       cleanup = "uninstall";
       autoUpdate = false;
       upgrade = false;
-      extraFlags = [ "--force" ];
     };
 
     masApps = { };
