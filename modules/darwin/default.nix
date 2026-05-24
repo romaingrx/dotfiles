@@ -2,6 +2,7 @@
 {
   imports = [
     ./homebrew.nix
+    ./orbstack.nix
     ./packages.nix
     ./services
   ];
