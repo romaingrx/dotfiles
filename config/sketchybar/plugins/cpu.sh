@@ -25,9 +25,10 @@ case "$CPU_PERCENT" in
 [4-5][0-9]) COLOR=$YELLOW ;;
 esac
 
-sketchybar --set cpu.percent label=$CPU_PERCENT% \
+sketchybar --set cpu.user \
+	label="$CPU_PERCENT%" \
 	label.color=$COLOR \
+	graph.color=$COLOR \
 	--set cpu.top label="$TOPPROC" \
-	--set cpu.user graph.color=$COLOR \
 	--push cpu.sys $CPU_SYS \
 	--push cpu.user "$(echo "$CPU_SYS $CPU_USER" | awk '{print $1 + $2}')"

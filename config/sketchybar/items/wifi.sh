@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-sketchybar --add graph net.activity right 42 \
+sketchybar --add graph net.activity right "$STATUS_GRAPH_WIDTH" \
 	--set net.activity \
 	graph.color="$BLUE" \
 	graph.fill_color=0x208aadf4 \
@@ -9,6 +9,8 @@ sketchybar --add graph net.activity right 42 \
 	label.drawing=on \
 	label.font="$FONT:Medium:9.0" \
 	label.color="$BLUE" \
+	label.width="$STATUS_GRAPH_LABEL_WIDTH" \
+	label.align=right \
 	label.padding_left=2 \
 	label.padding_right=3 \
 	icon.drawing=off \
