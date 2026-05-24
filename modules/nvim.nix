@@ -1,4 +1,9 @@
-{ pkgs, config, ... }:
+{
+  pkgs,
+  config,
+  dotfilesPath,
+  ...
+}:
 {
 
   home.packages = with pkgs; [
@@ -12,7 +17,5 @@
     nodePackages_latest.typescript-language-server
   ];
 
-  home.file.".config/nvim".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/config/nvim";
-  # stylix.targets.neovim.enable = false;
+  home.file.".config/nvim".source = config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/nvim";
 }

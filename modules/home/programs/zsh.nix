@@ -47,7 +47,7 @@
 
   initContent = ''
     # Shared portable config (aliases, options, keybindings, history)
-    source ${builtins.toPath ../../../config/zsh/zshrc}
+    source ${../../../config/zsh/zshrc}
 
     # Nix-specific: powerlevel10k theme
     source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme

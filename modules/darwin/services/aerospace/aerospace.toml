@@ -169,3 +169,9 @@ run = 'move-node-to-workspace M'
 [[on-window-detected]]
 if.app-id = 'com.electron.wispr-flow.accessibility-mac-app'
 run = 'layout floating'
+
+# Float the keymap-drawer cheat sheet so it overlays instead of tiling.
+[[on-window-detected]]
+if.app-id = 'com.apple.Preview'
+if.window-title-regex-substring = 'corne\.png'
+run = 'layout floating'
