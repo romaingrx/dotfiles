@@ -214,6 +214,7 @@ lib.mkMerge [
 
     wayland.windowManager.hyprland = {
       enable = true;
+      configType = "hyprlang";
       extraConfig = ''
         source = ~/.config/hypr/hyprland-core.conf
       '';
