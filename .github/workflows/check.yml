@@ -20,14 +20,9 @@ jobs:
           name: romaingrx-dotfiles
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      # Pre-commit hooks: nixfmt, deadnix, statix.
-      # Defined in flake.nix: checks.x86_64-linux.pre-commit-check
       - name: Pre-commit hooks
         run: nix flake check --print-build-logs --option abort-on-warn true
 
-      # Eval all host configurations. Catches eval errors (typos, missing
-      # options, broken module structure) without paying the cost of a
-      # full system build. Build still runs on push to main via build.yml.
       - name: Evaluate host configurations
         run: |
           set -e

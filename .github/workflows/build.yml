@@ -1,11 +1,5 @@
 name: build
-# Heavy: real `nix build` of each host's system closure. Runs on:
-#   - push to main → keeps Cachix warm for everyone post-merge
-#   - push to automation/** branches → warms Cachix for bot-generated
-#     PRs (flake-lock updates) so the closure is ready before the user
-#     pulls and rebuilds locally
-#   - workflow_call / workflow_dispatch → manual or chained triggers
-# Regular PRs get the fast eval-only check in check.yml instead.
+# automation/** is the flake-update bot — warms Cachix before merge.
 on:
   push:
     branches:
@@ -19,7 +13,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Discover NixOS hosts so the build job can fan out automatically.
   nixos:
     runs-on: ubuntu-latest
     steps:
@@ -55,7 +48,6 @@ jobs:
       - name: Build nixosConfigurations.${{ matrix.config }}
         run: nix build .#nixosConfigurations.${{ matrix.config }}.config.system.build.toplevel --print-build-logs --option abort-on-warn true
 
-  # Discover Darwin hosts so the build job can fan out automatically.
   darwin:
     runs-on: macos-14
     steps:
