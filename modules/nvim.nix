@@ -14,7 +14,7 @@
     biome
     shfmt
     ripgrep
-    nodePackages_latest.typescript-language-server
+    typescript-language-server
   ];
 
   home.file.".config/nvim".source = config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/nvim";
