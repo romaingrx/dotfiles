@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [ -z "${CONFIG_DIR:-}" ]; then
+if [ -z "${CONFIG_DIR:-}" ] || [ ! -r "$CONFIG_DIR/colors.sh" ]; then
 	CONFIG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 PLUGIN_DIR="$CONFIG_DIR/plugins"

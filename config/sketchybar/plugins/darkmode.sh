@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_DIR="${CONFIG_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+source "$SCRIPT_DIR/../helpers/env.sh"
+sketchybar_resolve_paths "$SCRIPT_DIR"
 
 source "$CONFIG_DIR/icons.sh"
 
