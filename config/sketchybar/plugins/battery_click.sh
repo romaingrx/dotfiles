@@ -4,5 +4,5 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="${CONFIG_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 PLUGIN_DIR="${PLUGIN_DIR:-$CONFIG_DIR/plugins}"
 
-NAME=wifi.control "$PLUGIN_DIR/wifi.sh"
-sketchybar --set wifi.control popup.drawing=toggle
+NAME=battery "$PLUGIN_DIR/battery.sh" --details
+sketchybar --set battery popup.drawing=toggle

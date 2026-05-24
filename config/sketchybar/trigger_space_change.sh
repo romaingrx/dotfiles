@@ -2,4 +2,4 @@
 
 focused=$(aerospace list-workspaces --focused)
 
-/run/current-system/sw/bin/sketchybar --trigger space_change FOCUSED_WORKSPACE="$focused"
+sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE="$focused"

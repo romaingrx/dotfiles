@@ -1,12 +1,12 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-source $HOME/.config/sketchybar/icons.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_DIR="${CONFIG_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 
-if [[ $(defaults read -g AppleInterfaceStyle 2>/dev/null) == "Dark" ]]
-then
-    sketchybar -m --set appearance icon="$SUN_ICN"
+source "$CONFIG_DIR/icons.sh"
 
+if [[ $(defaults read -g AppleInterfaceStyle 2>/dev/null) == "Dark" ]]; then
+	sketchybar -m --set appearance icon="$SUN_ICN"
 else
-    sketchybar -m --set appearance icon="$MOON_ICN"
+	sketchybar -m --set appearance icon="$MOON_ICN"
 fi
-

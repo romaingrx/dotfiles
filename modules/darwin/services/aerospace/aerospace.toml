@@ -84,7 +84,10 @@ alt-shift-d = 'exec-and-forget open -a /Applications/DuckDuckGo.app'
 alt-shift-t = 'exec-and-forget open -a /Applications/Alacritty.app'
 
 alt-tab = 'workspace-back-and-forth'
-alt-shift-tab = 'move-workspace-to-monitor --wrap-around next'
+alt-shift-tab = [
+  'move-workspace-to-monitor --wrap-around next',
+  'exec-and-forget sketchybar --trigger aerospace_monitor_change TARGET_MONITOR=$(aerospace list-monitors --focused --format "%{monitor-appkit-nsscreen-screens-id}") FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused)',
+]
 alt-shift-semicolon = 'mode service'
 alt-shift-e = 'enable toggle'
 

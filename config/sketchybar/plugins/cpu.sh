@@ -1,6 +1,9 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
-source "$HOME/.config/sketchybar/colors.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_DIR="${CONFIG_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+
+source "$CONFIG_DIR/colors.sh"
 
 CORE_COUNT=$(sysctl -n machdep.cpu.thread_count)
 CPU_INFO=$(ps -eo pcpu,user)
@@ -14,16 +17,19 @@ CPU_PERCENT="$(echo "$CPU_SYS $CPU_USER" | awk '{printf "%.0f\n", ($1 + $2)*100}
 
 COLOR=$WHITE
 case "$CPU_PERCENT" in
-  [1-2][0-9]) COLOR=$YELLOW
-  ;;
-  [3-6][0-9]) COLOR=$ORANGE
-  ;;
-  [7-9][0-9]|100) COLOR=$RED
-  ;;
+[1-2][0-9])
+	COLOR=$YELLOW
+	;;
+[3-6][0-9])
+	COLOR=$ORANGE
+	;;
+[7-9][0-9] | 100)
+	COLOR=$RED
+	;;
 esac
 
-sketchybar --set  cpu.percent label=$CPU_PERCENT% \
-                              label.color=$COLOR  \
-           --set  cpu.top     label="$TOPPROC"    \
-           --push cpu.sys     $CPU_SYS            \
-           --push cpu.user    $CPU_USER
+sketchybar --set cpu.percent label=$CPU_PERCENT% \
+	label.color=$COLOR \
+	--set cpu.top label="$TOPPROC" \
+	--push cpu.sys $CPU_SYS \
+	--push cpu.user $CPU_USER
