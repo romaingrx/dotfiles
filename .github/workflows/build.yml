@@ -1,25 +1,27 @@
 name: build
+# automation/** is the flake-update bot — warms Cachix before merge.
 on:
   push:
-    branches: [main]
-  pull_request:
+    branches:
+      - main
+      - "automation/**"
   workflow_call:
+  workflow_dispatch:
 
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # Check NixOS configurations
   nixos:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v30
+      - uses: DeterminateSystems/nix-installer-action@main
       - id: get-configs
         name: Get NixOS configurations
         run: |
-          configs=$(nix eval --json .#nixosConfigurations --apply builtins.attrNames)
+          configs=$(nix eval --json .#nixosConfigurations --apply builtins.attrNames --option abort-on-warn true)
           echo "configs=$configs" >> $GITHUB_OUTPUT
     outputs:
       configs: ${{ steps.get-configs.outputs.configs }}
@@ -37,26 +39,24 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost /opt/hostedtoolcache
           sudo docker image prune --all --force
       - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v30
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: cachix/cachix-action@v15
         with:
           name: romaingrx-dotfiles
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-      - name: Build ${{ matrix.config }}
-        run: |
-          echo "Building NixOS configuration: ${{ matrix.config }}"
-          nix build .#nixosConfigurations.${{ matrix.config }}.config.system.build.toplevel --print-build-logs
+      - name: Build nixosConfigurations.${{ matrix.config }}
+        run: nix build .#nixosConfigurations.${{ matrix.config }}.config.system.build.toplevel --print-build-logs --option abort-on-warn true
 
-  # Check Darwin configurations
   darwin:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v30
+      - uses: DeterminateSystems/nix-installer-action@main
       - id: get-configs
         name: Get Darwin configurations
         run: |
-          configs=$(nix eval --json .#darwinConfigurations --apply builtins.attrNames)
+          configs=$(nix eval --json .#darwinConfigurations --apply builtins.attrNames --option abort-on-warn true)
           echo "configs=$configs" >> $GITHUB_OUTPUT
     outputs:
       configs: ${{ steps.get-configs.outputs.configs }}
@@ -70,15 +70,14 @@ jobs:
         config: ${{ fromJson(needs.darwin.outputs.configs) }}
     steps:
       - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v30
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
       - uses: cachix/cachix-action@v15
         with:
           name: romaingrx-dotfiles
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-      - name: Build ${{ matrix.config }}
-        run: |
-          echo "Building Darwin configuration: ${{ matrix.config }}"
-          nix build .#darwinConfigurations."${{ matrix.config }}".system --print-build-logs
+      - name: Build darwinConfigurations.${{ matrix.config }}
+        run: nix build .#darwinConfigurations.${{ matrix.config }}.system --print-build-logs --option abort-on-warn true
 
   build-status:
     if: always()

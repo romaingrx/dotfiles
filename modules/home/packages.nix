@@ -12,7 +12,7 @@
       just
       biome
       nil
-      nixfmt-rfc-style
+      nixfmt
       bat
       jq
       yq

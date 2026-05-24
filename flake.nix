@@ -64,10 +64,10 @@
 
     in
     {
-      # Formatter configuration - matches CI workflow (.github/workflows/nixfmt.yml)
+      # Formatter configuration - matches CI workflow (.github/workflows/check.yml)
       formatter = {
-        aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.nixfmt-rfc-style;
-        x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt-rfc-style;
+        aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.nixfmt;
+        x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt;
       };
 
       # Pre-commit hooks
@@ -82,7 +82,7 @@
             hooks = {
               nixfmt-rfc-style = {
                 enable = true;
-                package = pkgs.nixfmt-rfc-style;
+                package = pkgs.nixfmt;
                 excludes = [ "third-party/" ];
               };
             };
@@ -100,7 +100,7 @@
           default = pkgs.mkShell {
             inherit (self.checks.${system}.pre-commit-check) shellHook;
             buildInputs = with pkgs; [
-              nixfmt-rfc-style
+              nixfmt
               deadnix
               statix
               pre-commit

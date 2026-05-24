@@ -48,7 +48,6 @@ let
 
 in
 systemFunc {
-  inherit system;
   modules = [
     # Basic system configuration
     {
@@ -92,7 +91,7 @@ systemFunc {
         users = usersHMConfig;
         sharedModules = [
           inputs.sops-nix.homeManagerModules.sops
-          inputs.nixvim.homeManagerModules.nixvim
+          inputs.nixvim.homeModules.nixvim
         ];
         extraSpecialArgs = {
           inherit inputs pkgs;
