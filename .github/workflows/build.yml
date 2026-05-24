@@ -1,7 +1,8 @@
 name: build
 # Heavy: real `nix build` of each host's system closure. Only runs on
 # push to `main` (where it warms Cachix for everyone) and on demand via
-# workflow_call. PRs get the fast eval-only check in check.yml instead.
+# workflow_call / workflow_dispatch. PRs get the fast eval-only check
+# in check.yml instead.
 on:
   push:
     branches: [main]
@@ -12,11 +13,28 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
-# Add a new host? Add a build-<host> job mirroring the ones below.
-
 jobs:
-  build-carl:
+  # Discover NixOS hosts so the build job can fan out automatically.
+  nixos:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - id: get-configs
+        name: Get NixOS configurations
+        run: |
+          configs=$(nix eval --json .#nixosConfigurations --apply builtins.attrNames --option abort-on-warn true)
+          echo "configs=$configs" >> $GITHUB_OUTPUT
+    outputs:
+      configs: ${{ steps.get-configs.outputs.configs }}
+
+  build-nixos:
+    needs: nixos
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ${{ fromJson(needs.nixos.outputs.configs) }}
     steps:
       - name: Free disk space
         run: |
@@ -29,11 +47,30 @@ jobs:
         with:
           name: romaingrx-dotfiles
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-      - name: Build nixosConfigurations.carl
-        run: nix build .#nixosConfigurations.carl.config.system.build.toplevel --print-build-logs --option abort-on-warn true
+      - name: Build nixosConfigurations.${{ matrix.config }}
+        run: nix build .#nixosConfigurations.${{ matrix.config }}.config.system.build.toplevel --print-build-logs --option abort-on-warn true
 
-  build-goddard:
+  # Discover Darwin hosts so the build job can fan out automatically.
+  darwin:
     runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - id: get-configs
+        name: Get Darwin configurations
+        run: |
+          configs=$(nix eval --json .#darwinConfigurations --apply builtins.attrNames --option abort-on-warn true)
+          echo "configs=$configs" >> $GITHUB_OUTPUT
+    outputs:
+      configs: ${{ steps.get-configs.outputs.configs }}
+
+  build-darwin:
+    needs: darwin
+    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ${{ fromJson(needs.darwin.outputs.configs) }}
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
@@ -42,15 +79,15 @@ jobs:
         with:
           name: romaingrx-dotfiles
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-      - name: Build darwinConfigurations.goddard
-        run: nix build .#darwinConfigurations.goddard.system --print-build-logs --option abort-on-warn true
+      - name: Build darwinConfigurations.${{ matrix.config }}
+        run: nix build .#darwinConfigurations.${{ matrix.config }}.system --print-build-logs --option abort-on-warn true
 
   build-status:
     if: always()
-    needs: [build-carl, build-goddard]
+    needs: [build-nixos, build-darwin]
     runs-on: ubuntu-latest
     steps:
       - run: |
-          if [[ "${{ needs.build-carl.result }}" == "failure" || "${{ needs.build-goddard.result }}" == "failure" ]]; then
+          if [[ "${{ needs.build-nixos.result }}" == "failure" || "${{ needs.build-darwin.result }}" == "failure" ]]; then
             exit 1
           fi
