@@ -13,7 +13,12 @@ source "$CONFIG_DIR/icons.sh"
 export FONT="IBM Plex Mono"
 export NERD_FONT="JetBrainsMono Nerd Font"
 export APP_FONT="sketchybar-app-font"
+export STATUS_BG=0x22000000
+export STATUS_GRAPH_BG=0x16000000
+export STATUS_RADIUS=6
+export STATUS_HEIGHT=22
 export CONFIG_DIR PLUGIN_DIR ITEM_DIR HELPER_DIR FONT NERD_FONT APP_FONT
+export STATUS_BG STATUS_GRAPH_BG STATUS_RADIUS STATUS_HEIGHT
 
 if [ -n "${SKETCHYBAR_APP_FONT_PATH:-}" ] && [ -r "$SKETCHYBAR_APP_FONT_PATH" ]; then
 	sketchybar --load-font "$SKETCHYBAR_APP_FONT_PATH"

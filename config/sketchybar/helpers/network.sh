@@ -71,11 +71,12 @@ network_rate_label() {
 
 network_graph_value() {
 	local bytes="${1:-0}"
-	local cap="${2:-10485760}"
+	local cap="${2:-5242880}"
 
 	awk -v bytes="$bytes" -v cap="$cap" '
 		BEGIN {
-			value = log(1 + bytes) / log(1 + cap)
+			if (bytes <= 0) value = 0
+			else value = exp(log(bytes / cap) / 3)
 			if (value < 0) value = 0
 			if (value > 1) value = 1
 			printf "%.4f", value

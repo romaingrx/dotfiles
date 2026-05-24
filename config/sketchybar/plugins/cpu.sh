@@ -18,19 +18,16 @@ CPU_PERCENT="$(echo "$CPU_SYS $CPU_USER" | awk '{printf "%.0f\n", ($1 + $2)*100}
 
 COLOR=$WHITE
 case "$CPU_PERCENT" in
-[1-2][0-9])
-	COLOR=$YELLOW
-	;;
-[3-6][0-9])
-	COLOR=$ORANGE
-	;;
-[7-9][0-9] | 100)
+[8-9][0-9] | 100)
 	COLOR=$RED
 	;;
+[6-7][0-9]) COLOR=$ORANGE ;;
+[4-5][0-9]) COLOR=$YELLOW ;;
 esac
 
 sketchybar --set cpu.percent label=$CPU_PERCENT% \
 	label.color=$COLOR \
 	--set cpu.top label="$TOPPROC" \
+	--set cpu.user graph.color=$COLOR \
 	--push cpu.sys $CPU_SYS \
-	--push cpu.user $CPU_USER
+	--push cpu.user "$(echo "$CPU_SYS $CPU_USER" | awk '{print $1 + $2}')"

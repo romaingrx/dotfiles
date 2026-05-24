@@ -11,9 +11,9 @@ sketchybar --add item battery right \
 	update_freq=30 \
 	click_script="$PLUGIN_DIR/battery_click.sh" \
 	background.drawing=on \
-	background.color=0x22000000 \
-	background.corner_radius=6 \
-	background.height=22 \
+	background.color="$STATUS_BG" \
+	background.corner_radius="$STATUS_RADIUS" \
+	background.height="$STATUS_HEIGHT" \
 	popup.background.color=0x70000000 \
 	popup.blur_radius=50 \
 	popup.background.corner_radius=5 \

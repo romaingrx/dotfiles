@@ -20,7 +20,7 @@ case "$percentage" in
 [6-8][0-9]) icon="$BATTERY_75" ;;
 [3-5][0-9]) icon="$BATTERY_50" ;;
 [1-2][0-9]) icon="$BATTERY_25" ;;
-*) icon="$BATTERY_10" ;;
+*) icon="$BATTERY_0" ;;
 esac
 
 label_color="$WHITE"

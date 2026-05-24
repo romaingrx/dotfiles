@@ -6,6 +6,7 @@ sketchybar_resolve_paths "$SCRIPT_DIR"
 
 source "$CONFIG_DIR/colors.sh"
 source "$CONFIG_DIR/icons.sh"
+source "$HELPER_DIR/app_icons.sh"
 source "$HELPER_DIR/network.sh"
 source "$HELPER_DIR/text.sh"
 
@@ -30,10 +31,15 @@ rate_label="$rate Mbps"
 ip_label="No IP"
 vpn_label="VPN off"
 vpn_color="$GREY"
+vpn_icon="$VPN_ICN"
+vpn_icon_font="$NERD_FONT:Regular:12.0"
 down_graph="${down_graph:-0}"
 up_graph="${up_graph:-0}"
 down_label="${down_label:-0B/s}"
 up_label="${up_label:-0B/s}"
+activity_graph="$down_graph"
+activity_color="$BLUE"
+activity_fill_color=0x208aadf4
 
 if [ -n "$iface" ] && [ -n "$ip" ]; then
 	ip_label="$iface: $ip"
@@ -45,25 +51,41 @@ else
 fi
 
 if [ -n "$vpn" ]; then
-	wifi_label="$VPN_ICN"
+	vpn_icon="$(app_icon "" "$vpn")"
+	if [ "$vpn_icon" = ":default:" ]; then
+		vpn_icon="$VPN_ICN"
+	else
+		vpn_icon_font="$APP_FONT:Regular:12.0"
+	fi
+	wifi_label="$vpn_icon"
 	wifi_label_drawing=on
 	vpn_label="$(text_truncate "$vpn" 32)"
 	vpn_color="$GREEN"
+fi
+
+if awk -v down="$down_graph" -v up="$up_graph" 'BEGIN { exit !(up > down) }'; then
+	activity_graph="$up_graph"
+	activity_color="$GREEN"
+	activity_fill_color=0x20a6da95
 fi
 
 sketchybar --set wifi.control \
 	icon="$WIFI_ICN" \
 	icon.color="$wifi_icon_color" \
 	label="$wifi_label" \
+	label.font="$vpn_icon_font" \
 	label.color="$vpn_color" \
 	label.drawing="$wifi_label_drawing" \
-	--push net.down "$down_graph" \
-	--push net.up "$up_graph" \
+	--set net.activity \
+	graph.color="$activity_color" \
+	graph.fill_color="$activity_fill_color" \
+	--push net.activity "$activity_graph" \
 	--set wifi.ssid \
 	icon="$NETWORK_ICN" \
 	label="$ssid_label" \
 	--set wifi.vpn \
-	icon="$VPN_ICN" \
+	icon="$vpn_icon" \
+	icon.font="$vpn_icon_font" \
 	icon.color="$vpn_color" \
 	label="$vpn_label" \
 	--set wifi.ip \
@@ -71,4 +93,4 @@ sketchybar --set wifi.control \
 	label="$ip_label" \
 	--set wifi.speed \
 	icon="$SPEED_ICN" \
-	label="$rate_label - down $down_label - up $up_label"
+	label="$rate_label - down $down_label / up $up_label"

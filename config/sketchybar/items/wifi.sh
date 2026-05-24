@@ -1,41 +1,38 @@
 #!/usr/bin/env bash
 
-sketchybar --add graph net.down right 44 \
-	--set net.down \
-	width=0 \
+sketchybar --add graph net.activity right 42 \
+	--set net.activity \
 	graph.color="$BLUE" \
-	graph.fill_color=0x308aadf4 \
+	graph.fill_color=0x208aadf4 \
+	graph.line_width=0.8 \
 	label.drawing=off \
 	icon.drawing=off \
-	background.padding_right=2
-
-sketchybar --add graph net.up right 44 \
-	--set net.up \
-	graph.color="$GREEN" \
-	graph.fill_color=0x30a6da95 \
-	label.drawing=off \
-	icon.drawing=off \
+	background.drawing=on \
+	background.color="$STATUS_GRAPH_BG" \
+	background.corner_radius="$STATUS_RADIUS" \
+	background.height=18 \
+	background.padding_left=3 \
 	background.padding_right=4 \
 	script="$PLUGIN_DIR/wifi.sh" \
 	update_freq=2 \
-	--subscribe net.up system_woke wifi_change
+	--subscribe net.activity system_woke wifi_change
 
 sketchybar --add item wifi.control right \
 	--set wifi.control \
 	icon="$WIFI_ICN" \
-	icon.padding_left=5 \
+	icon.padding_left=6 \
 	icon.padding_right=3 \
-	label.font="$NERD_FONT:Regular:11.0" \
-	label.padding_left=0 \
-	label.padding_right=5 \
+	label.font="$APP_FONT:Regular:12.0" \
+	label.padding_left=1 \
+	label.padding_right=6 \
 	label.drawing=off \
 	script="$PLUGIN_DIR/wifi.sh" \
 	update_freq=30 \
 	click_script="$PLUGIN_DIR/wifi_click.sh" \
 	background.drawing=on \
-	background.color=0x22000000 \
-	background.corner_radius=6 \
-	background.height=22 \
+	background.color="$STATUS_BG" \
+	background.corner_radius="$STATUS_RADIUS" \
+	background.height="$STATUS_HEIGHT" \
 	popup.background.color=0x70000000 \
 	popup.blur_radius=50 \
 	popup.background.corner_radius=5 \

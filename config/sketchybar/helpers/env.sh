@@ -16,5 +16,9 @@ sketchybar_resolve_paths() {
 		HELPER_DIR="$CONFIG_DIR/helpers"
 	fi
 
-	export CONFIG_DIR PLUGIN_DIR HELPER_DIR
+	: "${FONT:=IBM Plex Mono}"
+	: "${NERD_FONT:=JetBrainsMono Nerd Font}"
+	: "${APP_FONT:=sketchybar-app-font}"
+
+	export CONFIG_DIR PLUGIN_DIR HELPER_DIR FONT NERD_FONT APP_FONT
 }
