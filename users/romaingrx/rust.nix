@@ -2,8 +2,8 @@
 
 let
   # Using the stable toolchain from Fenix
-  rustToolchain = inputs.fenix.packages.${pkgs.system}.stable.toolchain;
-  # rust-analyzer = inputs.fenix.packages.${pkgs.system}.rust-analyzer;
+  rustToolchain = inputs.fenix.packages.${pkgs.stdenv.hostPlatform.system}.stable.toolchain;
+  # rust-analyzer = inputs.fenix.packages.${pkgs.stdenv.hostPlatform.system}.rust-analyzer;
 in
 {
   home.packages = [
