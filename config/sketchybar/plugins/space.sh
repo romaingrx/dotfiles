@@ -116,7 +116,8 @@ IFS="|" read -r _workspace is_focused is_visible display layout <<EOF
 $state
 EOF
 
-focused_workspace="$(aerospace_focused_workspace)"
+event_focused_workspace="${FOCUSED_WORKSPACE:-}"
+focused_workspace="${event_focused_workspace:-$(aerospace_focused_workspace)}"
 window_count="$(aerospace_workspace_window_count "$workspace")"
 apps_label="$(workspace_app_icons "$workspace")"
 
@@ -130,7 +131,8 @@ if [ -z "$apps_label" ]; then
 	label_drawing=off
 fi
 
-if [ "$workspace" = "$focused_workspace" ] || [ "$is_focused" = "true" ]; then
+if { [ -n "$event_focused_workspace" ] && [ "$workspace" = "$event_focused_workspace" ]; } ||
+	{ [ -z "$event_focused_workspace" ] && { [ "$workspace" = "$focused_workspace" ] || [ "$is_focused" = "true" ]; }; }; then
 	icon_color="$WHITE"
 	label_color="$WHITE"
 	background_color=0x55ffffff

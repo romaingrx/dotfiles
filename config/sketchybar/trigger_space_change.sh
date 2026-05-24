@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
-focused=$(aerospace list-workspaces --focused)
+SKETCHYBAR_BIN="${SKETCHYBAR_BIN:-/run/current-system/sw/bin/sketchybar}"
+AEROSPACE_BIN="${AEROSPACE_BIN:-/run/current-system/sw/bin/aerospace}"
 
-sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE="$focused"
+focused="$("$AEROSPACE_BIN" list-workspaces --focused)"
+
+"$SKETCHYBAR_BIN" --trigger aerospace_workspace_change FOCUSED_WORKSPACE="$focused"

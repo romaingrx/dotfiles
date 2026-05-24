@@ -24,17 +24,20 @@ case "$percentage" in
 esac
 
 label_color="$WHITE"
+icon_color="$WHITE"
 case "$percentage" in
 [1-9] | 1[0-9]) label_color="$RED" ;;
-2[0-9]) label_color="$ORANGE" ;;
+2[0-9]) label_color="$YELLOW" ;;
 esac
 
 if [ "$source_name" = "AC Power" ]; then
 	icon="$BATTERY_CHARGING"
+	icon_color="$GREEN"
 fi
 
 sketchybar --set battery \
 	icon="$icon" \
+	icon.color="$icon_color" \
 	label="${percentage}%" \
 	label.color="$label_color" \
 	--set battery.source \

@@ -2,9 +2,45 @@
 
 AEROSPACE_FALLBACK_WORKSPACES="${AEROSPACE_FALLBACK_WORKSPACES:-1 2 3 B C M U S}"
 
+aerospace_bin() {
+	local candidate
+
+	for candidate in "${AEROSPACE_BIN:-}" \
+		/run/current-system/sw/bin/aerospace \
+		/opt/homebrew/bin/aerospace \
+		/usr/local/bin/aerospace; do
+		if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+			printf "%s" "$candidate"
+			return
+		fi
+	done
+
+	command -v aerospace 2>/dev/null
+}
+
+sketchybar_bin() {
+	local candidate
+
+	for candidate in "${SKETCHYBAR_BIN:-}" \
+		/run/current-system/sw/bin/sketchybar \
+		/opt/homebrew/bin/sketchybar \
+		/usr/local/bin/sketchybar; do
+		if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+			printf "%s" "$candidate"
+			return
+		fi
+	done
+
+	command -v sketchybar 2>/dev/null
+}
+
 aerospace_query() {
-	command -v aerospace >/dev/null 2>&1 || return 1
-	aerospace "$@" 2>/dev/null
+	local bin
+
+	bin="$(aerospace_bin)"
+	[ -n "$bin" ] || return 1
+
+	"$bin" "$@" 2>/dev/null
 }
 
 aerospace_workspaces() {
@@ -78,10 +114,13 @@ aerospace_workspace_apps() {
 }
 
 aerospace_trigger_workspace_change() {
-	local focused
+	local focused sketchybar
 
 	focused="$(aerospace_focused_workspace)"
-	sketchybar --trigger aerospace_workspace_change \
+	sketchybar="$(sketchybar_bin)"
+	[ -n "$sketchybar" ] || return 1
+
+	"$sketchybar" --trigger aerospace_workspace_change \
 		FOCUSED_WORKSPACE="${focused:-${1:-}}" \
 		PREV_WORKSPACE="${PREV_WORKSPACE:-}"
 }

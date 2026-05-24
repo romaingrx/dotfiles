@@ -2,9 +2,18 @@
 
 sketchybar --add item battery right \
 	--set battery \
+	icon.padding_left=5 \
+	icon.padding_right=3 \
+	label.font="$FONT:Medium:12.0" \
+	label.padding_left=0 \
+	label.padding_right=6 \
 	script="$PLUGIN_DIR/battery.sh" \
 	update_freq=30 \
 	click_script="$PLUGIN_DIR/battery_click.sh" \
+	background.drawing=on \
+	background.color=0x22000000 \
+	background.corner_radius=6 \
+	background.height=22 \
 	popup.background.color=0x70000000 \
 	popup.blur_radius=50 \
 	popup.background.corner_radius=5 \
