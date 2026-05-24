@@ -1,7 +1,7 @@
 { config, pkgs, ... }:
 let
   gpg_sops_file = ./secrets/gpg.yaml;
-  homeDirectory = config.home.homeDirectory;
+  inherit (config.home) homeDirectory;
 in
 {
   sops = {

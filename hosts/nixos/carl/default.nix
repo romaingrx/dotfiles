@@ -2,14 +2,12 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 
-{ pkgs, pkgs-stable, ... }:
+{ pkgs-stable, ... }:
 {
   imports = [
-    # Include the results of the hardware scan.
     ./hardware-configuration.nix
   ];
 
-  # See https://wiki.nixos.org/wiki/Python_quickstart_using_uv
   programs.nix-ld.enable = true;
 
   nix.settings.experimental-features = [
@@ -31,8 +29,22 @@
     libcublas
   ];
 
-  services.tailscale = {
-    enable = true;
+  services = {
+    tailscale.enable = true;
+    xserver = {
+      enable = true;
+      videoDrivers = [ "nvidia" ];
+      xkb = {
+        layout = "us";
+        variant = "";
+      };
+    };
+    openssh = {
+      enable = true;
+      settings.PasswordAuthentication = true;
+      settings.PermitRootLogin = "yes";
+    };
+    qemuGuest.enable = true;
   };
 
   networking = {
@@ -52,22 +64,6 @@
   };
   time.timeZone = "Europe/Zurich";
   i18n.defaultLocale = "en_US.UTF-8";
-
-  services.xserver = {
-    enable = true;
-    videoDrivers = [ "nvidia" ];
-    xkb = {
-      layout = "us";
-      variant = "";
-    };
-  };
-
-  services.openssh = {
-    enable = true;
-    settings.PasswordAuthentication = true;
-    settings.PermitRootLogin = "yes";
-  };
-  services.qemuGuest.enable = true;
 
   hardware = {
     graphics = {
