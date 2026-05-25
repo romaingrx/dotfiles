@@ -64,6 +64,15 @@ aerospace_focused_workspace() {
 	aerospace_query list-workspaces --focused || true
 }
 
+aerospace_current_mode() {
+	if [ -n "${MODE:-}" ]; then
+		printf "%s" "$MODE"
+		return
+	fi
+
+	aerospace_query list-modes --current || true
+}
+
 aerospace_workspace_state() {
 	local workspace="$1"
 	local state

@@ -1,24 +1,10 @@
 #!/usr/bin/env bash
 
-sketchybar --add graph net.activity right "$STATUS_GRAPH_WIDTH" \
-	--set net.activity \
-	graph.color="$BLUE" \
-	graph.fill_color=0x208aadf4 \
-	graph.line_width=0.8 \
+source "$HELPER_DIR/components.sh"
+
+status_graph net.activity right "$BLUE" 0x208aadf4
+sketchybar --set net.activity \
 	label="0B" \
-	label.drawing=on \
-	label.font="$FONT:Medium:9.0" \
-	label.color="$BLUE" \
-	label.width="$STATUS_GRAPH_LABEL_WIDTH" \
-	label.align=right \
-	label.padding_left=2 \
-	label.padding_right=3 \
-	icon.drawing=off \
-	background.drawing=on \
-	background.color="$STATUS_GRAPH_BG" \
-	background.corner_radius="$STATUS_RADIUS" \
-	background.height=18 \
-	background.padding_left=3 \
 	background.padding_right=4 \
 	script="$PLUGIN_DIR/wifi.sh" \
 	update_freq=2 \
