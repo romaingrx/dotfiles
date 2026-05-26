@@ -4,12 +4,12 @@ after-login-command = []
 # so it won't be run twice on AeroSpace restart
 # after-startup-command = ['exec-and-forget sketchybar']
 
-# Notify Sketchybar about workspace chang
-# TODO romaingrx: Get the location of sketchybar from the system
+# Notify SketchyBar about workspace changes.
+# AeroSpace is launched by launchd, so keep these paths absolute.
 exec-on-workspace-change = [
   '/bin/bash',
   '-c',
-  'sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE PREV_WORKSPACE=$AEROSPACE_PREV_WORKSPACE',
+  '/run/current-system/sw/bin/sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE PREV_WORKSPACE=$AEROSPACE_PREV_WORKSPACE',
 ]
 
 enable-normalization-flatten-containers = true
@@ -84,7 +84,10 @@ alt-shift-d = 'exec-and-forget open -a /Applications/DuckDuckGo.app'
 alt-shift-t = 'exec-and-forget open -a /Applications/Alacritty.app'
 
 alt-tab = 'workspace-back-and-forth'
-alt-shift-tab = 'move-workspace-to-monitor --wrap-around next'
+alt-shift-tab = [
+  'move-workspace-to-monitor --wrap-around next',
+  'exec-and-forget /bin/bash -c "/run/current-system/sw/bin/sketchybar --trigger aerospace_monitor_change TARGET_MONITOR=$(/run/current-system/sw/bin/aerospace list-monitors --focused --format \"%{monitor-appkit-nsscreen-screens-id}\") FOCUSED_WORKSPACE=$(/run/current-system/sw/bin/aerospace list-workspaces --focused)"',
+]
 alt-shift-semicolon = 'mode service'
 alt-shift-e = 'enable toggle'
 

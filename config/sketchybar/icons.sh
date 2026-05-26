@@ -5,9 +5,16 @@
 APPLE_ICN=􀣺
 SUN_ICN=􀆮
 MOON_ICN=􀆺
+CLOCK_ICN=􀐫
 WIFI_ICN=􀙇
 NETWORK_ICN=􀤆
 SPEED_ICN=􀍾
+VPN_ICN=􀒷
+IP_ICN=􀅴
+WINDOW_ICN=􀏜
+LAYOUT_ICN=􀧍
+POWER_ICN=􀋦
+HEALTH_ICN=􀝐
 BATTERY_100=􀛨
 BATTERY_75=􀺸
 BATTERY_50=􀺶
