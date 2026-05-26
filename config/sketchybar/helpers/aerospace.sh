@@ -2,6 +2,10 @@
 
 AEROSPACE_FALLBACK_WORKSPACES="${AEROSPACE_FALLBACK_WORKSPACES:-1 2 3 B C M U S}"
 
+_AEROSPACE_HELPER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$_AEROSPACE_HELPER_DIR/sketchybar.sh"
+unset _AEROSPACE_HELPER_DIR
+
 aerospace_bin() {
 	local candidate
 
@@ -16,22 +20,6 @@ aerospace_bin() {
 	done
 
 	command -v aerospace 2>/dev/null
-}
-
-sketchybar_bin() {
-	local candidate
-
-	for candidate in "${SKETCHYBAR_BIN:-}" \
-		/run/current-system/sw/bin/sketchybar \
-		/opt/homebrew/bin/sketchybar \
-		/usr/local/bin/sketchybar; do
-		if [ -n "$candidate" ] && [ -x "$candidate" ]; then
-			printf "%s" "$candidate"
-			return
-		fi
-	done
-
-	command -v sketchybar 2>/dev/null
 }
 
 aerospace_query() {
