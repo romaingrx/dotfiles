@@ -8,6 +8,7 @@ source "$CONFIG_DIR/colors.sh"
 source "$CONFIG_DIR/icons.sh"
 source "$HELPER_DIR/aerospace.sh"
 source "$HELPER_DIR/app_icons.sh"
+source "$HELPER_DIR/display_map.sh"
 source "$HELPER_DIR/text.sh"
 
 MAX_WORKSPACE_APPS="${MAX_WORKSPACE_APPS:-4}"
@@ -115,6 +116,7 @@ state="$(aerospace_workspace_state "$workspace")"
 IFS="|" read -r _workspace is_focused is_visible display layout <<EOF
 $state
 EOF
+display="$(display_map_sketchybar_display_for_workspace "$workspace" "$state" || true)"
 
 event_focused_workspace="${FOCUSED_WORKSPACE:-}"
 focused_workspace="${event_focused_workspace:-$(aerospace_focused_workspace)}"
@@ -147,9 +149,14 @@ elif [ "$window_count" -eq 0 ]; then
 	label_color="$GREY"
 fi
 
+display_properties=()
+if [ -n "$display" ]; then
+	display_properties=(display="$display")
+fi
+
 sketchybar --set "$NAME" \
 	drawing=on \
-	display="${display:-1}" \
+	"${display_properties[@]}" \
 	icon="$workspace" \
 	icon.color="$icon_color" \
 	label="$apps_label" \

@@ -25,6 +25,56 @@ sketchybar_query() {
 	"$bin" --query "$@" 2>/dev/null
 }
 
+sketchybar_valid_display_ids() {
+	local jq_bin displays
+
+	jq_bin="$(command -v jq 2>/dev/null || true)"
+	[ -n "$jq_bin" ] || return 1
+
+	displays="$(sketchybar_query displays || true)"
+	[ -n "$displays" ] || return 1
+
+	printf "%s" "$displays" |
+		"$jq_bin" -r '.[] | select((.DirectDisplayID // 0) != 0) | .["arrangement-id"]'
+}
+
+sketchybar_valid_display_count() {
+	sketchybar_valid_display_ids | awk 'NF { count++ } END { print count + 0 }'
+}
+
+sketchybar_display_exists() {
+	local display="$1"
+
+	case "$display" in
+	"" | *[!0-9]*) return 1 ;;
+	esac
+
+	sketchybar_valid_display_ids | awk -v display="$display" '$1 == display { found = 1 } END { exit !found }'
+}
+
+sketchybar_fallback_display() {
+	local display
+
+	display="$(sketchybar_valid_display_ids | head -n 1)"
+	if [ -n "$display" ]; then
+		printf "%s" "$display"
+		return
+	fi
+
+	printf "1"
+}
+
+sketchybar_resolve_display() {
+	local display="$1"
+
+	if sketchybar_display_exists "$display"; then
+		printf "%s" "$display"
+		return
+	fi
+
+	sketchybar_fallback_display
+}
+
 sketchybar_has_placeholder_display() {
 	local jq_bin displays
 
@@ -35,7 +85,7 @@ sketchybar_has_placeholder_display() {
 	[ -n "$displays" ] || return 1
 
 	printf "%s" "$displays" |
-		"$jq_bin" -e '.[] | select(.DirectDisplayID == 0 or .["arrangement-id"] == 0)' >/dev/null 2>&1
+		"$jq_bin" -e '.[] | select((.DirectDisplayID // 0) == 0)' >/dev/null 2>&1
 }
 
 sketchybar_kickstart() {
