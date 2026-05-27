@@ -61,6 +61,16 @@ aerospace_current_mode() {
 	aerospace_query list-modes --current || true
 }
 
+aerospace_monitor_count() {
+	local count
+
+	count="$(aerospace_query list-monitors --count || true)"
+	case "$count" in
+	"" | *[!0-9]*) printf "0" ;;
+	*) printf "%s" "$count" ;;
+	esac
+}
+
 aerospace_workspace_state() {
 	local workspace="$1"
 	local state
@@ -120,4 +130,17 @@ aerospace_trigger_workspace_change() {
 	"$sketchybar" --trigger aerospace_workspace_change \
 		FOCUSED_WORKSPACE="${focused:-${1:-}}" \
 		PREV_WORKSPACE="${PREV_WORKSPACE:-}"
+}
+
+aerospace_trigger_monitor_change() {
+	local focused monitor sketchybar
+
+	focused="$(aerospace_focused_workspace)"
+	monitor="$(aerospace_query list-monitors --focused --format "%{monitor-appkit-nsscreen-screens-id}" || true)"
+	sketchybar="$(sketchybar_bin)"
+	[ -n "$sketchybar" ] || return 1
+
+	"$sketchybar" --trigger aerospace_monitor_change \
+		TARGET_MONITOR="$monitor" \
+		FOCUSED_WORKSPACE="$focused"
 }
