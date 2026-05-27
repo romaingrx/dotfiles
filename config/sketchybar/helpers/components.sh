@@ -23,7 +23,7 @@ status_graph() {
 		background.drawing=on \
 		background.color="$STATUS_GRAPH_BG" \
 		background.corner_radius="$STATUS_RADIUS" \
-		background.height=18 \
+		background.height="$STATUS_GRAPH_HEIGHT" \
 		background.padding_left=3 \
 		background.padding_right=5
 }
