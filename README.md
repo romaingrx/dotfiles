@@ -1,25 +1,26 @@
-[![nixfmt](https://github.com/romaingrx/dotfiles/actions/workflows/nixfmt.yml/badge.svg)](https://github.com/romaingrx/dotfiles/actions/workflows/nixfmt.yml)
+[![check](https://github.com/romaingrx/dotfiles/actions/workflows/check.yml/badge.svg)](https://github.com/romaingrx/dotfiles/actions/workflows/check.yml)
 [![build](https://github.com/romaingrx/dotfiles/actions/workflows/build.yml/badge.svg)](https://github.com/romaingrx/dotfiles/actions/workflows/build.yml)
 
-> My dotfiles for MacOS and Linux using Nix, home-manager, and nix-darwin.
+> My dotfiles for macOS and Linux using Nix, home-manager, and nix-darwin.
 
->[!Warning]
+> [!Warning]
 > Note that this configuration is actively evolving. While functional, some components are still being refined and optimized to ensure the best possible implementation.
 
 ## Overview
 
-This repository contains my system configurations managed through Nix. It supports both MacOS (via nix-darwin) and Linux (NixOS) systems, with a focus on maintaining a consistent development environment across different machines.
+This repository contains my system configurations managed through Nix. It supports both macOS (via nix-darwin) and Linux (NixOS), with a focus on maintaining a consistent development environment across different machines.
 
 ## Repository Structure
 
 ```
 .
 ├── assets/          # Assets like wallpapers and images
+├── config/          # Application configuration linked by home-manager
 ├── hosts/           # Host-specific configurations (e.g. nixos, darwin)
 ├── lib/             # Helper functions and utilities
 ├── modules/         # Shared configuration modules
-│   └── core/        # Core configuration shared across systems
 ├── overlays/        # Nix package overlays
+├── scripts/         # Bootstrap and helper scripts
 └── users/           # User-specific configurations
 ```
 
@@ -32,20 +33,33 @@ This repository contains my system configurations managed through Nix. It suppor
 
 ## Supported Systems
 
-- **MacOS (aarch64-darwin)**
+- **macOS (aarch64-darwin)**
   - Primary configuration for `goddard` machine
-  - Supports multiple users (romaingrx, lcmd)
   
 - **Linux (x86_64-linux)**
   - NixOS configuration for `carl` machine
 
+## Common Commands
+
+```sh
+nix develop
+nix fmt
+nix flake check
+```
+
+Bootstrap a machine with:
+
+```sh
+./scripts/bootstrap.sh
+```
+
 ## Known Issues and Limitations
 
-### MacOS (Darwin)
+### macOS (Darwin)
 - **Homebrew Multi-user Support**: The current implementation doesn't handle Homebrew packages well in a multi-user setup. Package management and sharing between users needs improvement.
 - **Package Sharing**: Limited capability for sharing packages between users in the Darwin setup, especially around `sketchybar`.
 
 ## Documentation
 
->[!Note]
+> [!Note]
 > In progress.

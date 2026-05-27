@@ -7,3 +7,16 @@ repos:
         language: system
         files: \.nix$
         exclude: ^third-party/
+      - id: deadnix
+        name: deadnix
+        entry: deadnix --fail
+        language: system
+        files: \.nix$
+        exclude: ^third-party/
+      - id: statix
+        name: statix check
+        entry: statix check .
+        language: system
+        files: \.nix$
+        exclude: ^third-party/
+        pass_filenames: false
