@@ -53,6 +53,8 @@
         AppleInterfaceStyleSwitchesAutomatically = true;
         "com.apple.mouse.tapBehavior" = 1; # Is not working with trackpad
         _HIHideMenuBar = true;
+        # Kills the half-second window resize/rebuild flash on AeroSpace workspace switches.
+        NSAutomaticWindowAnimationsEnabled = false;
       };
       dock = {
         autohide = true;
