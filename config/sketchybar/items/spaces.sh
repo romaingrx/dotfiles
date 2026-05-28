@@ -35,9 +35,7 @@ aerospace_workspaces | while IFS= read -r sid; do
 		popup.background.corner_radius=5 \
 		popup.align=left \
 		popup.height=26 \
-		script="$PLUGIN_DIR/space.sh" \
-		click_script="$PLUGIN_DIR/space_click.sh $sid" \
-		--subscribe "$item" aerospace_workspace_change aerospace_monitor_change
+		click_script="$PLUGIN_DIR/space_click.sh $sid"
 
 	sketchybar --add item "$item.summary" "popup.$item" \
 		--set "$item.summary" \
@@ -70,3 +68,14 @@ aerospace_workspaces | while IFS= read -r sid; do
 		i=$((i + 1))
 	done
 done
+
+# One hidden controller drives every workspace indicator: on each event it runs
+# spaces_update.sh, which either fast-paints two items or kicks a full reconcile
+# (see plugins/spaces_update.sh). updates=on so it still fires while hidden.
+sketchybar --add item spaces_controller left \
+	--set spaces_controller drawing=off updates=on \
+	script="$PLUGIN_DIR/spaces_update.sh" \
+	--subscribe spaces_controller aerospace_workspace_change aerospace_monitor_change
+
+# Paint initial state now instead of waiting for the first workspace switch.
+"$PLUGIN_DIR/spaces_update.sh" >/dev/null 2>&1 || true
