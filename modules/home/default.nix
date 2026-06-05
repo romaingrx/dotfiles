@@ -1,6 +1,7 @@
 {
   config,
   dotfilesPath,
+  lib,
   ...
 }:
 let
@@ -34,7 +35,7 @@ in
       VISUAL = "nvim";
     };
 
-    file = builtins.mapAttrs' (name: value: {
+    file = lib.mapAttrs' (name: value: {
       name = ".local/bin/${name}";
       inherit value;
     }) themeCommandFiles;
