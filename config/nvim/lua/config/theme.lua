@@ -5,6 +5,8 @@ local uv = vim.uv or vim.loop
 local DEFAULT_APPEARANCE = "dark"
 local APPEARANCE_FILE = "appearance"
 local COLORSCHEMES = {
+  -- Neovim intentionally uses Tokyonight for light mode; other consumers can
+  -- map the shared light/dark state to their own best-fitting themes.
   light = "tokyonight-day",
   dark = "catppuccin-mocha",
 }
@@ -142,8 +144,8 @@ function M.setup()
     callback = M.stop,
   })
 
-  M.apply()
   M.watch()
+  schedule_apply()
 end
 
 return M

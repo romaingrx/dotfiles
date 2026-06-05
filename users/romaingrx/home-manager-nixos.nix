@@ -238,7 +238,7 @@ lib.mkMerge [
 
     systemd.user.services.appearance-theme-switcher = {
       Unit = {
-        Description = "Appearance theme state and Alacritty theme switcher";
+        Description = "Appearance theme state and consumer synchronization";
         After = [ "graphical-session.target" ];
         PartOf = [ "graphical-session.target" ];
       };
