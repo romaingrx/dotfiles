@@ -235,5 +235,21 @@ lib.mkMerge [
         WantedBy = [ "graphical-session.target" ];
       };
     };
+
+    systemd.user.services.appearance-theme-switcher = {
+      Unit = {
+        Description = "Appearance theme state and Alacritty theme switcher";
+        After = [ "graphical-session.target" ];
+        PartOf = [ "graphical-session.target" ];
+      };
+      Service = {
+        ExecStart = "${pkgs.bash}/bin/bash ${config.home.homeDirectory}/.local/bin/romaingrx-theme-watch";
+        Restart = "always";
+        RestartSec = 3;
+      };
+      Install = {
+        WantedBy = [ "graphical-session.target" ];
+      };
+    };
   })
 ]

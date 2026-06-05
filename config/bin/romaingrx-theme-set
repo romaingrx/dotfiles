@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+source "${script_dir}/romaingrx-theme-lib"
+
+case "${1:-}" in
+  light | dark)
+    theme_sync "$1"
+    ;;
+  *)
+    printf 'Usage: %s light|dark\n' "${0##*/}" >&2
+    exit 2
+    ;;
+esac

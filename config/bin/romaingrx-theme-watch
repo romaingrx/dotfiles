@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+source "${script_dir}/romaingrx-theme-lib"
+
+poll_interval="${ROMAINGRX_THEME_POLL_INTERVAL:-2}"
+if [[ ! "$poll_interval" =~ ^[1-9][0-9]*$ ]]; then
+  printf 'Invalid ROMAINGRX_THEME_POLL_INTERVAL=%s; using 2 seconds.\n' "$poll_interval" >&2
+  poll_interval=2
+fi
+
+current="$(theme_detect_system)"
+
+theme_sync_best_effort "$current"
+
+while true; do
+  sleep "$poll_interval"
+
+  next="$(theme_detect_system)"
+  if [[ "$next" != "$current" ]]; then
+    current="$next"
+    theme_sync_best_effort "$current"
+  fi
+done
