@@ -55,7 +55,17 @@ in
     let
       linkCommands = lib.concatStringsSep "\n" (
         lib.mapAttrsToList (
-          link: target: "theme_link_atomic ${lib.escapeShellArg target} ${lib.escapeShellArg link}"
+          link: target:
+          let
+            escapedTarget = lib.escapeShellArg target;
+          in
+          ''
+            if [ ! -e ${escapedTarget} ]; then
+              printf 'Missing theme target: %s\n' ${escapedTarget} >&2
+              exit 1
+            fi
+            theme_link_atomic ${escapedTarget} ${lib.escapeShellArg link}
+          ''
         ) links
       );
     in

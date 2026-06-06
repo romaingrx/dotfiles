@@ -10,9 +10,13 @@ let
   themeLib = import ../theme/lib.nix { inherit config dotfilesPath lib; };
   renderTheme = import ./waybar/theme.nix { inherit lib; };
   waybarConfigRoot = "${config.home.homeDirectory}/.config/waybar";
+  legacyDotfilesRoot =
+    if lib.hasPrefix "/" dotfilesPath then
+      dotfilesPath
+    else
+      "${config.home.homeDirectory}/${dotfilesPath}";
   legacyWaybarTargets = [
-    "${dotfilesPath}/config/waybar"
-    "${config.home.homeDirectory}/${dotfilesPath}/config/waybar"
+    "${legacyDotfilesRoot}/config/waybar"
   ];
   runtimeWaybarRoot = "${config.home.homeDirectory}/${cfg.runtimeRoot}/current/waybar";
   generatedArtifacts = themeLib.generatedArtifacts "waybar" (appearanceTheme: {
