@@ -34,6 +34,7 @@ theme_read_state() {
 theme_write_state() {
   local appearance="$1"
   local file
+  local current=""
 
   if ! theme_is_appearance "$appearance"; then
     theme_print_invalid_appearance "$appearance"
@@ -42,8 +43,12 @@ theme_write_state() {
 
   file="$(theme_state_file)"
 
-  mkdir -p -- "$(dirname -- "$file")"
-  if [[ ! -f "$file" ]] || [[ "$(theme_read_state)" != "$appearance" ]]; then
+  mkdir -p -- "$(dirname -- "$file")" || return
+  if [[ -f "$file" ]]; then
+    IFS= read -r current < "$file" || true
+  fi
+
+  if ! theme_is_appearance "$current" || [[ "$current" != "$appearance" ]]; then
     printf '%s\n' "$appearance" > "$file"
   fi
 }
@@ -109,6 +114,6 @@ theme_apply() {
 theme_sync() {
   local appearance="$1"
 
-  theme_write_state "$appearance"
+  theme_write_state "$appearance" || return
   theme_apply "$appearance"
 }
