@@ -1,0 +1,196 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+theme_lib="${THEME_LIB:?THEME_LIB must point to romaingrx-theme-lib}"
+
+# shellcheck source=/dev/null
+source "$theme_lib"
+
+fail() {
+  printf 'not ok - %s\n' "$1" >&2
+  exit 1
+}
+
+assert_eq() {
+  local expected="$1"
+  local actual="$2"
+  local message="$3"
+
+  if [[ "$actual" != "$expected" ]]; then
+    fail "$message: expected '$expected', got '$actual'"
+  fi
+}
+
+assert_file_contents() {
+  local file="$1"
+  local expected="$2"
+  local actual
+
+  actual="$(<"$file")"
+  assert_eq "$expected" "$actual" "$file contents"
+}
+
+assert_symlink_target() {
+  local link="$1"
+  local expected="$2"
+  local actual
+
+  [[ -L "$link" ]] || fail "$link should be a symlink"
+  actual="$(readlink "$link")"
+  assert_eq "$expected" "$actual" "$link target"
+}
+
+reset_theme_env() {
+  unset \
+    HOME \
+    ROMAINGRX_THEME_ALACRITTY_ACTIVE_THEME \
+    ROMAINGRX_THEME_CONFIG \
+    ROMAINGRX_THEME_CONFIG_LOADED \
+    ROMAINGRX_THEME_DEFAULT_APPEARANCE \
+    ROMAINGRX_THEME_GENERATED_ROOT \
+    ROMAINGRX_THEME_RUNTIME_ROOT \
+    XDG_CONFIG_HOME \
+    XDG_STATE_HOME
+}
+
+make_theme_home() {
+  local root="$1"
+  local generated_root="$root/config/romaingrx/theme/generated"
+
+  mkdir -p "$generated_root/light" "$generated_root/dark"
+  printf 'light-theme\n' > "$generated_root/light/alacritty.toml"
+  printf 'dark-theme\n' > "$generated_root/dark/alacritty.toml"
+}
+
+test_first_run_bootstrap_uses_dark_default() {
+  local root
+  root="$(mktemp -d)"
+  make_theme_home "$root"
+
+  reset_theme_env
+  HOME="$root/home"
+  XDG_CONFIG_HOME="$root/config"
+  XDG_STATE_HOME="$root/state"
+
+  theme_bootstrap
+
+  assert_file_contents "$root/state/theme/appearance" "dark"
+  assert_symlink_target "$root/state/theme/current" "$root/config/romaingrx/theme/generated/dark"
+  assert_symlink_target "$root/home/.local/share/alacritty/active-theme.toml" "$root/state/theme/current/alacritty.toml"
+  assert_file_contents "$root/home/.local/share/alacritty/active-theme.toml" "dark-theme"
+}
+
+test_sync_switches_repeatedly() {
+  local root
+  root="$(mktemp -d)"
+  make_theme_home "$root"
+
+  reset_theme_env
+  HOME="$root/home"
+  XDG_CONFIG_HOME="$root/config"
+  XDG_STATE_HOME="$root/state"
+
+  theme_bootstrap
+  theme_sync light
+  theme_sync dark
+  theme_sync light
+
+  assert_file_contents "$root/state/theme/appearance" "light"
+  assert_symlink_target "$root/state/theme/current" "$root/config/romaingrx/theme/generated/light"
+  assert_symlink_target "$root/home/.local/share/alacritty/active-theme.toml" "$root/state/theme/current/alacritty.toml"
+  assert_file_contents "$root/home/.local/share/alacritty/active-theme.toml" "light-theme"
+}
+
+test_paths_env_extends_runtime_contract() {
+  local root
+  root="$(mktemp -d)"
+  mkdir -p "$root/generated/light" "$root/generated/dark" "$root/state" "$root/alacritty"
+  printf 'light-theme\n' > "$root/generated/light/alacritty.toml"
+  printf 'dark-theme\n' > "$root/generated/dark/alacritty.toml"
+
+  cat > "$root/paths.env" <<EOF
+ROMAINGRX_THEME_DEFAULT_APPEARANCE='light'
+ROMAINGRX_THEME_GENERATED_ROOT='$root/generated'
+ROMAINGRX_THEME_RUNTIME_ROOT='$root/state'
+ROMAINGRX_THEME_ALACRITTY_ACTIVE_THEME='$root/alacritty/active-theme.toml'
+EOF
+
+  reset_theme_env
+  HOME="$root/home"
+  ROMAINGRX_THEME_CONFIG="$root/paths.env"
+
+  theme_bootstrap
+
+  assert_file_contents "$root/state/appearance" "light"
+  assert_symlink_target "$root/state/current" "$root/generated/light"
+  assert_symlink_target "$root/alacritty/active-theme.toml" "$root/state/current/alacritty.toml"
+  assert_file_contents "$root/alacritty/active-theme.toml" "light-theme"
+}
+
+test_stale_current_symlink_is_repaired() {
+  local root
+  root="$(mktemp -d)"
+  make_theme_home "$root"
+
+  reset_theme_env
+  HOME="$root/home"
+  XDG_CONFIG_HOME="$root/config"
+  XDG_STATE_HOME="$root/state"
+
+  mkdir -p "$root/state/theme"
+  ln -s "$root/missing-theme" "$root/state/theme/current"
+
+  theme_bootstrap_state dark
+
+  assert_file_contents "$root/state/theme/appearance" "dark"
+  assert_symlink_target "$root/state/theme/current" "$root/config/romaingrx/theme/generated/dark"
+}
+
+test_non_symlink_current_is_refused() {
+  local root
+  root="$(mktemp -d)"
+  make_theme_home "$root"
+
+  reset_theme_env
+  HOME="$root/home"
+  XDG_CONFIG_HOME="$root/config"
+  XDG_STATE_HOME="$root/state"
+
+  mkdir -p "$root/state/theme"
+  printf 'not a symlink\n' > "$root/state/theme/current"
+
+  if theme_bootstrap_state dark 2> "$root/error.log"; then
+    fail "theme_bootstrap_state should refuse a non-symlink current path"
+  fi
+
+  grep -q 'Refusing to replace non-symlink theme current path' "$root/error.log"
+  assert_file_contents "$root/state/theme/current" "not a symlink"
+}
+
+test_missing_generated_target_is_refused() {
+  local root
+  root="$(mktemp -d)"
+  mkdir -p "$root/config/romaingrx/theme/generated/dark"
+  printf 'dark-theme\n' > "$root/config/romaingrx/theme/generated/dark/alacritty.toml"
+
+  reset_theme_env
+  HOME="$root/home"
+  XDG_CONFIG_HOME="$root/config"
+  XDG_STATE_HOME="$root/state"
+
+  if theme_sync light 2> "$root/error.log"; then
+    fail "theme_sync should fail when the generated target is missing"
+  fi
+
+  grep -q 'Missing generated theme directory' "$root/error.log"
+  [[ ! -e "$root/state/theme/current" ]] || fail "current symlink should not be created for missing target"
+}
+
+test_first_run_bootstrap_uses_dark_default
+test_sync_switches_repeatedly
+test_paths_env_extends_runtime_contract
+test_stale_current_symlink_is_repaired
+test_non_symlink_current_is_refused
+test_missing_generated_target_is_refused
+
+printf 'ok - romaingrx-theme-lib runtime contract\n'

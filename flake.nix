@@ -64,39 +64,13 @@
         x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt;
       };
 
-      # Pre-commit hooks
+      # Checks - matches CI workflow (.github/workflows/check.yml)
       checks = nixpkgs.lib.genAttrs [ "aarch64-darwin" "x86_64-linux" ] (
         system:
-        let
+        import ./checks {
+          inherit pre-commit-hooks system;
           pkgs = nixpkgs.legacyPackages.${system};
-          theme = import ./lib/theme { };
-          renderAlacrittyTheme = import ./modules/home/programs/alacritty/theme.nix { };
-        in
-        {
-          pre-commit-check = pre-commit-hooks.lib.${system}.run {
-            src = ./.;
-            hooks = {
-              nixfmt-rfc-style = {
-                enable = true;
-                package = pkgs.nixfmt;
-                excludes = [ "third-party/" ];
-              };
-              deadnix.enable = true;
-              statix.enable = true;
-            };
-          };
-
-          theme-alacritty-golden =
-            pkgs.runCommand "theme-alacritty-golden" { nativeBuildInputs = [ pkgs.diffutils ]; }
-              ''
-                diff -u \
-                  ${./config/alacritty/themes/catppuccin-mocha.toml} \
-                  ${pkgs.writeText "generated-catppuccin-mocha.toml" (renderAlacrittyTheme theme.appearances.dark)}
-                diff -u \
-                  ${./config/alacritty/themes/catppuccin-latte.toml} \
-                  ${pkgs.writeText "generated-catppuccin-latte.toml" (renderAlacrittyTheme theme.appearances.light)}
-                touch "$out"
-              '';
+          repoRoot = ./.;
         }
       );
 
