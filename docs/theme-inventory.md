@@ -31,8 +31,9 @@ baseline for the incremental centralized theme migration.
   toggle.
 - SketchyBar uses a Macchiato-like shell palette in `config/sketchybar/colors.sh`
   plus additional hardcoded transparent state colors across items and plugins.
-- Waybar uses a Tokyo Night-like base in `config/waybar/style.css` and calendar
-  colors embedded in `config/waybar/config.jsonc`.
+- Waybar is migrated to generated Latte/Mocha artifacts. The committed
+  `config/waybar` files are compatibility wrappers; Home Manager owns the live
+  `~/.config/waybar` wrappers and generated runtime targets.
 - Hyprlock uses its own green/brown palette.
 - Rofi uses Catppuccin-like hardcoded colors inside Home Manager.
 - jankyborders uses hardcoded nix-darwin service colors.
@@ -76,6 +77,8 @@ deduplication pass.
 - `users/romaingrx/nixos.nix`
 - `config/waybar/style.css`
 - `config/waybar/config.jsonc`
+- `modules/home/programs/waybar.nix`
+- `modules/home/programs/waybar/theme.nix`
 - `config/hypr/hyprland-core.conf`
 - `config/hypr/hyprlock.conf`
 - `config/hypr/hyprpaper.conf`
