@@ -1,0 +1,1 @@
+{"clock":{"calendar":{"format":{"months":"<span color='#dc8a78'><b>{}</b></span>","today":"<span color='#d20f39'><b>{}</b></span>","weekdays":"<span color='#df8e1d'><b>{}</b></span>"}}},"include":["/home/romaingrx/.config/waybar/config-base.jsonc"]}
