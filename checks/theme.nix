@@ -10,10 +10,14 @@ let
   renderHyprTheme = import (repoRoot + "/modules/home/programs/hypr/theme.nix") {
     inherit (pkgs) lib;
   };
+  renderRofiTheme = import (repoRoot + "/modules/home/programs/rofi/theme.nix") {
+    inherit (pkgs) lib;
+  };
 
   alacrittyLatteGolden = repoRoot + "/config/alacritty/themes/catppuccin-latte.toml";
   alacrittyMochaGolden = repoRoot + "/config/alacritty/themes/catppuccin-mocha.toml";
   hyprGoldenRoot = repoRoot + "/tests/theme/golden/hypr";
+  rofiGoldenRoot = repoRoot + "/tests/theme/golden/rofi";
   waybarGoldenRoot = repoRoot + "/tests/theme/golden/waybar";
   runtimeContractTest = repoRoot + "/tests/theme/runtime-contract.sh";
   themeLib = repoRoot + "/config/bin/romaingrx-theme-lib";
@@ -91,6 +95,17 @@ in
       {
         path = "hyprlock-colors.conf";
         render = renderHyprTheme.hyprlock;
+      }
+    ];
+  };
+
+  theme-rofi-golden = mkThemeGoldenCheck {
+    name = "rofi";
+    goldenRoot = rofiGoldenRoot;
+    artifacts = [
+      {
+        path = "config.rasi";
+        render = renderRofiTheme.config;
       }
     ];
   };

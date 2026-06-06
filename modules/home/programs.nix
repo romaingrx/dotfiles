@@ -3,6 +3,7 @@
   imports = [
     ./programs/alacritty.nix
     ./programs/hypr.nix
+    ./programs/rofi.nix
     ./programs/tmux.nix
     ./programs/waybar.nix
   ];
