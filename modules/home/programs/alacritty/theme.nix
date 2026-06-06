@@ -2,7 +2,11 @@ _: theme:
 let
   t = theme.roles.terminal;
   f = theme.format;
-  title = if theme.flavor == "latte" then "Latte (Light)" else "Mocha (Dark)";
+  flavorTitles = {
+    latte = "Latte (Light)";
+    mocha = "Mocha (Dark)";
+  };
+  title = flavorTitles.${theme.flavor} or "Unknown Flavor (${theme.flavor})";
 in
 ''
   # Catppuccin ${title}
