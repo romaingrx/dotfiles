@@ -12,7 +12,156 @@ theme_print_invalid_appearance() {
 }
 
 theme_state_file() {
-  printf '%s/theme/appearance\n' "${XDG_STATE_HOME:-${HOME}/.local/state}"
+  printf '%s/appearance\n' "$(theme_state_dir)"
+}
+
+theme_config_file() {
+  printf '%s\n' "${ROMAINGRX_THEME_CONFIG:-${HOME}/.config/romaingrx/theme/paths.env}"
+}
+
+theme_load_config() {
+  local config_file
+
+  if [[ "${ROMAINGRX_THEME_CONFIG_LOADED:-}" == "1" ]]; then
+    return
+  fi
+  ROMAINGRX_THEME_CONFIG_LOADED=1
+
+  config_file="$(theme_config_file)"
+  if [[ -r "$config_file" ]]; then
+    # shellcheck source=/dev/null
+    source "$config_file"
+  fi
+}
+
+theme_default_state_dir() {
+  printf '%s/theme\n' "${XDG_STATE_HOME:-${HOME}/.local/state}"
+}
+
+theme_state_dir() {
+  theme_load_config
+  printf '%s\n' "${ROMAINGRX_THEME_RUNTIME_ROOT:-$(theme_default_state_dir)}"
+}
+
+theme_default_generated_root() {
+  printf '%s/romaingrx/theme/generated\n' "${XDG_CONFIG_HOME:-${HOME}/.config}"
+}
+
+theme_default_appearance() {
+  theme_load_config
+  printf '%s\n' "${ROMAINGRX_THEME_DEFAULT_APPEARANCE:-dark}"
+}
+
+theme_generated_root() {
+  theme_load_config
+  printf '%s\n' "${ROMAINGRX_THEME_GENERATED_ROOT:-$(theme_default_generated_root)}"
+}
+
+theme_generated_dir() {
+  local appearance="$1"
+  printf '%s/%s\n' "$(theme_generated_root)" "$appearance"
+}
+
+theme_current_link() {
+  printf '%s/current\n' "$(theme_state_dir)"
+}
+
+theme_alacritty_active_theme() {
+  theme_load_config
+  printf '%s\n' "${ROMAINGRX_THEME_ALACRITTY_ACTIVE_THEME:-${HOME}/.local/share/alacritty/active-theme.toml}"
+}
+
+theme_current_alacritty_theme() {
+  printf '%s/alacritty.toml\n' "$(theme_current_link)"
+}
+
+theme_require_generated_dir() {
+  local appearance="$1"
+  local generated_dir
+
+  generated_dir="$(theme_generated_dir "$appearance")"
+  if [[ ! -d "$generated_dir" ]]; then
+    printf 'Missing generated theme directory: %s\n' "$generated_dir" >&2
+    return 1
+  fi
+
+  printf '%s\n' "$generated_dir"
+}
+
+theme_link_atomic() {
+  local target="$1"
+  local link="$2"
+  local link_dir
+  local link_name
+  local tmp_link
+
+  link_dir="$(dirname -- "$link")"
+  link_name="$(basename -- "$link")"
+  tmp_link="${link_dir}/.${link_name}.tmp.$$"
+
+  mkdir -p -- "$link_dir" || return
+  rm -f -- "$tmp_link" || return
+  ln -s -- "$target" "$tmp_link" || return
+
+  if [[ -e "$link" && ! -L "$link" ]]; then
+    printf 'Refusing to replace non-symlink path: %s\n' "$link" >&2
+    rm -f -- "$tmp_link"
+    return 1
+  fi
+
+  rm -f -- "$link" || {
+    rm -f -- "$tmp_link"
+    return 1
+  }
+  mv -- "$tmp_link" "$link"
+}
+
+theme_bootstrap_state() {
+  local appearance="${1:-$(theme_default_appearance)}"
+  local appearance_file
+  local current_link
+  local generated_dir
+
+  if ! theme_is_appearance "$appearance"; then
+    theme_print_invalid_appearance "$appearance"
+    return 2
+  fi
+
+  generated_dir="$(theme_require_generated_dir "$appearance")" || return
+  current_link="$(theme_current_link)"
+  appearance_file="$(theme_state_file)"
+
+  mkdir -p -- "$(theme_state_dir)" || return
+
+  if [[ -e "$current_link" && ! -L "$current_link" ]]; then
+    printf 'Refusing to replace non-symlink theme current path: %s\n' "$current_link" >&2
+    return 1
+  fi
+
+  if [[ ! -e "$current_link" ]]; then
+    theme_link_atomic "$generated_dir" "$current_link" || return
+  fi
+
+  if [[ ! -f "$appearance_file" ]]; then
+    printf '%s\n' "$appearance" > "$appearance_file"
+  fi
+}
+
+theme_bootstrap_alacritty() {
+  local alacritty_theme
+
+  alacritty_theme="$(theme_current_alacritty_theme)"
+  if [[ ! -f "$alacritty_theme" ]]; then
+    printf 'Missing generated Alacritty theme: %s\n' "$alacritty_theme" >&2
+    return 1
+  fi
+
+  theme_link_atomic "$alacritty_theme" "$(theme_alacritty_active_theme)"
+}
+
+theme_bootstrap() {
+  theme_bootstrap_state "${1:-$(theme_default_appearance)}" || return
+  theme_bootstrap_alacritty
 }
 
 theme_read_state() {
@@ -86,29 +235,19 @@ theme_detect_system() {
 
 theme_apply() {
   local appearance="$1"
-  local theme_name
-  local theme_file
-  local themes_dir="${HOME}/.config/alacritty/themes"
-  local active_theme="${HOME}/.local/share/alacritty/active-theme.toml"
+  local generated_dir
+  local current_link
 
   if ! theme_is_appearance "$appearance"; then
     theme_print_invalid_appearance "$appearance"
     return 2
   fi
 
-  case "$appearance" in
-    light) theme_name="catppuccin-latte.toml" ;;
-    dark) theme_name="catppuccin-mocha.toml" ;;
-  esac
+  generated_dir="$(theme_require_generated_dir "$appearance")" || return
+  current_link="$(theme_current_link)"
+  theme_link_atomic "$generated_dir" "$current_link" || return
 
-  theme_file="${themes_dir}/${theme_name}"
-  if [[ ! -f "$theme_file" ]]; then
-    printf 'Missing Alacritty theme: %s\n' "$theme_file" >&2
-    return 1
-  fi
-
-  mkdir -p -- "$(dirname -- "$active_theme")"
-  ln -sf -- "$theme_file" "$active_theme"
+  theme_bootstrap_alacritty
 }
 
 theme_sync() {
