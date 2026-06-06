@@ -6,8 +6,17 @@ baseline for the incremental centralized theme migration.
 
 ## Current Source Of Truth
 
-- Runtime appearance state lives in `XDG_STATE_HOME/theme/appearance`, managed
-  by `config/bin/romaingrx-theme-lib`.
+- Home Manager writes the runtime path contract to
+  `~/.config/romaingrx/theme/paths.env`; the theme scripts source this file when
+  present and fall back to XDG defaults for standalone use.
+- Consumer modules extend this contract through `romaingrx.theme.runtimeEnv`
+  instead of hardcoding consumer-specific paths in the base theme module.
+- Runtime bootstrapping and atomic symlink updates live in
+  `config/bin/romaingrx-theme-lib`; activation snippets call those shared
+  helpers instead of reimplementing link logic.
+- By default, runtime appearance state lives in
+  `XDG_STATE_HOME/theme/appearance`, managed by
+  `config/bin/romaingrx-theme-lib`.
 - Darwin detects the macOS system appearance through `defaults`.
 - Linux treats the state file as the source of truth.
 - Alacritty already imports a runtime symlink at
