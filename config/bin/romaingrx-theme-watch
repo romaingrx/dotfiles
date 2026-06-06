@@ -12,7 +12,7 @@ fi
 
 current="$(theme_detect_system)"
 
-theme_sync_best_effort "$current"
+theme_sync "$current" || printf 'Warning: failed to apply theme: %s\n' "$current" >&2
 
 while true; do
   sleep "$poll_interval"
@@ -20,6 +20,6 @@ while true; do
   next="$(theme_detect_system)"
   if [[ "$next" != "$current" ]]; then
     current="$next"
-    theme_sync_best_effort "$current"
+    theme_sync "$current" || printf 'Warning: failed to apply theme: %s\n' "$current" >&2
   fi
 done

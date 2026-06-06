@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
 
-theme_default_appearance() {
-  printf 'dark\n'
-}
-
 theme_is_appearance() {
   case "${1:-}" in
     light | dark) return 0 ;;
@@ -15,12 +11,8 @@ theme_print_invalid_appearance() {
   printf 'Invalid appearance: %s. Expected light or dark.\n' "${1:-}" >&2
 }
 
-theme_state_home() {
-  printf '%s\n' "${XDG_STATE_HOME:-${HOME}/.local/state}"
-}
-
 theme_state_file() {
-  printf '%s/theme/appearance\n' "$(theme_state_home)"
+  printf '%s/theme/appearance\n' "${XDG_STATE_HOME:-${HOME}/.local/state}"
 }
 
 theme_read_state() {
@@ -36,7 +28,7 @@ theme_read_state() {
     fi
   fi
 
-  theme_default_appearance
+  printf 'dark\n'
 }
 
 theme_write_state() {
@@ -87,7 +79,7 @@ theme_detect_system() {
   theme_read_state
 }
 
-theme_apply_alacritty() {
+theme_apply() {
   local appearance="$1"
   local theme_name
   local theme_file
@@ -114,33 +106,9 @@ theme_apply_alacritty() {
   ln -sf -- "$theme_file" "$active_theme"
 }
 
-theme_apply_consumers() {
-  local appearance="$1"
-  local status=0
-
-  theme_apply_alacritty "$appearance" || status=$?
-
-  return "$status"
-}
-
-theme_apply_consumers_best_effort() {
-  local appearance="$1"
-
-  theme_apply_consumers "$appearance" || {
-    printf 'Warning: failed to apply one or more theme consumers.\n' >&2
-  }
-}
-
 theme_sync() {
   local appearance="$1"
 
   theme_write_state "$appearance"
-  theme_apply_consumers "$appearance"
-}
-
-theme_sync_best_effort() {
-  local appearance="$1"
-
-  theme_write_state "$appearance"
-  theme_apply_consumers_best_effort "$appearance"
+  theme_apply "$appearance"
 }

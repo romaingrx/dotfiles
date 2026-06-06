@@ -1,7 +1,6 @@
 {
   config,
   dotfilesPath,
-  lib,
   ...
 }:
 let
@@ -12,14 +11,10 @@ let
     "romaingrx-theme-set"
     "romaingrx-theme-watch"
   ];
-  themeCommandFiles = builtins.listToAttrs (
-    map (name: {
-      inherit name;
-      value = {
-        source = config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/bin/${name}";
-      };
-    }) themeCommands
-  );
+  themeCommandFile = name: {
+    name = ".local/bin/${name}";
+    value.source = config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/bin/${name}";
+  };
 in
 {
   imports = [
@@ -35,10 +30,7 @@ in
       VISUAL = "nvim";
     };
 
-    file = lib.mapAttrs' (name: value: {
-      name = ".local/bin/${name}";
-      inherit value;
-    }) themeCommandFiles;
+    file = builtins.listToAttrs (map themeCommandFile themeCommands);
   };
 
   programs.home-manager.enable = true;
