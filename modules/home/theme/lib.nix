@@ -7,8 +7,18 @@ let
   cfg = config.romaingrx.theme;
   theme = import ../../../lib/theme { };
   themeLib = "${dotfilesPath}/config/bin/romaingrx-theme-lib";
+  dotfilesRoot =
+    if lib.hasPrefix "/" dotfilesPath then
+      dotfilesPath
+    else
+      "${config.home.homeDirectory}/${dotfilesPath}";
+  configSource = path: "${dotfilesRoot}/config/${path}";
 in
 {
+  inherit configSource dotfilesRoot;
+
+  outOfStoreConfig = path: config.lib.file.mkOutOfStoreSymlink (configSource path);
+
   generatedArtifacts =
     appName: renderArtifacts:
     builtins.listToAttrs (
