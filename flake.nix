@@ -69,6 +69,8 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
+          theme = import ./lib/theme { };
+          renderAlacrittyTheme = import ./modules/home/programs/alacritty/theme.nix { };
         in
         {
           pre-commit-check = pre-commit-hooks.lib.${system}.run {
@@ -83,6 +85,18 @@
               statix.enable = true;
             };
           };
+
+          theme-alacritty-golden =
+            pkgs.runCommand "theme-alacritty-golden" { nativeBuildInputs = [ pkgs.diffutils ]; }
+              ''
+                diff -u \
+                  ${./config/alacritty/themes/catppuccin-mocha.toml} \
+                  ${pkgs.writeText "generated-catppuccin-mocha.toml" (renderAlacrittyTheme theme.appearances.dark)}
+                diff -u \
+                  ${./config/alacritty/themes/catppuccin-latte.toml} \
+                  ${pkgs.writeText "generated-catppuccin-latte.toml" (renderAlacrittyTheme theme.appearances.light)}
+                touch "$out"
+              '';
         }
       );
 
