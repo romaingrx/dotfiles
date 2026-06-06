@@ -1,5 +1,7 @@
 { pkgs, repoRoot, ... }:
 let
+  inherit (pkgs) lib;
+
   theme = import (repoRoot + "/lib/theme") { };
   renderAlacrittyTheme = import (repoRoot + "/modules/home/programs/alacritty/theme.nix") { };
   renderWaybarTheme = import (repoRoot + "/modules/home/programs/waybar/theme.nix") {
@@ -11,6 +13,35 @@ let
   waybarGoldenRoot = repoRoot + "/tests/theme/golden/waybar";
   runtimeContractTest = repoRoot + "/tests/theme/runtime-contract.sh";
   themeLib = repoRoot + "/config/bin/romaingrx-theme-lib";
+  waybarConfigPath = "/home/romaingrx/.config/waybar/config-base.jsonc";
+
+  mkThemeGoldenCheck =
+    {
+      name,
+      goldenRoot,
+      artifacts,
+    }:
+    let
+      diffCommands = lib.concatMapStringsSep "\n" (
+        appearance:
+        lib.concatMapStringsSep "\n" (
+          artifact:
+          let
+            rendered = artifact.render theme.appearances.${appearance};
+            generatedName = "generated-${name}-${appearance}-${baseNameOf artifact.path}";
+          in
+          ''
+            diff -u \
+              ${goldenRoot}/${appearance}/${artifact.path} \
+              ${pkgs.writeText generatedName rendered}
+          ''
+        ) artifacts
+      ) theme.appearanceNames;
+    in
+    pkgs.runCommand "theme-${name}-golden" { nativeBuildInputs = [ pkgs.diffutils ]; } ''
+      ${diffCommands}
+      touch "$out"
+    '';
 in
 {
   theme-alacritty-golden =
@@ -25,31 +56,25 @@ in
         touch "$out"
       '';
 
-  theme-waybar-golden =
-    pkgs.runCommand "theme-waybar-golden" { nativeBuildInputs = [ pkgs.diffutils ]; }
-      ''
-        diff -u \
-          ${waybarGoldenRoot}/dark/config.jsonc \
-          ${pkgs.writeText "generated-waybar-dark-config.jsonc" (
-            renderWaybarTheme.config theme.appearances.dark
-          )}
-        diff -u \
-          ${waybarGoldenRoot}/dark/style.css \
-          ${pkgs.writeText "generated-waybar-dark-style.css" (
-            renderWaybarTheme.style theme.appearances.dark
-          )}
-        diff -u \
-          ${waybarGoldenRoot}/light/config.jsonc \
-          ${pkgs.writeText "generated-waybar-light-config.jsonc" (
-            renderWaybarTheme.config theme.appearances.light
-          )}
-        diff -u \
-          ${waybarGoldenRoot}/light/style.css \
-          ${pkgs.writeText "generated-waybar-light-style.css" (
-            renderWaybarTheme.style theme.appearances.light
-          )}
-        touch "$out"
-      '';
+  theme-waybar-golden = mkThemeGoldenCheck {
+    name = "waybar";
+    goldenRoot = waybarGoldenRoot;
+    artifacts = [
+      {
+        path = "config.jsonc";
+        render =
+          theme':
+          renderWaybarTheme.config {
+            configPath = waybarConfigPath;
+            theme = theme';
+          };
+      }
+      {
+        path = "theme.css";
+        render = renderWaybarTheme.themeCss;
+      }
+    ];
+  };
 
   theme-runtime-contract =
     pkgs.runCommand "theme-runtime-contract"

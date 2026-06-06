@@ -5,7 +5,7 @@ let
   span = color: text: "<span color='${color}'><b>${text}</b></span>";
 
   mkConfig =
-    theme:
+    { configPath, theme }:
     let
       f = theme.format;
       calendar = {
@@ -15,58 +15,7 @@ let
       };
     in
     {
-      reload_style_on_change = true;
-      layer = "top";
-      position = "top";
-      spacing = 0;
-      height = 26;
-      modules-left = [ "hyprland/workspaces" ];
-      modules-center = [ "clock" ];
-      modules-right = [
-        "network"
-        "memory"
-        "cpu"
-      ];
-
-      "hyprland/workspaces" = {
-        on-click = "activate";
-        format = "{icon}";
-        format-icons = {
-          default = "";
-          "1" = "1";
-          "2" = "2";
-          "3" = "3";
-          "4" = "4";
-          "5" = "5";
-          "6" = "6";
-          "7" = "7";
-          "8" = "8";
-          "9" = "9";
-          active = "󱓻";
-        };
-        persistent-workspaces = {
-          "1" = [ ];
-          "2" = [ ];
-          "3" = [ ];
-          "4" = [ ];
-          "5" = [ ];
-        };
-      };
-
-      cpu = {
-        interval = 1;
-        format = "{icon0}{icon1}{icon2}{icon3} {usage:>2}% ";
-        format-icons = [
-          "▁"
-          "▂"
-          "▃"
-          "▄"
-          "▅"
-          "▆"
-          "▇"
-          "█"
-        ];
-      };
+      include = [ configPath ];
 
       clock = {
         interval = 1;
@@ -82,118 +31,26 @@ let
           format = calendar;
         };
       };
-
-      network = {
-        interface = "ens18";
-        format = "⇣{bandwidthDownBytes}  ⇡{bandwidthUpBytes}";
-        format-ethernet = "<span>⇣{bandwidthDownBytes}</span> <span>⇡{bandwidthUpBytes}</span> 󰀂";
-        format-disconnected = "󰤮";
-        tooltip-format-wifi = "{essid} ({frequency} GHz)\n⇣{bandwidthDownBytes}  ⇡{bandwidthUpBytes}";
-        tooltip-format-ethernet = "⇣{bandwidthDownBytes}  ⇡{bandwidthUpBytes}";
-        tooltip-format-disconnected = "Disconnected";
-        interval = 3;
-        spacing = 1;
-      };
-
-      bluetooth = {
-        format = "";
-        format-disabled = "󰂲";
-        format-connected = "";
-        tooltip-format = "Devices connected: {num_connections}";
-        on-click = "$TERMINAL -e bluetoothctl";
-      };
-
-      pulseaudio = {
-        format = "{icon}";
-        on-click = "$TERMINAL --class=Wiremix -e wiremix";
-        on-click-right = "pamixer -t";
-        tooltip-format = "Playing at {volume}%";
-        scroll-step = 5;
-        format-muted = "";
-        format-icons.default = [
-          ""
-          ""
-          ""
-        ];
-      };
-
-      memory = {
-        interval = 30;
-        format = "{used:0.1f}G/{total:0.1f}G ";
-      };
-
-      "custom/gpu" = {
-        format = "{} {icon}";
-        exec = "gpu-usage-waybar";
-        return-type = "json";
-        format-icons = "󰾲";
-        on-click = "$TERMINAL -e nvtop";
-      };
     };
 
-  renderConfig = theme: (toJSON (mkConfig theme)) + "\n";
+  renderConfig = args: (toJSON (mkConfig args)) + "\n";
 
-  renderStyle =
+  renderThemeCss =
     theme:
     let
       f = theme.format;
       t = theme.roles.ui;
     in
     ''
-      * {
-        background-color: ${f.hex t.background};
-        color: ${f.hex t.foreground};
-
-        border: none;
-        border-radius: 0;
-        min-height: 0;
-        font-family: "FiraCode Nerd Font";
-        font-size: 12px;
-      }
-
-      .modules-left {
-        margin-left: 8px;
-      }
-
-      .modules-right {
-        margin-right: 8px;
-      }
-
-      #workspaces button {
-        all: initial;
-        padding: 0 6px;
-        margin: 0 1.5px;
-        min-width: 9px;
-      }
-
-      #workspaces button.empty {
-        opacity: 0.5;
-      }
-
-      #tray,
-      #cpu,
-      #battery,
-      #network,
-      #bluetooth,
-      #pulseaudio {
-        min-width: 12px;
-        margin: 0 7.5px;
-      }
-
-      tooltip {
-        padding: 2px;
-      }
-
-      #clock {
-        margin-left: 8.75px;
-      }
-
-      .hidden {
-        opacity: 0;
-      }
+      @define-color theme_bg ${f.hex t.background};
+      @define-color theme_fg ${f.hex t.foreground};
+      @define-color theme_muted ${f.hex t.foregroundMuted};
+      @define-color theme_accent ${f.hex t.accent};
+      @define-color theme_warning ${f.hex theme.roles.status.warning};
+      @define-color theme_danger ${f.hex theme.roles.status.danger};
     '';
 in
 {
   config = renderConfig;
-  style = theme: lib.trim (renderStyle theme) + "\n";
+  themeCss = theme: lib.trim (renderThemeCss theme) + "\n";
 }
