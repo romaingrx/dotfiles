@@ -3,6 +3,7 @@
   pre-commit-hooks,
   repoRoot,
   system,
+  ...
 }:
 {
   pre-commit-check = pre-commit-hooks.lib.${system}.run {

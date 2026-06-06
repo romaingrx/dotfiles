@@ -1,4 +1,4 @@
-{ pkgs, repoRoot }:
+{ pkgs, repoRoot, ... }:
 let
   theme = import (repoRoot + "/lib/theme") { };
   renderAlacrittyTheme = import (repoRoot + "/modules/home/programs/alacritty/theme.nix") { };

@@ -1,20 +1,8 @@
-{
-  pkgs,
-  pre-commit-hooks,
-  repoRoot,
-  system,
-}:
+{ pkgs, ... }@args:
 let
-  preCommitChecks = import ./pre-commit.nix {
-    inherit
-      pkgs
-      pre-commit-hooks
-      repoRoot
-      system
-      ;
-  };
-  themeChecks = import ./theme.nix {
-    inherit pkgs repoRoot;
-  };
+  checkModules = [
+    ./pre-commit.nix
+    ./theme.nix
+  ];
 in
-preCommitChecks // themeChecks
+pkgs.lib.mergeAttrsList (map (checkModule: import checkModule args) checkModules)
