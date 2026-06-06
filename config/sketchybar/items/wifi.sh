@@ -2,7 +2,7 @@
 
 source "$HELPER_DIR/components.sh"
 
-status_graph net.activity right "$BLUE" 0x208aadf4
+status_graph net.activity right "$BLUE" "$NET_DOWNLOAD_FILL"
 sketchybar --set net.activity \
 	label="0B" \
 	background.padding_right=4 \
@@ -26,7 +26,7 @@ sketchybar --add item wifi.control right \
 	background.color="$STATUS_BG" \
 	background.corner_radius="$STATUS_RADIUS" \
 	background.height="$STATUS_HEIGHT" \
-	popup.background.color=0x70000000 \
+	popup.background.color="$POPUP_BG" \
 	popup.blur_radius=50 \
 	popup.background.corner_radius=5 \
 	popup.align=right \

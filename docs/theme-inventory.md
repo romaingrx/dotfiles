@@ -29,8 +29,9 @@ baseline for the incremental centralized theme migration.
 - Alacritty and Neovim use Catppuccin Latte/Mocha.
 - tmux uses the Catppuccin plugin, defaults to Mocha, and has a manual Latte
   toggle.
-- SketchyBar uses a Macchiato-like shell palette in `config/sketchybar/colors.sh`
-  plus additional hardcoded transparent state colors across items and plugins.
+- SketchyBar is migrated to generated Latte/Mocha shell color fragments. The
+  committed `config/sketchybar` files remain editable; `colors.sh` loads the
+  active runtime fragment from the shared `current` theme contract.
 - Waybar is migrated to generated Latte/Mocha theme fragments. The committed
   `config/waybar` files remain editable base config/style files; Home Manager
   links them out-of-store and adds runtime `current` theme symlinks beside them.
@@ -101,6 +102,8 @@ deduplication pass.
 - `modules/darwin/homebrew.nix`
 - `modules/darwin/services/jankyborders.nix`
 - `modules/darwin/services/sketchybar/default.nix`
+- `modules/home/programs/sketchybar.nix`
+- `modules/home/programs/sketchybar/theme.nix`
 - `config/sketchybar/colors.sh`
 - `config/sketchybar/sketchybarrc`
 - `config/sketchybar/helpers/env.sh`
