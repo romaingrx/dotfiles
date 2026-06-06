@@ -13,7 +13,6 @@
   "modules-right": [
     "network",
     "memory",
-    // "custom/gpu",
     "cpu",
   ],
   "hyprland/workspaces": {
@@ -69,37 +68,8 @@
     "interval": 3,
     "spacing": 1
   },
-  "bluetooth": {
-    "format": "",
-    "format-disabled": "󰂲",
-    "format-connected": "",
-    "tooltip-format": "Devices connected: {num_connections}",
-    "on-click": "$TERMINAL -e bluetoothctl"
-  },
-  "pulseaudio": {
-    "format": "{icon}",
-    "on-click": "$TERMINAL --class=Wiremix -e wiremix",
-    "on-click-right": "pamixer -t",
-    "tooltip-format": "Playing at {volume}%",
-    "scroll-step": 5,
-    "format-muted": "",
-    "format-icons": {
-      "default": [
-        "",
-        "",
-        ""
-      ]
-    }
-  },
   "memory": {
     "interval": 30,
     "format": "{used:0.1f}G/{total:0.1f}G "
-  },
-  "custom/gpu": {
-    "format": "{} {icon}",
-    "exec": "gpu-usage-waybar",
-    "return-type": "json",
-    "format-icons": "󰾲",
-    "on-click": "$TERMINAL -e nvtop"
   }
 }
