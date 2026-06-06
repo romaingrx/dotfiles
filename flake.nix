@@ -97,6 +97,21 @@
                   ${pkgs.writeText "generated-catppuccin-latte.toml" (renderAlacrittyTheme theme.appearances.light)}
                 touch "$out"
               '';
+
+          theme-runtime-contract =
+            pkgs.runCommand "theme-runtime-contract"
+              {
+                nativeBuildInputs = [
+                  pkgs.bash
+                  pkgs.coreutils
+                  pkgs.gnugrep
+                ];
+              }
+              ''
+                THEME_LIB=${./config/bin/romaingrx-theme-lib} \
+                  ${pkgs.bash}/bin/bash ${./tests/theme-lib.sh}
+                touch "$out"
+              '';
         }
       );
 
