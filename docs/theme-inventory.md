@@ -34,7 +34,10 @@ baseline for the incremental centralized theme migration.
 - Waybar is migrated to generated Latte/Mocha theme fragments. The committed
   `config/waybar` files remain editable base config/style files; Home Manager
   links them out-of-store and adds runtime `current` theme symlinks beside them.
-- Hyprlock uses its own green/brown palette.
+- Hyprland and Hyprlock are migrated to generated Latte/Mocha color fragments.
+  The committed `config/hypr` files remain editable base config files; Home
+  Manager links them out-of-store and adds runtime `current` theme symlinks
+  under `~/.config/hypr/theme/`.
 - Rofi uses Catppuccin-like hardcoded colors inside Home Manager.
 - jankyborders uses hardcoded nix-darwin service colors.
 
@@ -79,6 +82,8 @@ deduplication pass.
 - `config/waybar/config.jsonc`
 - `modules/home/programs/waybar.nix`
 - `modules/home/programs/waybar/theme.nix`
+- `modules/home/programs/hypr.nix`
+- `modules/home/programs/hypr/theme.nix`
 - `config/hypr/hyprland-core.conf`
 - `config/hypr/hyprlock.conf`
 - `config/hypr/hyprpaper.conf`

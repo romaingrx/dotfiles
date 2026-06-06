@@ -7,9 +7,13 @@ let
   renderWaybarTheme = import (repoRoot + "/modules/home/programs/waybar/theme.nix") {
     inherit (pkgs) lib;
   };
+  renderHyprTheme = import (repoRoot + "/modules/home/programs/hypr/theme.nix") {
+    inherit (pkgs) lib;
+  };
 
   alacrittyLatteGolden = repoRoot + "/config/alacritty/themes/catppuccin-latte.toml";
   alacrittyMochaGolden = repoRoot + "/config/alacritty/themes/catppuccin-mocha.toml";
+  hyprGoldenRoot = repoRoot + "/tests/theme/golden/hypr";
   waybarGoldenRoot = repoRoot + "/tests/theme/golden/waybar";
   runtimeContractTest = repoRoot + "/tests/theme/runtime-contract.sh";
   themeLib = repoRoot + "/config/bin/romaingrx-theme-lib";
@@ -72,6 +76,21 @@ in
       {
         path = "theme.css";
         render = renderWaybarTheme.themeCss;
+      }
+    ];
+  };
+
+  theme-hypr-golden = mkThemeGoldenCheck {
+    name = "hypr";
+    goldenRoot = hyprGoldenRoot;
+    artifacts = [
+      {
+        path = "hyprland.conf";
+        render = renderHyprTheme.hyprland;
+      }
+      {
+        path = "hyprlock.conf";
+        render = renderHyprTheme.hyprlock;
       }
     ];
   };
