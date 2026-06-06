@@ -85,11 +85,11 @@ in
     goldenRoot = hyprGoldenRoot;
     artifacts = [
       {
-        path = "hyprland.conf";
+        path = "hyprland-colors.conf";
         render = renderHyprTheme.hyprland;
       }
       {
-        path = "hyprlock.conf";
+        path = "hyprlock-colors.conf";
         render = renderHyprTheme.hyprlock;
       }
     ];

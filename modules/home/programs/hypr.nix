@@ -32,8 +32,8 @@ let
     }) editableHyprFiles
   );
   generatedArtifacts = themeLib.generatedArtifacts "hypr" (appearanceTheme: {
-    "hyprland.conf" = renderTheme.hyprland appearanceTheme;
-    "hyprlock.conf" = renderTheme.hyprlock appearanceTheme;
+    "hyprland-colors.conf" = renderTheme.hyprland appearanceTheme;
+    "hyprlock-colors.conf" = renderTheme.hyprlock appearanceTheme;
   });
 in
 {
@@ -47,8 +47,8 @@ in
 
         romaingrxHyprThemeLinks = themeLib.currentSymlinkActivation {
           links = {
-            "${hyprConfigRoot}/theme/hyprland.conf" = "${runtimeHyprRoot}/hyprland.conf";
-            "${hyprConfigRoot}/theme/hyprlock.conf" = "${runtimeHyprRoot}/hyprlock.conf";
+            "${hyprConfigRoot}/theme/hyprland-colors.conf" = "${runtimeHyprRoot}/hyprland-colors.conf";
+            "${hyprConfigRoot}/theme/hyprlock-colors.conf" = "${runtimeHyprRoot}/hyprlock-colors.conf";
           };
         };
       };
