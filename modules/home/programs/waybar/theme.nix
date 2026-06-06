@@ -17,20 +17,7 @@ let
     {
       include = [ configPath ];
 
-      clock = {
-        interval = 1;
-        format = "{:L%H:%M:%S}";
-        format-alt = "{:L%d %B W%V %Y}";
-        tooltip = true;
-        tooltip-format = "<tt>{calendar}</tt>";
-        calendar = {
-          mode = "month";
-          mode-mon-col = 3;
-          on-scroll = 1;
-          on-click-right = "mode";
-          format = calendar;
-        };
-      };
+      clock.calendar.format = calendar;
     };
 
   renderConfig = args: (toJSON (mkConfig args)) + "\n";
