@@ -115,8 +115,6 @@ lib.mkMerge [
 
     home.activation = {
       text = ''
-        [ -d ~/.config/hypr ] || ln -sf ${configPath}/hypr ~/.config/hypr
-        [ -d ~/.config/waybar ] || ln -sf ${configPath}/waybar ~/.config/waybar
         [ -d ~/.local/romaingrx-bin ] || ln -sf ${configPath}/bin ~/.local/romaingrx-bin
       '';
     };
