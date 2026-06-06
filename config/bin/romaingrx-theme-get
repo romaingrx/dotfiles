@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+source "${script_dir}/romaingrx-theme-lib"
+
+case "${1:-}" in
+  --system) theme_detect_system ;;
+  "" | --state) theme_read_state ;;
+  *)
+    printf 'Usage: %s [--state|--system]\n' "${0##*/}" >&2
+    exit 2
+    ;;
+esac

@@ -21,18 +21,18 @@ lib.mkIf pkgs.stdenv.isDarwin {
       config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/sketchybar";
   };
 
-  launchd.agents.alacritty-theme-switcher = {
+  launchd.agents.appearance-theme-switcher = {
     enable = true;
     config = {
-      Label = "com.romaingrx.alacritty-theme-switcher";
+      Label = "com.romaingrx.appearance-theme-switcher";
       ProgramArguments = [
         "${pkgs.bash}/bin/bash"
-        "${config.home.homeDirectory}/.config/alacritty/theme-switcher.sh"
+        "${config.home.homeDirectory}/.local/bin/romaingrx-theme-watch"
       ];
       RunAtLoad = true;
       KeepAlive = true;
-      StandardOutPath = "/tmp/alacritty-theme-switcher.log";
-      StandardErrorPath = "/tmp/alacritty-theme-switcher.err";
+      StandardOutPath = "/tmp/appearance-theme-switcher.log";
+      StandardErrorPath = "/tmp/appearance-theme-switcher.err";
     };
   };
 }

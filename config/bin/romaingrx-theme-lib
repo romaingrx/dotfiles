@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+
+theme_is_appearance() {
+  case "${1:-}" in
+    light | dark) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+theme_print_invalid_appearance() {
+  printf 'Invalid appearance: %s. Expected light or dark.\n' "${1:-}" >&2
+}
+
+theme_state_file() {
+  printf '%s/theme/appearance\n' "${XDG_STATE_HOME:-${HOME}/.local/state}"
+}
+
+theme_read_state() {
+  local file
+  local value
+
+  file="$(theme_state_file)"
+  if [[ -r "$file" ]]; then
+    IFS= read -r value < "$file" || true
+    if theme_is_appearance "$value"; then
+      printf '%s\n' "$value"
+      return
+    fi
+  fi
+
+  printf 'dark\n'
+}
+
+theme_write_state() {
+  local appearance="$1"
+  local file
+  local current=""
+
+  if ! theme_is_appearance "$appearance"; then
+    theme_print_invalid_appearance "$appearance"
+    return 2
+  fi
+
+  file="$(theme_state_file)"
+
+  mkdir -p -- "$(dirname -- "$file")" || return
+  if [[ -f "$file" ]]; then
+    IFS= read -r current < "$file" || true
+  fi
+
+  if ! theme_is_appearance "$current" || [[ "$current" != "$appearance" ]]; then
+    printf '%s\n' "$appearance" > "$file"
+  fi
+}
+
+theme_detect_macos() {
+  if defaults read -g AppleInterfaceStyle &>/dev/null; then
+    printf 'dark\n'
+  else
+    printf 'light\n'
+  fi
+}
+
+theme_detect_linux() {
+  # Hyprland has no single desktop-wide light/dark authority here; the state
+  # file is the Linux source of truth until a compositor-specific adapter exists.
+  theme_read_state
+}
+
+theme_detect_system() {
+  case "$(uname -s)" in
+    Darwin)
+      if command -v defaults &>/dev/null; then
+        theme_detect_macos
+        return
+      fi
+      ;;
+    Linux)
+      theme_detect_linux
+      return
+      ;;
+  esac
+
+  theme_read_state
+}
+
+theme_apply() {
+  local appearance="$1"
+  local theme_name
+  local theme_file
+  local themes_dir="${HOME}/.config/alacritty/themes"
+  local active_theme="${HOME}/.local/share/alacritty/active-theme.toml"
+
+  if ! theme_is_appearance "$appearance"; then
+    theme_print_invalid_appearance "$appearance"
+    return 2
+  fi
+
+  case "$appearance" in
+    light) theme_name="catppuccin-latte.toml" ;;
+    dark) theme_name="catppuccin-mocha.toml" ;;
+  esac
+
+  theme_file="${themes_dir}/${theme_name}"
+  if [[ ! -f "$theme_file" ]]; then
+    printf 'Missing Alacritty theme: %s\n' "$theme_file" >&2
+    return 1
+  fi
+
+  mkdir -p -- "$(dirname -- "$active_theme")"
+  ln -sf -- "$theme_file" "$active_theme"
+}
+
+theme_sync() {
+  local appearance="$1"
+
+  theme_write_state "$appearance" || return
+  theme_apply "$appearance"
+}
