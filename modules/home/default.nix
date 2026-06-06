@@ -20,7 +20,7 @@ in
   imports = [
     ./packages.nix
     ./programs.nix
-    ./theme.nix
+    ./theme
   ];
 
   home = {

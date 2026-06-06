@@ -1,28 +1,14 @@
-{
-  config,
-  lib,
-  ...
-}:
+{ config, lib, ... }:
 let
   cfg = config.romaingrx.theme;
-  theme = import ../../lib/theme { };
-
-  artifactEntries =
-    appearance:
-    let
-      artifacts = theme.generatedArtifacts theme.appearances.${appearance};
-    in
-    lib.mapAttrsToList (name: text: {
-      name = "${cfg.generatedRoot}/${appearance}/${name}";
-      value.text = text;
-    }) artifacts;
+  theme = import ../../../lib/theme { };
 in
 {
   options.romaingrx.theme = {
     enable = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Whether to generate the centralized romaingrx theme artifacts.";
+      description = "Whether to enable the centralized romaingrx theme contract.";
     };
 
     defaultAppearance = lib.mkOption {
@@ -45,7 +31,5 @@ in
         message = "romaingrx.theme.defaultAppearance must be one of: ${lib.concatStringsSep ", " theme.appearanceNames}";
       }
     ];
-
-    home.file = builtins.listToAttrs (lib.concatMap artifactEntries theme.appearanceNames);
   };
 }
