@@ -71,7 +71,6 @@ lib.mkMerge [
       wl-clipboard
       bibata-cursors
       spotify
-      code-cursor
       signal-desktop
       lazydocker
       btop
