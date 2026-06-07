@@ -66,3 +66,21 @@ blue = "#1e66f5"
 magenta = "#ea76cb"
 cyan = "#179299"
 white = "#acb0be"
+
+# Font family from the central theme contract (lib/theme/fonts.nix). Size and
+# offset stay in the base alacritty.toml; styles are fixed per variant.
+[font.normal]
+family = "FiraCode Nerd Font"
+style = "Regular"
+
+[font.bold]
+family = "FiraCode Nerd Font"
+style = "Bold"
+
+[font.italic]
+family = "FiraCode Nerd Font"
+style = "Italic"
+
+[font.bold_italic]
+family = "FiraCode Nerd Font"
+style = "Bold Italic"

@@ -18,12 +18,14 @@ let
     let
       f = theme.format;
       t = theme.roles.ui;
+      font = theme.fonts.monospace;
     in
     ''
       $color = ${f.hyprRgb t.background}
       $inner_color = ${f.hyprRgb t.backgroundStrong}
       $outer_color = ${f.hyprRgb t.border}
       $font_color = ${f.hyprRgb t.foreground}
+      $font_family = ${font.family}
       $check_color = ${f.hyprRgb t.borderSecondary}
     '';
 in

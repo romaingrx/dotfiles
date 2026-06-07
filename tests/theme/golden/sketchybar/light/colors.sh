@@ -23,3 +23,7 @@ NET_DOWNLOAD_FILL=0x201e66f5
 NET_UPLOAD_FILL=0x2040a02b
 DEFAULT_ICON_COLOR=0xff4c4f69
 DEFAULT_LABEL_COLOR=0xff4c4f69
+
+# Font family from the central theme contract (lib/theme/fonts.nix).
+FONT="FiraCode Nerd Font"
+NERD_FONT="FiraCode Nerd Font"

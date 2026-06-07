@@ -2,6 +2,7 @@ _: theme:
 let
   t = theme.roles.terminal;
   f = theme.format;
+  font = theme.fonts.monospace;
   flavorTitles = {
     latte = "Latte (Light)";
     mocha = "Mocha (Dark)";
@@ -77,4 +78,22 @@ in
   magenta = "${f.hex t.dim.magenta}"
   cyan = "${f.hex t.dim.cyan}"
   white = "${f.hex t.dim.white}"
+
+  # Font family from the central theme contract (lib/theme/fonts.nix). Size and
+  # offset stay in the base alacritty.toml; styles are fixed per variant.
+  [font.normal]
+  family = "${font.family}"
+  style = "Regular"
+
+  [font.bold]
+  family = "${font.family}"
+  style = "Bold"
+
+  [font.italic]
+  family = "${font.family}"
+  style = "Italic"
+
+  [font.bold_italic]
+  family = "${font.family}"
+  style = "Bold Italic"
 ''

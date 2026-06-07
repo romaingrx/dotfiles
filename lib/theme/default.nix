@@ -1,11 +1,12 @@
 _:
 let
   colors = import ./colors.nix { };
+  fonts = import ./fonts.nix { };
   palettes = import ./catppuccin.nix { inherit colors; };
   mkRoles = import ./roles.nix { };
   mkTheme = import ./mkTheme.nix {
     inherit (colors) format;
-    inherit mkRoles palettes;
+    inherit fonts mkRoles palettes;
   };
 
   appearances = {
@@ -28,6 +29,7 @@ in
   inherit
     appearances
     colors
+    fonts
     mkTheme
     palettes
     ;

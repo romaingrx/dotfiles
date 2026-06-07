@@ -12,8 +12,8 @@ _: {
     taps = [ ];
 
     casks = [
-      "font-fira-code-nerd-font" # Needed for alacritty
-      "font-sf-pro"
+      # FiraCode Nerd Font is installed from the theme contract via
+      # modules/fonts.nix (pkgs.nerd-fonts.fira-code), so no cask is needed.
       "sf-symbols"
       "firefox"
       "duckduckgo"
