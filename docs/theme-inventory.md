@@ -49,6 +49,21 @@ baseline for the incremental centralized theme migration.
 Migrating all surfaces to Latte/Mocha is a visible theme change, not just a
 deduplication pass.
 
+## Reload Hook Contract
+
+- Register hooks from consumer modules with `themeLib.reloadHook`.
+- Name hooks with a numeric prefix such as `50-sketchybar`; hooks run
+  synchronously in lexical order.
+- Hooks receive the active appearance as `$1` and through
+  `ROMAINGRX_THEME_APPEARANCE`.
+- Hooks also receive `ROMAINGRX_THEME_CURRENT`,
+  `ROMAINGRX_THEME_GENERATED_ROOT`, and `ROMAINGRX_THEME_RUNTIME_ROOT`.
+- Hooks must be idempotent and quick. Long-running work should detach itself.
+- Hook failures are non-fatal; the core actuator writes warnings to stderr and
+  to `ROMAINGRX_THEME_RELOAD_HOOK_LOG`.
+- Hooks run after `theme_apply` and after Home Manager activation, so consumers
+  can refresh after both manual theme switches and generated artifact updates.
+
 ## Inventory
 
 ### Runtime Theme Scripts

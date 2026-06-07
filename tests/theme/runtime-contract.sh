@@ -48,6 +48,7 @@ reset_theme_env() {
     ROMAINGRX_THEME_CONFIG_LOADED \
     ROMAINGRX_THEME_DEFAULT_APPEARANCE \
     ROMAINGRX_THEME_GENERATED_ROOT \
+    ROMAINGRX_THEME_RELOAD_HOOK_LOG \
     ROMAINGRX_THEME_RELOAD_HOOKS_DIR \
     ROMAINGRX_THEME_RUNTIME_ROOT \
     XDG_CONFIG_HOME \
@@ -115,6 +116,7 @@ test_paths_env_extends_runtime_contract() {
   cat > "$root/paths.env" <<EOF
 ROMAINGRX_THEME_DEFAULT_APPEARANCE='light'
 ROMAINGRX_THEME_GENERATED_ROOT='$root/generated'
+ROMAINGRX_THEME_RELOAD_HOOK_LOG='$root/hooks.log'
 ROMAINGRX_THEME_RELOAD_HOOKS_DIR='$root/hooks'
 ROMAINGRX_THEME_RUNTIME_ROOT='$root/state'
 ROMAINGRX_THEME_ALACRITTY_ACTIVE_THEME='$root/alacritty/active-theme.toml'
@@ -130,6 +132,7 @@ EOF
   assert_symlink_target "$root/state/current" "$root/generated/light"
   assert_symlink_target "$root/alacritty/active-theme.toml" "$root/state/current/alacritty.toml"
   assert_file_contents "$root/alacritty/active-theme.toml" "light-theme"
+  assert_eq "$root/hooks.log" "$(theme_reload_hook_log)" "reload hook log"
   assert_eq "$root/hooks" "$(theme_reload_hooks_dir)" "reload hooks dir"
 }
 
@@ -198,19 +201,28 @@ test_sync_runs_reload_hooks_after_apply() {
   make_theme_home "$root"
 
   mkdir -p "$root/hooks"
-  cat > "$root/hooks/10-record" <<'EOF'
+  cat > "$root/hooks/20-order" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'order=20\n' >> "${THEME_HOOK_LOG:?}"
+EOF
+  chmod +x "$root/hooks/20-order"
+
+  cat > "$root/hooks/50-record" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
 {
+  printf 'order=50\n'
   printf 'arg=%s\n' "${1:-}"
   printf 'env=%s\n' "${ROMAINGRX_THEME_APPEARANCE:-}"
   printf 'current=%s\n' "$(readlink "$ROMAINGRX_THEME_CURRENT")"
   printf 'generated=%s\n' "$ROMAINGRX_THEME_GENERATED_ROOT"
   printf 'runtime=%s\n' "$ROMAINGRX_THEME_RUNTIME_ROOT"
-} > "${THEME_HOOK_LOG:?}"
+} >> "${THEME_HOOK_LOG:?}"
 EOF
-  chmod +x "$root/hooks/10-record"
+  chmod +x "$root/hooks/50-record"
 
   reset_theme_env
   HOME="$root/home"
@@ -222,7 +234,9 @@ EOF
 
   theme_sync light
 
-  assert_file_contents "$root/hook.log" "arg=light
+  assert_file_contents "$root/hook.log" "order=20
+order=50
+arg=light
 env=light
 current=$root/config/romaingrx/theme/generated/light
 generated=$root/config/romaingrx/theme/generated
@@ -252,6 +266,7 @@ EOF
   assert_file_contents "$root/state/theme/appearance" "light"
   assert_symlink_target "$root/state/theme/current" "$root/config/romaingrx/theme/generated/light"
   grep -q 'Warning: theme reload hook failed' "$root/error.log"
+  grep -q 'Warning: theme reload hook failed' "$root/state/theme/reload-hooks.log"
 }
 
 test_first_run_bootstrap_uses_dark_default

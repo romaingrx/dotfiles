@@ -16,11 +16,12 @@ let
     #!${pkgs.bash}/bin/bash
     set -euo pipefail
 
-    ${pkgs.sketchybar}/bin/sketchybar --reload >/dev/null 2>&1 || true
+    /bin/launchctl print "gui/$UID/org.nixos.sketchybar" >/dev/null 2>&1 || exit 0
+    exec ${pkgs.sketchybar}/bin/sketchybar --reload
   '';
 in
 {
   config = lib.mkIf (cfg.enable && pkgs.stdenv.isDarwin) {
-    home.file = generatedArtifacts // themeLib.reloadHook "sketchybar" reloadHook;
+    home.file = generatedArtifacts // themeLib.reloadHook "50-sketchybar" reloadHook;
   };
 }
