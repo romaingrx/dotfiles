@@ -14,11 +14,43 @@ let
     else
       "${config.home.homeDirectory}/${dotfilesPath}";
   configSource = path: "${dotfilesRoot}/config/${path}";
+  outOfStoreConfig = path: config.lib.file.mkOutOfStoreSymlink (configSource path);
+
+  # Single source of truth for the theme CLI commands: their names, where they
+  # are installed, and how consumers reference them by path.
+  themeBinDir = ".local/bin";
+  themeCommandNames = [
+    "romaingrx-theme-apply"
+    "romaingrx-theme-get"
+    "romaingrx-theme-lib"
+    "romaingrx-theme-set"
+    "romaingrx-theme-watch"
+  ];
+  themeBin = name: "${config.home.homeDirectory}/${themeBinDir}/${name}";
+  themeCommandFiles = builtins.listToAttrs (
+    map (
+      name: lib.nameValuePair "${themeBinDir}/${name}" { source = outOfStoreConfig "bin/${name}"; }
+    ) themeCommandNames
+  );
+
+  # Runtime `current` theme tree and a consumer's slice of it. Pairs with
+  # generatedArtifacts: appName here matches the appName passed there.
+  absoluteRuntimeRoot = "${config.home.homeDirectory}/${cfg.runtimeRoot}";
+  currentRoot = "${absoluteRuntimeRoot}/current";
+  currentAppDir = appName: "${currentRoot}/${appName}";
 in
 {
-  inherit configSource dotfilesRoot;
-
-  outOfStoreConfig = path: config.lib.file.mkOutOfStoreSymlink (configSource path);
+  inherit
+    configSource
+    currentAppDir
+    currentRoot
+    dotfilesRoot
+    outOfStoreConfig
+    themeBin
+    themeBinDir
+    themeCommandFiles
+    themeCommandNames
+    ;
 
   generatedArtifacts =
     appName: renderArtifacts:

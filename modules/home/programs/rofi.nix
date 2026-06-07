@@ -10,7 +10,7 @@ let
   themeLib = import ../theme/lib.nix { inherit config dotfilesPath lib; };
   renderTheme = import ./rofi/theme.nix { inherit lib; };
   rofiConfigRoot = "${config.home.homeDirectory}/.config/rofi";
-  runtimeRofiRoot = "${config.home.homeDirectory}/${cfg.runtimeRoot}/current/rofi";
+  runtimeRofiRoot = themeLib.currentAppDir "rofi";
   generatedArtifacts = themeLib.generatedArtifacts "rofi" (appearanceTheme: {
     "config.rasi" = renderTheme.config appearanceTheme;
   });

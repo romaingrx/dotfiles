@@ -16,12 +16,17 @@ let
   renderSketchybarTheme = import (repoRoot + "/modules/home/programs/sketchybar/theme.nix") {
     inherit (pkgs) lib;
   };
+  renderTmuxTheme = import (repoRoot + "/modules/home/programs/tmux/theme.nix") {
+    inherit (pkgs) lib;
+  };
 
   alacrittyLatteGolden = repoRoot + "/config/alacritty/themes/catppuccin-latte.toml";
   alacrittyMochaGolden = repoRoot + "/config/alacritty/themes/catppuccin-mocha.toml";
   hyprGoldenRoot = repoRoot + "/tests/theme/golden/hypr";
   rofiGoldenRoot = repoRoot + "/tests/theme/golden/rofi";
   sketchybarGoldenRoot = repoRoot + "/tests/theme/golden/sketchybar";
+  tmuxGoldenRoot = repoRoot + "/tests/theme/golden/tmux";
+  tmuxIntegrationGolden = tmuxGoldenRoot + "/integration.conf";
   waybarGoldenRoot = repoRoot + "/tests/theme/golden/waybar";
   runtimeContractTest = repoRoot + "/tests/theme/runtime-contract.sh";
   themeLib = repoRoot + "/config/bin/romaingrx-theme-lib";
@@ -124,6 +129,53 @@ in
       }
     ];
   };
+
+  theme-tmux-golden = mkThemeGoldenCheck {
+    name = "tmux";
+    goldenRoot = tmuxGoldenRoot;
+    artifacts = [
+      {
+        path = "flavor.conf";
+        render = renderTmuxTheme.flavor;
+      }
+    ];
+  };
+
+  # The integration drop-in is path-dependent rather than appearance-dependent,
+  # so it gets its own check: the rendered output (with fixed placeholder paths)
+  # is pinned against a golden, and real tmux must accept the fragment.
+  theme-tmux-integration =
+    let
+      rendered = renderTmuxTheme.integration {
+        flavorConf = "/run/theme/current/tmux/flavor.conf";
+        themeGet = "/run/bin/romaingrx-theme-get";
+        themeSet = "/run/bin/romaingrx-theme-set";
+      };
+    in
+    pkgs.runCommand "theme-tmux-integration"
+      {
+        nativeBuildInputs = [
+          pkgs.diffutils
+          pkgs.tmux
+        ];
+      }
+      ''
+        diff -u \
+          ${tmuxIntegrationGolden} \
+          ${pkgs.writeText "generated-tmux-integration.conf" rendered}
+
+        # tmux must parse the fragment and register the prefix+T binding.
+        export HOME="$PWD"
+        export TMUX_TMPDIR="$PWD"
+        tmux -f ${tmuxIntegrationGolden} new-session -d
+        tmux list-keys -T prefix | grep -qE 'prefix +T ' || {
+          echo "prefix+T not bound after sourcing the integration fragment" >&2
+          exit 1
+        }
+        tmux kill-server || true
+
+        touch "$out"
+      '';
 
   theme-runtime-contract =
     pkgs.runCommand "theme-runtime-contract"

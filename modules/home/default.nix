@@ -1,20 +1,11 @@
 {
   config,
   dotfilesPath,
+  lib,
   ...
 }:
 let
-  themeCommands = [
-    "romaingrx-theme-apply"
-    "romaingrx-theme-get"
-    "romaingrx-theme-lib"
-    "romaingrx-theme-set"
-    "romaingrx-theme-watch"
-  ];
-  themeCommandFile = name: {
-    name = ".local/bin/${name}";
-    value.source = config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/bin/${name}";
-  };
+  themeLib = import ./theme/lib.nix { inherit config dotfilesPath lib; };
 in
 {
   imports = [
@@ -31,7 +22,7 @@ in
       VISUAL = "nvim";
     };
 
-    file = builtins.listToAttrs (map themeCommandFile themeCommands);
+    file = themeLib.themeCommandFiles;
   };
 
   programs.home-manager.enable = true;

@@ -10,7 +10,7 @@ let
   themeLib = import ../theme/lib.nix { inherit config dotfilesPath lib; };
   renderTheme = import ./hypr/theme.nix { inherit lib; };
   hyprConfigRoot = "${config.home.homeDirectory}/.config/hypr";
-  runtimeHyprRoot = "${config.home.homeDirectory}/${cfg.runtimeRoot}/current/hypr";
+  runtimeHyprRoot = themeLib.currentAppDir "hypr";
   legacyHyprTargets = [
     (themeLib.configSource "hypr")
   ];
