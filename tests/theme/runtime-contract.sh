@@ -49,8 +49,11 @@ reset_theme_env() {
     ROMAINGRX_THEME_DEFAULT_APPEARANCE \
     ROMAINGRX_THEME_GENERATED_ROOT \
     ROMAINGRX_THEME_RUNTIME_ROOT \
+    ROMAINGRX_THEME_SKETCHYBAR_BIN \
     XDG_CONFIG_HOME \
     XDG_STATE_HOME
+
+  ROMAINGRX_THEME_SKETCHYBAR_BIN=/nonexistent-sketchybar
 }
 
 make_theme_home() {
@@ -186,11 +189,41 @@ test_missing_generated_target_is_refused() {
   [[ ! -e "$root/state/theme/current" ]] || fail "current symlink should not be created for missing target"
 }
 
+test_darwin_sync_reloads_sketchybar_when_available() {
+  local root
+  root="$(mktemp -d)"
+  make_theme_home "$root"
+
+  cat > "$root/sketchybar" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "${SKETCHYBAR_CALLS:?}"
+EOF
+  chmod +x "$root/sketchybar"
+
+  uname() {
+    printf 'Darwin\n'
+  }
+
+  reset_theme_env
+  HOME="$root/home"
+  XDG_CONFIG_HOME="$root/config"
+  XDG_STATE_HOME="$root/state"
+  ROMAINGRX_THEME_SKETCHYBAR_BIN="$root/sketchybar"
+  SKETCHYBAR_CALLS="$root/sketchybar.log"
+  export SKETCHYBAR_CALLS
+
+  theme_sync light
+
+  assert_file_contents "$root/sketchybar.log" "--reload"
+  unset -f uname
+}
+
 test_first_run_bootstrap_uses_dark_default
 test_sync_switches_repeatedly
 test_paths_env_extends_runtime_contract
 test_stale_current_symlink_is_repaired
 test_non_symlink_current_is_refused
 test_missing_generated_target_is_refused
+test_darwin_sync_reloads_sketchybar_when_available
 
 printf 'ok - romaingrx-theme-lib runtime contract\n'

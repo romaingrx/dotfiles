@@ -164,6 +164,49 @@ theme_bootstrap() {
   theme_bootstrap_alacritty
 }
 
+theme_sketchybar_bin() {
+  local candidate
+
+  if [[ -n "${ROMAINGRX_THEME_SKETCHYBAR_BIN:-}" ]]; then
+    [[ -x "$ROMAINGRX_THEME_SKETCHYBAR_BIN" ]] || return 1
+    printf '%s\n' "$ROMAINGRX_THEME_SKETCHYBAR_BIN"
+    return
+  fi
+
+  if command -v sketchybar &>/dev/null; then
+    command -v sketchybar
+    return
+  fi
+
+  for candidate in \
+    /run/current-system/sw/bin/sketchybar \
+    /opt/homebrew/bin/sketchybar \
+    /usr/local/bin/sketchybar; do
+    if [[ -x "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+  done
+
+  return 1
+}
+
+theme_reload_sketchybar() {
+  local sketchybar_bin
+
+  case "$(uname -s)" in
+    Darwin) ;;
+    *) return 0 ;;
+  esac
+
+  sketchybar_bin="$(theme_sketchybar_bin)" || return 0
+  "$sketchybar_bin" --reload &>/dev/null || true
+}
+
+theme_reload_consumers() {
+  theme_reload_sketchybar
+}
+
 theme_read_state() {
   local file
   local value
@@ -247,7 +290,8 @@ theme_apply() {
   current_link="$(theme_current_link)"
   theme_link_atomic "$generated_dir" "$current_link" || return
 
-  theme_bootstrap_alacritty
+  theme_bootstrap_alacritty || return
+  theme_reload_consumers
 }
 
 theme_sync() {
