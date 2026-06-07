@@ -40,6 +40,21 @@ assert_symlink_target() {
   assert_eq "$expected" "$actual" "$link target"
 }
 
+# Write an executable reload hook whose body is read from stdin.
+#
+# Hooks are executed directly by theme_reload_consumers, so the kernel resolves
+# their shebang. Inside the Nix build sandbox there is no /usr/bin/env, so we
+# point the shebang at the bash interpreter actually running this test ($BASH),
+# which is a valid path both in the sandbox and on a developer host.
+write_hook() {
+  local path="$1"
+  {
+    printf '#!%s\n' "$BASH"
+    cat
+  } > "$path"
+  chmod +x "$path"
+}
+
 reset_theme_env() {
   unset \
     HOME \
@@ -201,16 +216,13 @@ test_sync_runs_reload_hooks_after_apply() {
   make_theme_home "$root"
 
   mkdir -p "$root/hooks"
-  cat > "$root/hooks/20-order" <<'EOF'
-#!/usr/bin/env bash
+  write_hook "$root/hooks/20-order" <<'EOF'
 set -euo pipefail
 
 printf 'order=20\n' >> "${THEME_HOOK_LOG:?}"
 EOF
-  chmod +x "$root/hooks/20-order"
 
-  cat > "$root/hooks/50-record" <<'EOF'
-#!/usr/bin/env bash
+  write_hook "$root/hooks/50-record" <<'EOF'
 set -euo pipefail
 
 {
@@ -222,7 +234,6 @@ set -euo pipefail
   printf 'runtime=%s\n' "$ROMAINGRX_THEME_RUNTIME_ROOT"
 } >> "${THEME_HOOK_LOG:?}"
 EOF
-  chmod +x "$root/hooks/50-record"
 
   reset_theme_env
   HOME="$root/home"
@@ -249,11 +260,9 @@ test_reload_hook_failure_is_nonfatal() {
   make_theme_home "$root"
 
   mkdir -p "$root/hooks"
-  cat > "$root/hooks/10-fail" <<'EOF'
-#!/usr/bin/env bash
+  write_hook "$root/hooks/10-fail" <<'EOF'
 exit 42
 EOF
-  chmod +x "$root/hooks/10-fail"
 
   reset_theme_env
   HOME="$root/home"
