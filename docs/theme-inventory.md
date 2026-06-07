@@ -93,8 +93,9 @@ deduplication pass.
 - Hooks also receive `ROMAINGRX_THEME_CURRENT`,
   `ROMAINGRX_THEME_GENERATED_ROOT`, and `ROMAINGRX_THEME_RUNTIME_ROOT`.
 - Hooks must be idempotent and quick. Long-running work should detach itself.
-- Hook failures are non-fatal; the core actuator writes warnings to stderr and
-  to `ROMAINGRX_THEME_RELOAD_HOOK_LOG`.
+- Hook failures are non-fatal; the core actuator writes warnings to stderr, to
+  `ROMAINGRX_THEME_RELOAD_HOOK_LOG`, and (best-effort) to the system log via
+  `logger -t romaingrx-theme` (journald on Linux, the unified log on macOS).
 - Hooks run after `theme_apply` and after Home Manager activation, so consumers
   can refresh after both manual theme switches and generated artifact updates.
 
