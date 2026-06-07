@@ -13,7 +13,7 @@ let
   legacyWaybarTargets = [
     (themeLib.configSource "waybar")
   ];
-  runtimeWaybarRoot = "${config.home.homeDirectory}/${cfg.runtimeRoot}/current/waybar";
+  runtimeWaybarRoot = themeLib.currentAppDir "waybar";
   generatedArtifacts = themeLib.generatedArtifacts "waybar" (appearanceTheme: {
     "config.jsonc" = renderTheme.config {
       configPath = "${waybarConfigRoot}/config-base.jsonc";
