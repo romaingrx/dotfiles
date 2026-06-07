@@ -10,39 +10,39 @@ let
       lines = [
         [
           "BLACK"
-          (f.sketchybar t.backgroundStrong "ff")
+          (f.argb t.backgroundStrong "ff")
         ]
         [
           "WHITE"
-          (f.sketchybar t.foreground "ff")
+          (f.argb t.foreground "ff")
         ]
         [
           "RED"
-          (f.sketchybar s.danger "ff")
+          (f.argb s.danger "ff")
         ]
         [
           "GREEN"
-          (f.sketchybar s.success "ff")
+          (f.argb s.success "ff")
         ]
         [
           "BLUE"
-          (f.sketchybar s.info "ff")
+          (f.argb s.info "ff")
         ]
         [
           "YELLOW"
-          (f.sketchybar s.warning "ff")
+          (f.argb s.warning "ff")
         ]
         [
           "ORANGE"
-          (f.sketchybar p.peach "ff")
+          (f.argb p.peach "ff")
         ]
         [
           "MAGENTA"
-          (f.sketchybar t.accent "ff")
+          (f.argb t.accent "ff")
         ]
         [
           "GREY"
-          (f.sketchybar p.overlay2 "ff")
+          (f.argb p.overlay2 "ff")
         ]
         [
           "TRANSPARENT"
@@ -50,59 +50,59 @@ let
         ]
         [
           "BAR_BG"
-          (f.sketchybar t.background "15")
+          (f.argb t.background "15")
         ]
         [
           "STATUS_BG"
-          (f.sketchybar t.background "22")
+          (f.argb t.background "22")
         ]
         [
           "STATUS_GRAPH_BG"
-          (f.sketchybar t.background "16")
+          (f.argb t.background "16")
         ]
         [
           "POPUP_BG"
-          (f.sketchybar t.background "70")
+          (f.argb t.background "70")
         ]
         [
           "SPACE_INITIAL_BG"
-          (f.sketchybar t.foreground "44")
+          (f.argb t.foreground "44")
         ]
         [
           "SPACE_FOCUSED_BG"
-          (f.sketchybar t.foreground "55")
+          (f.argb t.foreground "55")
         ]
         [
           "SPACE_VISIBLE_BG"
-          (f.sketchybar t.foreground "22")
+          (f.argb t.foreground "22")
         ]
         [
           "MODE_BG"
-          (f.sketchybar t.accent "24")
+          (f.argb t.accent "24")
         ]
         [
           "CPU_SYSTEM_FILL"
-          (f.sketchybar s.danger "20")
+          (f.argb s.danger "20")
         ]
         [
           "CPU_USER_FILL"
-          (f.sketchybar s.info "20")
+          (f.argb s.info "20")
         ]
         [
           "NET_DOWNLOAD_FILL"
-          (f.sketchybar s.info "20")
+          (f.argb s.info "20")
         ]
         [
           "NET_UPLOAD_FILL"
-          (f.sketchybar s.success "20")
+          (f.argb s.success "20")
         ]
         [
           "DEFAULT_ICON_COLOR"
-          (f.sketchybar t.foreground "ff")
+          (f.argb t.foreground "ff")
         ]
         [
           "DEFAULT_LABEL_COLOR"
-          (f.sketchybar t.foreground "ff")
+          (f.argb t.foreground "ff")
         ]
       ];
     in

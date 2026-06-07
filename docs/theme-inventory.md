@@ -50,7 +50,10 @@ baseline for the incremental centralized theme migration.
   under `~/.config/hypr/theme/`.
 - Rofi is migrated to generated Latte/Mocha config, linked through the runtime
   `current` theme contract.
-- jankyborders uses hardcoded nix-darwin service colors.
+- jankyborders is migrated to the shared theme data. The nix-darwin service
+  seeds its boot-time colors from `ui.border` / `ui.borderInactive` (dark
+  default), and a `70-borders` reload hook re-colors a running instance from the
+  active appearance's generated `current/borders/colors.sh` after a theme apply.
 
 Migrating all surfaces to Latte/Mocha is a visible theme change, not just a
 deduplication pass.
@@ -128,6 +131,9 @@ deduplication pass.
 - `users/romaingrx/darwin.nix`
 - `modules/darwin/homebrew.nix`
 - `modules/darwin/services/jankyborders.nix`
+- `modules/home/programs/borders.nix`
+- `modules/home/programs/borders/theme.nix`
+- `tests/theme/golden/borders/{light,dark}/colors.sh`
 - `modules/darwin/services/sketchybar/default.nix`
 - `modules/home/programs/sketchybar.nix`
 - `modules/home/programs/sketchybar/theme.nix`

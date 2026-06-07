@@ -4,6 +4,9 @@ let
 
   theme = import (repoRoot + "/lib/theme") { };
   renderAlacrittyTheme = import (repoRoot + "/modules/home/programs/alacritty/theme.nix") { };
+  renderBordersTheme = import (repoRoot + "/modules/home/programs/borders/theme.nix") {
+    inherit (pkgs) lib;
+  };
   renderWaybarTheme = import (repoRoot + "/modules/home/programs/waybar/theme.nix") {
     inherit (pkgs) lib;
   };
@@ -22,6 +25,7 @@ let
 
   alacrittyLatteGolden = repoRoot + "/config/alacritty/themes/catppuccin-latte.toml";
   alacrittyMochaGolden = repoRoot + "/config/alacritty/themes/catppuccin-mocha.toml";
+  bordersGoldenRoot = repoRoot + "/tests/theme/golden/borders";
   hyprGoldenRoot = repoRoot + "/tests/theme/golden/hypr";
   rofiGoldenRoot = repoRoot + "/tests/theme/golden/rofi";
   sketchybarGoldenRoot = repoRoot + "/tests/theme/golden/sketchybar";
@@ -72,6 +76,17 @@ in
           ${pkgs.writeText "generated-catppuccin-latte.toml" (renderAlacrittyTheme theme.appearances.light)}
         touch "$out"
       '';
+
+  theme-borders-golden = mkThemeGoldenCheck {
+    name = "borders";
+    goldenRoot = bordersGoldenRoot;
+    artifacts = [
+      {
+        path = "colors.sh";
+        render = renderBordersTheme.colors;
+      }
+    ];
+  };
 
   theme-waybar-golden = mkThemeGoldenCheck {
     name = "waybar";
