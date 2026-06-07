@@ -70,6 +70,7 @@ in
     rgbTuple = color: concatStringsSep ", " (map toString color.rgb);
     hyprRgb = color: "rgb(${color.hex})";
     hyprRgba = color: alpha: "rgba(${color.hex}${alpha})";
-    sketchybar = color: alpha: "0x${alpha}${color.hex}";
+    # 0xAARRGGBB, the macOS color-argument format (jankyborders, SketchyBar).
+    argb = color: alpha: "0x${alpha}${color.hex}";
   };
 }
