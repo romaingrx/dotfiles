@@ -287,8 +287,9 @@ EOF
   assert_symlink_target "$root/state/theme/current" "$root/config/romaingrx/theme/generated/light"
   grep -q 'Warning: theme reload hook failed' "$root/error.log"
   grep -q 'Warning: theme reload hook failed' "$root/state/theme/reload-hooks.log"
-  # Mirrored to the system log via `logger -t romaingrx-theme`.
+  # Mirrored to the system log via `logger -t romaingrx-theme -p user.warning`.
   grep -q 'romaingrx-theme' "$root/syslog.capture"
+  grep -qF -- '-p user.warning' "$root/syslog.capture"
   grep -q 'Warning: theme reload hook failed' "$root/syslog.capture"
 }
 
