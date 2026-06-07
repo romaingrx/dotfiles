@@ -1,6 +1,7 @@
 { pkgs, ... }:
 {
   imports = [
+    ./programs/agent-skills.nix
     ./programs/alacritty.nix
     ./programs/borders.nix
     ./programs/hypr.nix
