@@ -264,18 +264,32 @@ test_reload_hook_failure_is_nonfatal() {
 exit 42
 EOF
 
+  # Stub `logger` on PATH to capture the syslog mirror (args + piped message).
+  mkdir -p "$root/bin"
+  cat > "$root/bin/logger" <<EOF
+#!$BASH
+{ printf 'args: %s\n' "\$*"; cat; } >> "$root/syslog.capture"
+EOF
+  chmod +x "$root/bin/logger"
+
   reset_theme_env
   HOME="$root/home"
   XDG_CONFIG_HOME="$root/config"
   XDG_STATE_HOME="$root/state"
   ROMAINGRX_THEME_RELOAD_HOOKS_DIR="$root/hooks"
 
+  local saved_path="$PATH"
+  PATH="$root/bin:$PATH"
   theme_sync light 2> "$root/error.log"
+  PATH="$saved_path"
 
   assert_file_contents "$root/state/theme/appearance" "light"
   assert_symlink_target "$root/state/theme/current" "$root/config/romaingrx/theme/generated/light"
   grep -q 'Warning: theme reload hook failed' "$root/error.log"
   grep -q 'Warning: theme reload hook failed' "$root/state/theme/reload-hooks.log"
+  # Mirrored to the system log via `logger -t romaingrx-theme`.
+  grep -q 'romaingrx-theme' "$root/syslog.capture"
+  grep -q 'Warning: theme reload hook failed' "$root/syslog.capture"
 }
 
 test_first_run_bootstrap_uses_dark_default

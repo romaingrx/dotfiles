@@ -188,6 +188,13 @@ theme_warn() {
 
   printf '%s\n' "$message" >&2
 
+  # Mirror to the system log (journald on Linux, the unified log on macOS) for
+  # observability alongside the file log. Best-effort: skipped when logger is
+  # absent, and never fatal.
+  if command -v logger >/dev/null 2>&1; then
+    printf '%s\n' "$message" | logger -t romaingrx-theme -p user.warning 2>/dev/null || true
+  fi
+
   log_file="$(theme_reload_hook_log)"
   mkdir -p -- "$(dirname -- "$log_file")" 2>/dev/null || return 0
   printf '%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$message" >> "$log_file" 2>/dev/null || true
