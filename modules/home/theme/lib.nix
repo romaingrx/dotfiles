@@ -39,6 +39,13 @@ in
       )
     );
 
+  reloadHook = name: text: {
+    "${cfg.reloadHooksRoot}/${name}" = {
+      inherit text;
+      executable = true;
+    };
+  };
+
   removeLegacySymlinkActivation =
     {
       path,

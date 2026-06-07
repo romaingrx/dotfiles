@@ -164,47 +164,37 @@ theme_bootstrap() {
   theme_bootstrap_alacritty
 }
 
-theme_sketchybar_bin() {
-  local candidate
-
-  if [[ -n "${ROMAINGRX_THEME_SKETCHYBAR_BIN:-}" ]]; then
-    [[ -x "$ROMAINGRX_THEME_SKETCHYBAR_BIN" ]] || return 1
-    printf '%s\n' "$ROMAINGRX_THEME_SKETCHYBAR_BIN"
-    return
-  fi
-
-  if command -v sketchybar &>/dev/null; then
-    command -v sketchybar
-    return
-  fi
-
-  for candidate in \
-    /run/current-system/sw/bin/sketchybar \
-    /opt/homebrew/bin/sketchybar \
-    /usr/local/bin/sketchybar; do
-    if [[ -x "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return
-    fi
-  done
-
-  return 1
+theme_default_reload_hooks_dir() {
+  printf '%s/romaingrx/theme/reload-hooks\n' "${XDG_CONFIG_HOME:-${HOME}/.config}"
 }
 
-theme_reload_sketchybar() {
-  local sketchybar_bin
-
-  case "$(uname -s)" in
-    Darwin) ;;
-    *) return 0 ;;
-  esac
-
-  sketchybar_bin="$(theme_sketchybar_bin)" || return 0
-  "$sketchybar_bin" --reload &>/dev/null || true
+theme_reload_hooks_dir() {
+  theme_load_config
+  printf '%s\n' "${ROMAINGRX_THEME_RELOAD_HOOKS_DIR:-$(theme_default_reload_hooks_dir)}"
 }
 
 theme_reload_consumers() {
-  theme_reload_sketchybar
+  local appearance="$1"
+  local hook
+  local hooks_dir
+  local status
+
+  hooks_dir="$(theme_reload_hooks_dir)"
+  [[ -d "$hooks_dir" ]] || return 0
+
+  for hook in "$hooks_dir"/*; do
+    [[ -e "$hook" ]] || continue
+    [[ -f "$hook" && -x "$hook" ]] || continue
+
+    ROMAINGRX_THEME_APPEARANCE="$appearance" \
+      ROMAINGRX_THEME_CURRENT="$(theme_current_link)" \
+      ROMAINGRX_THEME_GENERATED_ROOT="$(theme_generated_root)" \
+      ROMAINGRX_THEME_RUNTIME_ROOT="$(theme_state_dir)" \
+      "$hook" "$appearance" || {
+        status="$?"
+        printf 'Warning: theme reload hook failed: %s (exit %s)\n' "$hook" "$status" >&2
+      }
+  done
 }
 
 theme_read_state() {
@@ -291,7 +281,7 @@ theme_apply() {
   theme_link_atomic "$generated_dir" "$current_link" || return
 
   theme_bootstrap_alacritty || return
-  theme_reload_consumers
+  theme_reload_consumers "$appearance"
 }
 
 theme_sync() {

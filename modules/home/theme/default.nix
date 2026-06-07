@@ -10,6 +10,7 @@ let
   homeRelativePath = lib.types.strMatching "[^/].*";
   homePath = path: "${config.home.homeDirectory}/${path}";
   absoluteGeneratedRoot = homePath cfg.generatedRoot;
+  absoluteReloadHooksRoot = homePath cfg.reloadHooksRoot;
   absoluteRuntimeRoot = homePath cfg.runtimeRoot;
   themeLib = "${dotfilesPath}/config/bin/romaingrx-theme-lib";
   toShellEnv = lib.generators.toKeyValue {
@@ -42,6 +43,12 @@ in
       description = "Home-relative directory for runtime theme state and active symlinks.";
     };
 
+    reloadHooksRoot = lib.mkOption {
+      type = homeRelativePath;
+      default = ".config/romaingrx/theme/reload-hooks";
+      description = "Home-relative directory containing executable hooks run after a theme apply.";
+    };
+
     runtimeEnv = lib.mkOption {
       type = lib.types.attrsOf lib.types.str;
       default = { };
@@ -53,6 +60,7 @@ in
     romaingrx.theme.runtimeEnv = {
       ROMAINGRX_THEME_DEFAULT_APPEARANCE = cfg.defaultAppearance;
       ROMAINGRX_THEME_GENERATED_ROOT = absoluteGeneratedRoot;
+      ROMAINGRX_THEME_RELOAD_HOOKS_DIR = absoluteReloadHooksRoot;
       ROMAINGRX_THEME_RUNTIME_ROOT = absoluteRuntimeRoot;
     };
 

@@ -11,6 +11,9 @@ baseline for the incremental centralized theme migration.
   present and fall back to XDG defaults for standalone use.
 - Consumer modules extend this contract through `romaingrx.theme.runtimeEnv`
   instead of hardcoding consumer-specific paths in the base theme module.
+- Consumer modules can register executable reload hooks under the shared theme
+  hook root. The runtime actuator runs those hooks after a successful apply
+  without depending on any specific app.
 - Runtime bootstrapping and atomic symlink updates live in
   `config/bin/romaingrx-theme-lib`; activation snippets call those shared
   helpers instead of reimplementing link logic.
