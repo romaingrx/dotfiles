@@ -14,7 +14,7 @@ sketchybar --add item battery right \
 	background.color="$STATUS_BG" \
 	background.corner_radius="$STATUS_RADIUS" \
 	background.height="$STATUS_HEIGHT" \
-	popup.background.color=0x70000000 \
+	popup.background.color="$POPUP_BG" \
 	popup.blur_radius=50 \
 	popup.background.corner_radius=5 \
 	popup.align=right \

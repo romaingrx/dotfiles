@@ -4,7 +4,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../helpers/env.sh"
 sketchybar_resolve_paths "$SCRIPT_DIR"
 
-source "$CONFIG_DIR/colors.sh"
+source "$CONFIG_DIR/colors.sh" || exit 1
 source "$CONFIG_DIR/icons.sh"
 source "$HELPER_DIR/aerospace.sh"
 source "$HELPER_DIR/app_icons.sh"
@@ -137,12 +137,12 @@ if { [ -n "$event_focused_workspace" ] && [ "$workspace" = "$event_focused_works
 	{ [ -z "$event_focused_workspace" ] && { [ "$workspace" = "$focused_workspace" ] || [ "$is_focused" = "true" ]; }; }; then
 	icon_color="$WHITE"
 	label_color="$WHITE"
-	background_color=0x55ffffff
+	background_color="$SPACE_FOCUSED_BG"
 	background_drawing=on
 elif [ "$is_visible" = "true" ]; then
 	icon_color="$BLUE"
 	label_color="$WHITE"
-	background_color=0x22ffffff
+	background_color="$SPACE_VISIBLE_BG"
 	background_drawing=on
 elif [ "$window_count" -eq 0 ]; then
 	icon_color="$GREY"

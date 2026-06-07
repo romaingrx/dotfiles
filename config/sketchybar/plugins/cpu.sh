@@ -4,7 +4,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../helpers/env.sh"
 sketchybar_resolve_paths "$SCRIPT_DIR"
 
-source "$CONFIG_DIR/colors.sh"
+source "$CONFIG_DIR/colors.sh" || exit 1
 
 CORE_COUNT=$(sysctl -n machdep.cpu.thread_count)
 CPU_INFO=$(ps -eo pcpu,user)

@@ -4,7 +4,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../helpers/env.sh"
 sketchybar_resolve_paths "$SCRIPT_DIR"
 
-source "$CONFIG_DIR/colors.sh"
+source "$CONFIG_DIR/colors.sh" || exit 1
 source "$CONFIG_DIR/icons.sh"
 source "$HELPER_DIR/app_icons.sh"
 source "$HELPER_DIR/network.sh"
@@ -40,7 +40,7 @@ up_label="${up_label:-0B/s}"
 activity_graph="$down_graph"
 activity_label="↓${down_label%/s}"
 activity_color="$BLUE"
-activity_fill_color=0x208aadf4
+activity_fill_color="$NET_DOWNLOAD_FILL"
 
 if [ -n "$iface" ] && [ -n "$ip" ]; then
 	ip_label="$iface: $ip"
@@ -68,7 +68,7 @@ if awk -v down="$down_graph" -v up="$up_graph" 'BEGIN { exit !(up > down) }'; th
 	activity_graph="$up_graph"
 	activity_label="↑${up_label%/s}"
 	activity_color="$GREEN"
-	activity_fill_color=0x20a6da95
+	activity_fill_color="$NET_UPLOAD_FILL"
 fi
 
 sketchybar --set wifi.control \

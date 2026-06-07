@@ -19,8 +19,6 @@ sketchybar_resolve_paths() {
 	: "${FONT:=IBM Plex Mono}"
 	: "${NERD_FONT:=JetBrainsMono Nerd Font}"
 	: "${APP_FONT:=sketchybar-app-font}"
-	: "${STATUS_BG:=0x22000000}"
-	: "${STATUS_GRAPH_BG:=0x16000000}"
 	: "${STATUS_RADIUS:=6}"
 	: "${STATUS_HEIGHT:=22}"
 	: "${STATUS_GRAPH_WIDTH:=42}"

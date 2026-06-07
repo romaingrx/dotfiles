@@ -6,17 +6,17 @@ sketchybar --add graph cpu.sys right 1 \
 	--set cpu.sys \
 	drawing=off \
 	graph.color="$RED" \
-	graph.fill_color=0x20ed8796 \
+	graph.fill_color="$CPU_SYSTEM_FILL" \
 	label.drawing=off \
 	icon.drawing=off
 
-status_graph cpu.user right "$BLUE" 0x208aadf4
+status_graph cpu.user right "$BLUE" "$CPU_USER_FILL"
 sketchybar --set cpu.user \
 	label=0% \
 	update_freq=2 \
 	script="$PLUGIN_DIR/cpu.sh" \
 	click_script="sketchybar --set cpu.user popup.drawing=toggle" \
-	popup.background.color=0x70000000 \
+	popup.background.color="$POPUP_BG" \
 	popup.blur_radius=50 \
 	popup.background.corner_radius=5 \
 	popup.align=right \

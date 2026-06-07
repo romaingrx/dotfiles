@@ -31,7 +31,7 @@ in
     // lib.optionalAttrs cfg.enable (builtins.listToAttrs (map themeArtifact theme.appearanceNames));
 
     activation.romaingrxAlacrittyThemeBootstrap = lib.mkIf cfg.enable (
-      lib.hm.dag.entryAfter [ "romaingrxThemeBootstrap" ] ''
+      lib.hm.dag.entryBetween [ "romaingrxThemeReloadHooks" ] [ "romaingrxThemeBootstrap" ] ''
         # shellcheck source=/dev/null
         source "${themeLib}"
         theme_bootstrap_alacritty

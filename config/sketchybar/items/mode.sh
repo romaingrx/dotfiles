@@ -13,8 +13,8 @@ sketchybar --set mode.indicator \
 	click_script="sketchybar --set mode.indicator popup.drawing=toggle" \
 	icon.color="$MAGENTA" \
 	label.color="$MAGENTA" \
-	background.color=0x24c6a0f6 \
-	popup.background.color=0x70000000 \
+	background.color="$MODE_BG" \
+	popup.background.color="$POPUP_BG" \
 	popup.blur_radius=50 \
 	popup.background.corner_radius=5 \
 	popup.align=left \

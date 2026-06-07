@@ -40,6 +40,21 @@ assert_symlink_target() {
   assert_eq "$expected" "$actual" "$link target"
 }
 
+# Write an executable reload hook whose body is read from stdin.
+#
+# Hooks are executed directly by theme_reload_consumers, so the kernel resolves
+# their shebang. Inside the Nix build sandbox there is no /usr/bin/env, so we
+# point the shebang at the bash interpreter actually running this test ($BASH),
+# which is a valid path both in the sandbox and on a developer host.
+write_hook() {
+  local path="$1"
+  {
+    printf '#!%s\n' "$BASH"
+    cat
+  } > "$path"
+  chmod +x "$path"
+}
+
 reset_theme_env() {
   unset \
     HOME \
@@ -48,9 +63,13 @@ reset_theme_env() {
     ROMAINGRX_THEME_CONFIG_LOADED \
     ROMAINGRX_THEME_DEFAULT_APPEARANCE \
     ROMAINGRX_THEME_GENERATED_ROOT \
+    ROMAINGRX_THEME_RELOAD_HOOK_LOG \
+    ROMAINGRX_THEME_RELOAD_HOOKS_DIR \
     ROMAINGRX_THEME_RUNTIME_ROOT \
     XDG_CONFIG_HOME \
     XDG_STATE_HOME
+
+  ROMAINGRX_THEME_RELOAD_HOOKS_DIR=/nonexistent-theme-reload-hooks
 }
 
 make_theme_home() {
@@ -105,12 +124,15 @@ test_paths_env_extends_runtime_contract() {
   local root
   root="$(mktemp -d)"
   mkdir -p "$root/generated/light" "$root/generated/dark" "$root/state" "$root/alacritty"
+  mkdir -p "$root/hooks"
   printf 'light-theme\n' > "$root/generated/light/alacritty.toml"
   printf 'dark-theme\n' > "$root/generated/dark/alacritty.toml"
 
   cat > "$root/paths.env" <<EOF
 ROMAINGRX_THEME_DEFAULT_APPEARANCE='light'
 ROMAINGRX_THEME_GENERATED_ROOT='$root/generated'
+ROMAINGRX_THEME_RELOAD_HOOK_LOG='$root/hooks.log'
+ROMAINGRX_THEME_RELOAD_HOOKS_DIR='$root/hooks'
 ROMAINGRX_THEME_RUNTIME_ROOT='$root/state'
 ROMAINGRX_THEME_ALACRITTY_ACTIVE_THEME='$root/alacritty/active-theme.toml'
 EOF
@@ -125,6 +147,8 @@ EOF
   assert_symlink_target "$root/state/current" "$root/generated/light"
   assert_symlink_target "$root/alacritty/active-theme.toml" "$root/state/current/alacritty.toml"
   assert_file_contents "$root/alacritty/active-theme.toml" "light-theme"
+  assert_eq "$root/hooks.log" "$(theme_reload_hook_log)" "reload hook log"
+  assert_eq "$root/hooks" "$(theme_reload_hooks_dir)" "reload hooks dir"
 }
 
 test_stale_current_symlink_is_repaired() {
@@ -186,11 +210,81 @@ test_missing_generated_target_is_refused() {
   [[ ! -e "$root/state/theme/current" ]] || fail "current symlink should not be created for missing target"
 }
 
+test_sync_runs_reload_hooks_after_apply() {
+  local root
+  root="$(mktemp -d)"
+  make_theme_home "$root"
+
+  mkdir -p "$root/hooks"
+  write_hook "$root/hooks/20-order" <<'EOF'
+set -euo pipefail
+
+printf 'order=20\n' >> "${THEME_HOOK_LOG:?}"
+EOF
+
+  write_hook "$root/hooks/50-record" <<'EOF'
+set -euo pipefail
+
+{
+  printf 'order=50\n'
+  printf 'arg=%s\n' "${1:-}"
+  printf 'env=%s\n' "${ROMAINGRX_THEME_APPEARANCE:-}"
+  printf 'current=%s\n' "$(readlink "$ROMAINGRX_THEME_CURRENT")"
+  printf 'generated=%s\n' "$ROMAINGRX_THEME_GENERATED_ROOT"
+  printf 'runtime=%s\n' "$ROMAINGRX_THEME_RUNTIME_ROOT"
+} >> "${THEME_HOOK_LOG:?}"
+EOF
+
+  reset_theme_env
+  HOME="$root/home"
+  XDG_CONFIG_HOME="$root/config"
+  XDG_STATE_HOME="$root/state"
+  ROMAINGRX_THEME_RELOAD_HOOKS_DIR="$root/hooks"
+  THEME_HOOK_LOG="$root/hook.log"
+  export THEME_HOOK_LOG
+
+  theme_sync light
+
+  assert_file_contents "$root/hook.log" "order=20
+order=50
+arg=light
+env=light
+current=$root/config/romaingrx/theme/generated/light
+generated=$root/config/romaingrx/theme/generated
+runtime=$root/state/theme"
+}
+
+test_reload_hook_failure_is_nonfatal() {
+  local root
+  root="$(mktemp -d)"
+  make_theme_home "$root"
+
+  mkdir -p "$root/hooks"
+  write_hook "$root/hooks/10-fail" <<'EOF'
+exit 42
+EOF
+
+  reset_theme_env
+  HOME="$root/home"
+  XDG_CONFIG_HOME="$root/config"
+  XDG_STATE_HOME="$root/state"
+  ROMAINGRX_THEME_RELOAD_HOOKS_DIR="$root/hooks"
+
+  theme_sync light 2> "$root/error.log"
+
+  assert_file_contents "$root/state/theme/appearance" "light"
+  assert_symlink_target "$root/state/theme/current" "$root/config/romaingrx/theme/generated/light"
+  grep -q 'Warning: theme reload hook failed' "$root/error.log"
+  grep -q 'Warning: theme reload hook failed' "$root/state/theme/reload-hooks.log"
+}
+
 test_first_run_bootstrap_uses_dark_default
 test_sync_switches_repeatedly
 test_paths_env_extends_runtime_contract
 test_stale_current_symlink_is_repaired
 test_non_symlink_current_is_refused
 test_missing_generated_target_is_refused
+test_sync_runs_reload_hooks_after_apply
+test_reload_hook_failure_is_nonfatal
 
 printf 'ok - romaingrx-theme-lib runtime contract\n'

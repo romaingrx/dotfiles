@@ -7,6 +7,7 @@ let
   cfg = config.romaingrx.theme;
   theme = import ../../../lib/theme { };
   themeLib = "${dotfilesPath}/config/bin/romaingrx-theme-lib";
+  isOrderedHookName = name: builtins.match "[0-9][0-9]-[-A-Za-z0-9._]+" name != null;
   dotfilesRoot =
     if lib.hasPrefix "/" dotfilesPath then
       dotfilesPath
@@ -38,6 +39,21 @@ in
         ) theme.appearanceNames
       )
     );
+
+  reloadHook =
+    name: text:
+    let
+      hookName =
+        assert lib.assertMsg (isOrderedHookName name)
+          "Theme reload hooks must be named like '50-consumer' for deterministic ordering.";
+        name;
+    in
+    {
+      "${cfg.reloadHooksRoot}/${hookName}" = {
+        inherit text;
+        executable = true;
+      };
+    };
 
   removeLegacySymlinkActivation =
     {
@@ -79,7 +95,8 @@ in
         ) links
       );
     in
-    lib.hm.dag.entryAfter
+    lib.hm.dag.entryBetween
+      [ "romaingrxThemeReloadHooks" ]
       [
         "linkGeneration"
         "romaingrxThemeBootstrap"

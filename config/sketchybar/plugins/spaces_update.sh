@@ -21,7 +21,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../helpers/env.sh"
 sketchybar_resolve_paths "$SCRIPT_DIR"
-source "$CONFIG_DIR/colors.sh"
+source "$CONFIG_DIR/colors.sh" || exit 1
 source "$HELPER_DIR/sketchybar.sh"
 
 if [ "$SENDER" = "aerospace_workspace_change" ] && [ -n "${FOCUSED_WORKSPACE:-}" ]; then
@@ -32,7 +32,7 @@ if [ "$SENDER" = "aerospace_workspace_change" ] && [ -n "${FOCUSED_WORKSPACE:-}"
 	if [ -n "$sb" ]; then
 		# Focused workspace -> highlighted.
 		args=(--set "space.$focused"
-			background.color=0x55ffffff
+			background.color="$SPACE_FOCUSED_BG"
 			background.drawing=on
 			icon.color="$WHITE"
 			label.color="$WHITE")

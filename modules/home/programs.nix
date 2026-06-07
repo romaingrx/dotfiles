@@ -4,6 +4,7 @@
     ./programs/alacritty.nix
     ./programs/hypr.nix
     ./programs/rofi.nix
+    ./programs/sketchybar.nix
     ./programs/tmux.nix
     ./programs/waybar.nix
   ];

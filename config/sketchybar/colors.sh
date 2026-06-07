@@ -1,13 +1,18 @@
 #!/usr/bin/env sh
 
-# Color Palette
-BLACK=0xff181926
-WHITE=0xffcad3f5
-RED=0xffed8796
-GREEN=0xffa6da95
-BLUE=0xff8aadf4
-YELLOW=0xffeed49f
-ORANGE=0xfff5a97f
-MAGENTA=0xffc6a0f6
-GREY=0xff939ab7
-TRANSPARENT=0x00000000
+theme_config="${ROMAINGRX_THEME_CONFIG:-${HOME}/.config/romaingrx/theme/paths.env}"
+if [ -r "$theme_config" ]; then
+	# shellcheck source=/dev/null
+	. "$theme_config"
+fi
+
+theme_state_root="${ROMAINGRX_THEME_RUNTIME_ROOT:-${XDG_STATE_HOME:-${HOME}/.local/state}/theme}"
+theme_colors="${theme_state_root}/current/sketchybar/colors.sh"
+
+if [ ! -r "$theme_colors" ]; then
+	printf 'Missing SketchyBar theme colors: %s\n' "$theme_colors" >&2
+	return 1 2>/dev/null || exit 1
+fi
+
+# shellcheck source=/dev/null
+. "$theme_colors"

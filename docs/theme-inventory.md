@@ -11,6 +11,9 @@ baseline for the incremental centralized theme migration.
   present and fall back to XDG defaults for standalone use.
 - Consumer modules extend this contract through `romaingrx.theme.runtimeEnv`
   instead of hardcoding consumer-specific paths in the base theme module.
+- Consumer modules can register executable reload hooks under the shared theme
+  hook root. The runtime actuator runs those hooks after a successful apply
+  without depending on any specific app.
 - Runtime bootstrapping and atomic symlink updates live in
   `config/bin/romaingrx-theme-lib`; activation snippets call those shared
   helpers instead of reimplementing link logic.
@@ -29,8 +32,9 @@ baseline for the incremental centralized theme migration.
 - Alacritty and Neovim use Catppuccin Latte/Mocha.
 - tmux uses the Catppuccin plugin, defaults to Mocha, and has a manual Latte
   toggle.
-- SketchyBar uses a Macchiato-like shell palette in `config/sketchybar/colors.sh`
-  plus additional hardcoded transparent state colors across items and plugins.
+- SketchyBar is migrated to generated Latte/Mocha shell color fragments. The
+  committed `config/sketchybar` files remain editable; `colors.sh` loads the
+  active runtime fragment from the shared `current` theme contract.
 - Waybar is migrated to generated Latte/Mocha theme fragments. The committed
   `config/waybar` files remain editable base config/style files; Home Manager
   links them out-of-store and adds runtime `current` theme symlinks beside them.
@@ -44,6 +48,21 @@ baseline for the incremental centralized theme migration.
 
 Migrating all surfaces to Latte/Mocha is a visible theme change, not just a
 deduplication pass.
+
+## Reload Hook Contract
+
+- Register hooks from consumer modules with `themeLib.reloadHook`.
+- Name hooks with a numeric prefix such as `50-sketchybar`; hooks run
+  synchronously in lexical order.
+- Hooks receive the active appearance as `$1` and through
+  `ROMAINGRX_THEME_APPEARANCE`.
+- Hooks also receive `ROMAINGRX_THEME_CURRENT`,
+  `ROMAINGRX_THEME_GENERATED_ROOT`, and `ROMAINGRX_THEME_RUNTIME_ROOT`.
+- Hooks must be idempotent and quick. Long-running work should detach itself.
+- Hook failures are non-fatal; the core actuator writes warnings to stderr and
+  to `ROMAINGRX_THEME_RELOAD_HOOK_LOG`.
+- Hooks run after `theme_apply` and after Home Manager activation, so consumers
+  can refresh after both manual theme switches and generated artifact updates.
 
 ## Inventory
 
@@ -101,6 +120,8 @@ deduplication pass.
 - `modules/darwin/homebrew.nix`
 - `modules/darwin/services/jankyborders.nix`
 - `modules/darwin/services/sketchybar/default.nix`
+- `modules/home/programs/sketchybar.nix`
+- `modules/home/programs/sketchybar/theme.nix`
 - `config/sketchybar/colors.sh`
 - `config/sketchybar/sketchybarrc`
 - `config/sketchybar/helpers/env.sh`

@@ -13,11 +13,15 @@ let
   renderRofiTheme = import (repoRoot + "/modules/home/programs/rofi/theme.nix") {
     inherit (pkgs) lib;
   };
+  renderSketchybarTheme = import (repoRoot + "/modules/home/programs/sketchybar/theme.nix") {
+    inherit (pkgs) lib;
+  };
 
   alacrittyLatteGolden = repoRoot + "/config/alacritty/themes/catppuccin-latte.toml";
   alacrittyMochaGolden = repoRoot + "/config/alacritty/themes/catppuccin-mocha.toml";
   hyprGoldenRoot = repoRoot + "/tests/theme/golden/hypr";
   rofiGoldenRoot = repoRoot + "/tests/theme/golden/rofi";
+  sketchybarGoldenRoot = repoRoot + "/tests/theme/golden/sketchybar";
   waybarGoldenRoot = repoRoot + "/tests/theme/golden/waybar";
   runtimeContractTest = repoRoot + "/tests/theme/runtime-contract.sh";
   themeLib = repoRoot + "/config/bin/romaingrx-theme-lib";
@@ -106,6 +110,17 @@ in
       {
         path = "config.rasi";
         render = renderRofiTheme.config;
+      }
+    ];
+  };
+
+  theme-sketchybar-golden = mkThemeGoldenCheck {
+    name = "sketchybar";
+    goldenRoot = sketchybarGoldenRoot;
+    artifacts = [
+      {
+        path = "colors.sh";
+        render = renderSketchybarTheme.colors;
       }
     ];
   };
