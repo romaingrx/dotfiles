@@ -30,8 +30,14 @@ baseline for the incremental centralized theme migration.
 ## Palette Drift To Preserve Or Migrate Intentionally
 
 - Alacritty and Neovim use Catppuccin Latte/Mocha.
-- tmux uses the Catppuccin plugin, defaults to Mocha, and has a manual Latte
-  toggle.
+- tmux is migrated to a generated Catppuccin flavor fragment. The committed
+  `config/tmux/tmux.conf` stays fully standalone (defaults to Mocha with a
+  tmux-local toggle) and carries no runtime paths or theme-CLI names: it only
+  sources an optional drop-in via `$ROMAINGRX_THEME_TMUX_CONF`. Home Manager
+  sets that variable to a generated `integration.conf` that drives the flavor
+  from the active `current/tmux/flavor.conf` and rebinds `prefix + T` to a
+  global appearance toggle (absolute paths, so it does not depend on PATH). A
+  `60-tmux` reload hook re-themes any running server.
 - SketchyBar is migrated to generated Latte/Mocha shell color fragments. The
   committed `config/sketchybar` files remain editable; `colors.sh` loads the
   active runtime fragment from the shared `current` theme contract.
@@ -93,6 +99,9 @@ deduplication pass.
 
 - `config/tmux/tmux.conf`
 - `modules/home/programs/tmux.nix`
+- `modules/home/programs/tmux/theme.nix`
+- `tests/theme/golden/tmux/{light,dark}/flavor.conf`
+- `tests/theme/golden/tmux/integration.conf`
 
 ### Linux Desktop
 
