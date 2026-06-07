@@ -39,9 +39,13 @@
 }:
 
 let
+  # Link an entry that is a directory, or a symlink that resolves to one
+  # (builtins.readDir reports symlinks as "symlink" even when they point at a
+  # directory, so resolve via the trailing "/."). When requireFile is set, the
+  # entry must also contain that file.
   isLinkable =
     name: type:
-    type == "directory"
+    (type == "directory" || (type == "symlink" && builtins.pathExists (repoDir + "/${name}/.")))
     && (requireFile == null || builtins.pathExists (repoDir + "/${name}/${requireFile}"));
 
   subdirs =

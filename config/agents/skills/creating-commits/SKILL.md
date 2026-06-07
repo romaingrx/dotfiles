@@ -24,7 +24,7 @@ Write a git commit for the **staged** changes. Review them first with
 
 **Input:** Added a JWT login endpoint and token-validation middleware.
 
-```
+```text
 feat(auth): add JWT-based authentication
 
 - Add POST /login endpoint issuing access tokens
@@ -33,7 +33,7 @@ feat(auth): add JWT-based authentication
 
 **Input:** Fixed report dates showing in the wrong timezone.
 
-```
+```text
 fix(reports): use UTC timestamps for date formatting
 
 Dates rendered in server-local time; convert to UTC before formatting.
@@ -41,7 +41,7 @@ Dates rendered in server-local time; convert to UTC before formatting.
 
 **Input:** Bumped lodash and standardized error responses.
 
-```
+```text
 chore: update dependencies and standardize error handling
 
 - Upgrade lodash to 4.17.21
