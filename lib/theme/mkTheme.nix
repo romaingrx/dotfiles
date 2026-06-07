@@ -1,4 +1,5 @@
 {
+  fonts,
   format,
   mkRoles,
   palettes,
@@ -16,6 +17,7 @@ in
   inherit
     colorscheme
     flavor
+    fonts
     format
     name
     palette

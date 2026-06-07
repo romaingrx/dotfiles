@@ -7,7 +7,7 @@
   border: none;
   border-radius: 0;
   min-height: 0;
-  font-family: "FiraCode Nerd Font";
+  /* font-family is set from the theme contract in theme.css (imported above). */
   font-size: 12px;
 }
 

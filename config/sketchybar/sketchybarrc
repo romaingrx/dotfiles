@@ -10,8 +10,8 @@ HELPER_DIR="$CONFIG_DIR/helpers"
 source "$CONFIG_DIR/colors.sh" || exit 1
 source "$CONFIG_DIR/icons.sh"
 
-export FONT="IBM Plex Mono"
-export NERD_FONT="JetBrainsMono Nerd Font"
+# FONT and NERD_FONT are provided by the theme fragment sourced via colors.sh
+# above (lib/theme/fonts.nix). APP_FONT is the SketchyBar glyph font, untouched.
 export APP_FONT="sketchybar-app-font"
 export STATUS_RADIUS=6
 export STATUS_HEIGHT=22

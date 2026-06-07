@@ -58,6 +58,31 @@ baseline for the incremental centralized theme migration.
 Migrating all surfaces to Latte/Mocha is a visible theme change, not just a
 deduplication pass.
 
+## Fonts
+
+- `lib/theme/fonts.nix` is the single source of truth for typography. It is
+  appearance-independent (fonts do not change between light and dark), so it
+  lives at the top level of the theme rather than inside a palette. Each entry
+  pairs a family name with the nixpkgs attribute path that provides it.
+- `modules/fonts.nix` installs every font in the contract on both NixOS and
+  nix-darwin (wired through `lib/mkSystem.nix`), so a referenced family is
+  always installed. The per-host `fonts.packages` lines and the
+  `font-fira-code-nerd-font` / `font-sf-pro` Homebrew casks were removed in
+  favour of this single list.
+- Consumers read the family from the generated theme fragment they already
+  import, so no new runtime machinery is needed:
+  - Alacritty: the generated `active-theme.toml` carries the `[font.*]` family;
+    `alacritty.toml` keeps only size and offset.
+  - Waybar: the generated `theme.css` sets `font-family`; `style.css` keeps the
+    size.
+  - Hyprlock: the generated colors fragment defines `$font_family`.
+  - SketchyBar: the generated `colors.sh` sets `FONT` / `NERD_FONT`; `env.sh`
+    keeps a vanilla fallback for standalone use.
+- Because fonts never change at runtime, they intentionally do not flow through
+  the `current` symlink or a reload hook; the value is identical in every
+  appearance. The SketchyBar glyph font (`sketchybar-app-font`) stays separate —
+  it is an icon font, not a text face.
+
 ## Reload Hook Contract
 
 - Register hooks from consumer modules with `themeLib.reloadHook`.

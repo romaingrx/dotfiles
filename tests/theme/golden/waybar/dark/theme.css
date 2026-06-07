@@ -4,3 +4,9 @@
 @define-color theme_accent #cba6f7;
 @define-color theme_warning #f9e2af;
 @define-color theme_danger #f38ba8;
+
+/* Font family from the central theme contract (lib/theme/fonts.nix);
+   style.css keeps the font size. */
+* {
+  font-family: "FiraCode Nerd Font";
+}

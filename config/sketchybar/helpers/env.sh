@@ -16,8 +16,9 @@ sketchybar_resolve_paths() {
 		HELPER_DIR="$CONFIG_DIR/helpers"
 	fi
 
-	: "${FONT:=IBM Plex Mono}"
-	: "${NERD_FONT:=JetBrainsMono Nerd Font}"
+	# Vanilla fallback; the theme fragment (lib/theme/fonts.nix) sets these.
+	: "${FONT:=FiraCode Nerd Font}"
+	: "${NERD_FONT:=FiraCode Nerd Font}"
 	: "${APP_FONT:=sketchybar-app-font}"
 	: "${STATUS_RADIUS:=6}"
 	: "${STATUS_HEIGHT:=22}"

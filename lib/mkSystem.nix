@@ -76,6 +76,9 @@ systemFunc {
     # Cachix binary cache
     ../modules/cachix.nix
 
+    # Fonts installed from the theme contract (shared by NixOS and darwin)
+    ../modules/fonts.nix
+
     # Home Manager configuration
     (
       if darwin then
