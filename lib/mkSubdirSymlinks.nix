@@ -1,7 +1,8 @@
 # Subdirectory symlink generator
 # Maps every immediate subdirectory of a repo folder to its own out-of-store
 # symlink, producing a `home.file` attrset. Plain files in the folder (README,
-# .gitkeep, ...) are ignored, so only real sub-folders are linked.
+# .gitkeep, ...) are ignored, so only sub-folders are linked. With `requireFile`
+# set, only sub-folders that contain that file are linked.
 #
 # Discovery happens at evaluation time, so adding or removing a subfolder needs
 # no change to the caller (open/closed): drop it in and rebuild. Links point at
@@ -9,9 +10,10 @@
 #
 # Usage example:
 # home.file = mkSubdirSymlinks {
-#   repoDir = ../../config/agents/skills;              # read at eval time
-#   liveDir = "${dotfilesPath}/config/agents/skills";  # live checkout (link target)
-#   target  = ".agents/skills";                        # destination prefix in $HOME
+#   repoDir     = ../../config/agents/skills;              # read at eval time
+#   liveDir     = "${dotfilesPath}/config/agents/skills";  # live checkout (link target)
+#   target      = ".agents/skills";                        # destination prefix in $HOME
+#   requireFile = "SKILL.md";                              # optional: skip folders without it
 # };
 {
   lib,
@@ -30,12 +32,21 @@
 
   # Destination prefix under $HOME, e.g. ".claude/skills".
   target,
+
+  # If set, only link subdirectories that contain this file (e.g. "SKILL.md"),
+  # so empty or malformed entries are skipped. null links every subdirectory.
+  requireFile ? null,
 }:
 
 let
+  isLinkable =
+    name: type:
+    type == "directory"
+    && (requireFile == null || builtins.pathExists (repoDir + "/${name}/${requireFile}"));
+
   subdirs =
     if builtins.pathExists repoDir then
-      lib.attrNames (lib.filterAttrs (_: type: type == "directory") (builtins.readDir repoDir))
+      lib.attrNames (lib.filterAttrs isLinkable (builtins.readDir repoDir))
     else
       [ ];
 

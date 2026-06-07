@@ -10,6 +10,24 @@ Sources:
 
 ---
 
+## Contents
+
+- [Static Analysis](#static-analysis) — SA-1
+- [Quoting](#quoting) — Q-1 … Q-7
+- [Arrays](#arrays) — A-1 … A-5
+- [Conditionals & Tests](#conditionals--tests) — C-1 … C-6
+- [Loops & Iteration](#loops--iteration) — L-1 … L-4
+- [Arithmetic](#arithmetic) — AR-1 … AR-4
+- [Command Substitution](#command-substitution) — CS-1 … CS-4
+- [Redirections & Pipes](#redirections--pipes) — R-1 … R-4
+- [Filenames & Paths](#filenames--paths) — F-1 … F-5
+- [Output & Echo](#output--echo) — O-1 … O-3
+- [Script Structure](#script-structure) — S-1 … S-6
+- [Dangerous Patterns](#dangerous-patterns) — D-1 … D-5
+- [Miscellaneous](#miscellaneous) — M-1 … M-12
+
+---
+
 ## Static Analysis
 
 ### SA-1: Run ShellCheck with all optional checks
