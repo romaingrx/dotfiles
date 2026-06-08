@@ -15,8 +15,9 @@ fetch. Make a todo list first, then follow these steps precisely.
 
 ## 1. Eligibility check
 
-Skip the review (do nothing) if the PR is closed, is a draft, obviously needs no review
+Skip the review (do nothing) if the PR is closed, obviously needs no review
 (e.g. an automated or trivially simple change), or already has a review from you.
+Draft PRs are eligible — review them.
 
 ## 2. Gather convention files
 
