@@ -56,5 +56,13 @@ rm -f /tmp/nvim.tar.gz
 mkdir -p ~/.config
 ln -sf "$DOTFILES_DIR/config/nvim" ~/.config/nvim
 
+# --- agent skills (shared with the Nix hosts via config/agents/skills) ---
+# Containers are ephemeral and don't accumulate machine-local skills, so just
+# symlink the whole folder (like nvim above) rather than per-skill.
+for target in .agents/skills .claude/skills .codex/skills; do
+  mkdir -p "$HOME/$(dirname "$target")"
+  ln -sfn "$DOTFILES_DIR/config/agents/skills" "$HOME/$target"
+done
+
 # --- set default shell to zsh ---
 sudo chsh -s "$(which zsh)" "$(whoami)" 2>/dev/null || true
