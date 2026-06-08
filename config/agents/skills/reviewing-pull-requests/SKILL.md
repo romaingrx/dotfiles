@@ -58,7 +58,7 @@ rubric verbatim:
 
 ## 6. Filter
 
-Drop any issue scoring below 80. If none remain, do not proceed.
+Drop any issue scoring below 80.
 
 ## 7. Re-check eligibility
 
@@ -66,8 +66,9 @@ Repeat step 1 to confirm the PR is still eligible for review.
 
 ## 8. Post the review
 
-Comment on the PR with `gh`. Keep it brief, avoid emojis, and link/cite relevant code,
-files, and URLs (see linking format under Notes).
+Comment on the PR with `gh`, using the output format below: the list of issues found,
+or the "No issues found" comment when none remain. Keep it brief, avoid emojis, and
+link/cite relevant code, files, and URLs (see linking format under Notes).
 
 ## What counts as a false positive (steps 4–5)
 
