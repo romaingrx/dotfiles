@@ -17,6 +17,8 @@ lib.mkIf pkgs.stdenv.isDarwin {
       SUDO_ASKPASS = "${askpass}/bin/askpass";
     };
     sessionPath = [ "$HOME/.local/bin" ];
+    # The MAS Tailscale app bundles the CLI but never links it onto PATH.
+    shellAliases.tailscale = "/Applications/Tailscale.app/Contents/MacOS/Tailscale";
     file.".config/sketchybar".source =
       config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/sketchybar";
   };
