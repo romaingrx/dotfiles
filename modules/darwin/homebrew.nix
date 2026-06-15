@@ -8,7 +8,9 @@ _: {
       upgrade = false;
     };
 
-    masApps = { };
+    masApps = {
+      Tailscale = 1475387142;
+    };
     taps = [ ];
 
     casks = [
