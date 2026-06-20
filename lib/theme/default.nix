@@ -26,14 +26,7 @@ let
   };
 in
 {
-  inherit
-    appearances
-    colors
-    fonts
-    mkTheme
-    palettes
-    ;
-  inherit (colors) format;
+  inherit appearances fonts;
 
   appearanceNames = builtins.attrNames appearances;
 }
