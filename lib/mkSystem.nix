@@ -29,6 +29,11 @@ let
   hostConfig = ../hosts/${systemType}/${name};
   usersOSConfig = builtins.map (user: ../users/${user}/${systemType}.nix) users;
 
+  # Optional per-host home-manager overrides, auto-imported only when present.
+  # Mirrors hostConfig (the per-host system module) for the home-manager layer.
+  hostHomeModule = ../hosts/${systemType}/${name}/home.nix;
+  hasHostHome = builtins.pathExists hostHomeModule;
+
   # Home Manager configurations
   usersHMConfigList = builtins.map (
     user: import ../users/${user}/home-manager.nix { inherit inputs pkgs; }
@@ -36,7 +41,9 @@ let
   usersHMConfig = builtins.listToAttrs (
     lib.lists.imap0 (i: config: {
       name = builtins.elemAt users i;
-      value = config;
+      value = {
+        imports = [ config ] ++ lib.optional hasHostHome hostHomeModule;
+      };
     }) usersHMConfigList
   );
 

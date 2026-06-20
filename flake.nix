@@ -108,6 +108,13 @@
           ];
           darwin = true;
         };
+        "brobot" = (mkSystem "brobot") {
+          system = "aarch64-darwin";
+          users = [
+            "romaingrx"
+          ];
+          darwin = true;
+        };
       };
     };
 }
