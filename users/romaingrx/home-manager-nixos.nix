@@ -18,7 +18,7 @@ lib.mkMerge [
       sleep 0.2
       waybar &
     '';
-    watchPaths = [ "/home/romaingrx/.config/waybar/" ];
+    watchPaths = [ "${config.home.homeDirectory}/.config/waybar/" ];
     description = "Waybar with auto-restart on config changes";
 
   })
@@ -31,7 +31,7 @@ lib.mkMerge [
       systemctl --user restart hypridle
       hyprctl reload
     '';
-    watchPaths = [ "/home/romaingrx/.config/hypr/" ];
+    watchPaths = [ "${config.home.homeDirectory}/.config/hypr/" ];
     recursive = true;
   })
   (lib.mkIf pkgs.stdenv.isLinux {
@@ -51,9 +51,9 @@ lib.mkMerge [
         # Preferences
         TERMINAL = "alacritty";
         BROWSER = "firefox";
-        XDG_PICTURES_DIR = "/home/romaingrx/Pictures";
+        XDG_PICTURES_DIR = "${config.home.homeDirectory}/Pictures";
       };
-      sessionPath = [ "/home/romaingrx/.local/romaingrx-bin" ];
+      sessionPath = [ "${config.home.homeDirectory}/.local/romaingrx-bin" ];
     };
 
     home.packages = with pkgs; [
@@ -100,7 +100,7 @@ lib.mkMerge [
             fi
           fi
         fi
-        export PATH="''${PATH}:/home/romaingrx/.local/romaingrx-bin"
+        export PATH="''${PATH}:${config.home.homeDirectory}/.local/romaingrx-bin"
     '';
 
     home.file.".profile".text = ''
@@ -112,11 +112,9 @@ lib.mkMerge [
     # Link wallpaper from dotfiles to the home directory
     home.file.".wallpapers/nixos.png".source = ../../assets/wallpapers/nixos.png;
 
-    home.activation = {
-      text = ''
-        [ -d ~/.local/romaingrx-bin ] || ln -sf ${configPath}/bin ~/.local/romaingrx-bin
-      '';
-    };
+    # Expose the dotfiles config/bin scripts on PATH via an out-of-store symlink
+    # (managed by Home Manager rather than a hand-rolled activation script).
+    home.file.".local/romaingrx-bin".source = config.lib.file.mkOutOfStoreSymlink "${configPath}/bin";
 
     wayland.windowManager.hyprland = {
       enable = true;
