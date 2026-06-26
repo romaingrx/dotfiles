@@ -19,6 +19,5 @@
       enableZshIntegration = true;
     };
     ssh = import ./programs/ssh.nix { inherit pkgs; };
-    gpg = import ./programs/gpg.nix;
   };
 }
