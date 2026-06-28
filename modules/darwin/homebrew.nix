@@ -17,9 +17,8 @@
       upgrade = false;
     };
 
-    masApps = {
-      Tailscale = 1475387142;
-    };
+    # No Mac App Store apps — avoids requiring an App Store sign-in on a new host.
+    masApps = { };
     taps = [ ];
 
     casks = [
@@ -27,12 +26,17 @@
       # modules/fonts.nix (pkgs.nerd-fonts.fira-code), so no cask is needed.
       "sf-symbols"
       "firefox"
-      "duckduckgo"
-      "wifiman"
       "anytype"
       "spotify"
-      "avogadro"
-      "onedrive"
+      # Daily-driver GUI apps. All ship a built-in updater (auto_updates), so
+      # Homebrew only bootstraps them and onActivation.upgrade stays off.
+      "1password"
+      "arc"
+      "claude"
+      "linear"
+      # Standalone, self-updating Tailscale GUI — replaces the Mac App Store
+      # version so a fresh host needs no App Store sign-in. Same /Applications path.
+      "tailscale-app"
     ];
     brews = [
       "watch"
