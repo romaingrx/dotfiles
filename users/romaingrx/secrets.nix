@@ -1,6 +1,12 @@
-{ config, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   gpg_sops_file = ./secrets/gpg.yaml;
+  ssh_sops_file = ./secrets/ssh.yaml;
   inherit (config.home) homeDirectory;
 in
 {
@@ -15,8 +21,21 @@ in
         sopsFile = gpg_sops_file;
         mode = "0600";
       };
+    }
+    # The GitHub SSH key, decrypted to where ssh.nix expects it. Inert until
+    # secrets/ssh.yaml exists — add it with: sops users/romaingrx/secrets/ssh.yaml
+    // lib.optionalAttrs (builtins.pathExists ssh_sops_file) {
+      "github_ssh_private_key" = {
+        path = "${homeDirectory}/.ssh/github";
+        sopsFile = ssh_sops_file;
+        mode = "0600";
+      };
     };
   };
+
+  # Let the sops CLI find the age key at the same path activation uses
+  # (macOS defaults to ~/Library/Application Support, not ~/.config).
+  home.sessionVariables.SOPS_AGE_KEY_FILE = config.sops.age.keyFile;
 
   # Updated activation script for GPG key import
   home.activation = {
