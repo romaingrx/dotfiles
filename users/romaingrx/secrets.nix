@@ -33,6 +33,10 @@ in
     };
   };
 
+  # Let the sops CLI find the age key at the same path activation uses
+  # (macOS defaults to ~/Library/Application Support, not ~/.config).
+  home.sessionVariables.SOPS_AGE_KEY_FILE = config.sops.age.keyFile;
+
   # Updated activation script for GPG key import
   home.activation = {
     importGpgKey =
