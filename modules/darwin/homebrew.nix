@@ -1,4 +1,13 @@
-_: {
+{ config, ... }:
+{
+  # Install and manage Homebrew itself so a fresh host needs no manual brew
+  # install; autoMigrate adopts an existing install (e.g. goddard).
+  nix-homebrew = {
+    enable = true;
+    user = config.system.primaryUser;
+    autoMigrate = true;
+  };
+
   homebrew = {
     enable = true;
     global = { };
