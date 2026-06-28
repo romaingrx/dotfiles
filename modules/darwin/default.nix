@@ -37,6 +37,7 @@
     defaults = {
       trackpad = {
         Clicking = true;
+        TrackpadThreeFingerDrag = false;
       };
       NSGlobalDomain = {
         KeyRepeat = 2;
@@ -50,6 +51,9 @@
         # Kills the half-second window resize/rebuild flash on AeroSpace workspace switches.
         NSAutomaticWindowAnimationsEnabled = false;
       };
+      # com.apple.mouse.scaling is not a typed NSGlobalDomain option in nix-darwin,
+      # so set the pointer tracking speed via the freeform CustomUserPreferences path.
+      CustomUserPreferences.NSGlobalDomain."com.apple.mouse.scaling" = 0.875;
       dock = {
         autohide = true;
         orientation = "left";
