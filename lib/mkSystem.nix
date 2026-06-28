@@ -118,5 +118,7 @@ systemFunc {
   ]
   # User OS configurations (reversed to maintain priority)
   # ++ lib.lists.reverseList usersOSConfig;
-  ++ usersOSConfig;
+  ++ usersOSConfig
+  # nix-homebrew installs and manages Homebrew itself (darwin only).
+  ++ lib.optional darwin inputs.nix-homebrew.darwinModules.nix-homebrew;
 }
