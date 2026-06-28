@@ -47,11 +47,13 @@ nix fmt
 nix flake check
 ```
 
-Bootstrap a machine with:
+Bootstrap a fresh machine (installs Nix, clones to `~/.dotfiles`, switches):
 
 ```sh
-./scripts/bootstrap.sh
+curl -fsSL https://raw.githubusercontent.com/romaingrx/dotfiles/main/scripts/bootstrap.sh | bash
 ```
+
+See [docs/new-host-setup.md](docs/new-host-setup.md) for the manual prerequisites (the sops age key, plus a couple of permission grants).
 
 ## Known Issues and Limitations
 
