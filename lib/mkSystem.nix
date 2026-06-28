@@ -105,7 +105,6 @@ systemFunc {
         users = usersHMConfig;
         sharedModules = [
           inputs.sops-nix.homeManagerModules.sops
-          inputs.nixvim.homeModules.nixvim
         ];
         extraSpecialArgs = {
           inherit inputs pkgs;
