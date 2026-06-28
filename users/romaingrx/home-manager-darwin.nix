@@ -23,6 +23,13 @@ lib.mkIf pkgs.stdenv.isDarwin {
       config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/sketchybar";
   };
 
+  # screencapture.location and the dock persistent-others entry both point at
+  # ~/Pictures/screenshots; create it so a fresh host does not silently fall back
+  # to ~/Desktop for screenshots.
+  home.activation.ensureScreenshotDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run mkdir -p "${config.home.homeDirectory}/Pictures/screenshots"
+  '';
+
   launchd.agents.appearance-theme-switcher = {
     enable = true;
     config = {
