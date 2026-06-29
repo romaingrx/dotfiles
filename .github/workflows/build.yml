@@ -1,10 +1,16 @@
 name: build
-# automation/** is the flake-update bot - warms Cachix before merge.
+# Build (and warm Cachix) on main pushes and on any PR that touches Nix
+# files, so the Renovate flake-lock PRs and manual Nix changes are verified
+# before merge.
 on:
   push:
     branches:
       - main
-      - "automation/**"
+  pull_request:
+    paths:
+      - "flake.nix"
+      - "flake.lock"
+      - "**.nix"
   workflow_call:
   workflow_dispatch:
 
