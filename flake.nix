@@ -2,7 +2,10 @@
   description = "Goddard nix-darwin system flake";
 
   inputs = {
-    # Remote
+    # Remote inputs track the unstable / master channels. Always update them
+    # together (`nix flake update`) — never bump one alone, or nix-darwin's
+    # release check fails against a skewed nixpkgs. Renovate's
+    # lockFileMaintenance performs this lockstep refresh automatically.
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-24.11";
     nix-darwin = {
@@ -83,7 +86,11 @@
             buildInputs = with pkgs; [
               nixfmt
               deadnix
-              statix
+              # statix's own tests fail to build on current nixpkgs; skip them
+              # (the linter works). Drop the override once fixed upstream.
+              (statix.overrideAttrs (_: {
+                doCheck = false;
+              }))
               pre-commit
             ];
           };
