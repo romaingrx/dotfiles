@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ ... }:
 {
   imports = [
     ../../modules/home
@@ -20,10 +20,4 @@
     user.email = "48758915+romaingrx@users.noreply.github.com";
     commit.gpgsign = true;
   };
-
-  home.packages = with pkgs; [
-    tor
-    brave
-    # claude-code # Install it manually to keep it up-to-date
-  ];
 }

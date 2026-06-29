@@ -4,13 +4,10 @@
     with pkgs;
     [
       # Core
-      git
       curl
       wget
-      gnupg
       sops
       just
-      biome
       nil
       nixfmt
       bat
@@ -28,13 +25,10 @@
       pnpm
       nodejs
       awscli2
-      google-cloud-sdk
-      zoxide
       kubectl
       k9s
 
       # Productivity
-      alacritty
       obsidian
       slack
     ]
