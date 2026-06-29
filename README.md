@@ -50,7 +50,7 @@ nix flake check
 Bootstrap a fresh machine (installs Nix, clones to `~/.dotfiles`, switches):
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/romaingrx/dotfiles/main/scripts/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/romaingrx/dotfiles/main/scripts/install.sh | bash
 ```
 
 See [docs/new-host-setup.md](docs/new-host-setup.md) for the manual prerequisites (the sops age key, plus a couple of permission grants).

@@ -6,8 +6,8 @@ REPO_URL="${REPO_URL:-https://github.com/romaingrx/dotfiles.git}"
 DOTFILES_PATH="${DOTFILES_PATH:-$HOME/.dotfiles}"
 HOST="${HOST:-$(hostname -s)}"
 
-log() { printf '\033[0;32m[bootstrap]\033[0m %s\n' "$*"; }
-err() { printf '\033[0;31m[bootstrap]\033[0m %s\n' "$*" >&2; }
+log() { printf '\033[0;32m[install]\033[0m %s\n' "$*"; }
+err() { printf '\033[0;31m[install]\033[0m %s\n' "$*" >&2; }
 
 # sops needs the age key present to decrypt secrets during the switch; fail early
 # with a clear message instead of a cryptic mid-activation error.
