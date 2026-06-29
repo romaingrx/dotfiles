@@ -26,7 +26,6 @@
       # modules/fonts.nix (pkgs.nerd-fonts.fira-code), so no cask is needed.
       "sf-symbols"
       "firefox"
-      "anytype"
       "spotify"
       # Daily-driver GUI apps. All ship a built-in updater (auto_updates), so
       # Homebrew only bootstraps them and onActivation.upgrade stays off.
