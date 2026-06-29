@@ -38,14 +38,6 @@
       # version so a fresh host needs no App Store sign-in. Same /Applications path.
       "tailscale-app"
     ];
-    brews = [
-      "watch"
-      "ffmpeg"
-      "mactop"
-      "libpq"
-      "yt-dlp"
-      "awscli"
-      "mas"
-    ];
+    brews = [ ];
   };
 }
