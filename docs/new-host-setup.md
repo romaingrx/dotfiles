@@ -11,7 +11,7 @@ It's the only secret you carry over — the GPG and SSH keys decrypt from it on 
 ## Bootstrap
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/romaingrx/dotfiles/main/scripts/install.sh | HOST=brobot bash
+curl -fsSL https://romaingrx.com/dotfiles/install.sh | HOST=brobot bash
 ```
 
 `HOST` defaults to `hostname -s`; the repo must land at `~/.dotfiles`.
