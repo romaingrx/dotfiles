@@ -53,6 +53,27 @@
       # com.apple.mouse.scaling is not a typed NSGlobalDomain option in nix-darwin,
       # so set the pointer tracking speed via the freeform CustomUserPreferences path.
       CustomUserPreferences.NSGlobalDomain."com.apple.mouse.scaling" = 0.875;
+      # Dock stacks with an explicit sort order. arrangement: 1=Name, 2=Date
+      # Added, 3=Date Modified, 4=Date Created, 5=Kind (date sorts are always
+      # newest-first, i.e. descending). displayas: 1=folder. showas: 3=list.
+      CustomUserPreferences."com.apple.dock".persistent-others =
+        map
+          (path: {
+            tile-data = {
+              file-data = {
+                _CFURLString = "file://${path}/";
+                _CFURLStringType = 15;
+              };
+              arrangement = 3;
+              displayas = 1;
+              showas = 3;
+            };
+            tile-type = "directory-tile";
+          })
+          [
+            "${homeDirectory}/Downloads"
+            "${homeDirectory}/Pictures/screenshots"
+          ];
       dock = {
         autohide = true;
         orientation = "left";
@@ -64,10 +85,9 @@
           "/System/Applications/Calendar.app"
           "${pkgs.raycast}/Applications/Raycast.app"
         ];
-        persistent-others = [
-          "${homeDirectory}/Downloads"
-          "${homeDirectory}/Pictures/screenshots"
-        ];
+        # persistent-others is set via CustomUserPreferences below so we can
+        # pin each stack's sort order (arrangement = 4 -> Date Created, newest
+        # first). The typed option only accepts bare paths and can't express it.
       };
       finder = {
         FXPreferredViewStyle = "clmv";
