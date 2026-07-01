@@ -11,8 +11,11 @@
 
   system.defaults.loginwindow.LoginwindowText = "Hand-built, loyal, little brother";
 
-  # MongoDB Compass GUI — brobot-only, list-merges with the shared casks.
-  homebrew.casks = [ "mongodb-compass" ];
+  # MongoDB Compass + Notion GUIs — brobot-only, list-merge with the shared casks.
+  homebrew.casks = [
+    "mongodb-compass"
+    "notion"
+  ];
 
   # Host-only overrides live with the host:
   #   - system/darwin (dock, casks, macOS defaults) -> here, e.g.
