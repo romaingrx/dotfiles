@@ -83,7 +83,7 @@
         persistent-apps = [
           "/System/Applications/Mail.app"
           "/System/Applications/Calendar.app"
-          "${pkgs.raycast}/Applications/Raycast.app"
+          "/Applications/Raycast.app"
         ];
         # persistent-others is set via CustomUserPreferences below so we can
         # pin each stack's sort order (arrangement = 4 -> Date Created, newest

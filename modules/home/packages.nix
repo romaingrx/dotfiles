@@ -33,7 +33,6 @@
       slack
     ]
     ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-      raycast
       mactop
       watch
       mas
