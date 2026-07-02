@@ -33,6 +33,7 @@
       "arc"
       "claude"
       "linear"
+      "raycast"
       # Standalone, self-updating Tailscale GUI — replaces the Mac App Store
       # version so a fresh host needs no App Store sign-in. Same /Applications path.
       "tailscale-app"
