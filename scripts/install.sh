@@ -19,9 +19,14 @@ if [ ! -f "$AGE_KEY" ]; then
 fi
 
 if ! command -v nix >/dev/null 2>&1; then
-  log "Nix not found; installing via Determinate Systems installer..."
-  curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix \
-    | sh -s -- install --no-confirm
+  # Install upstream (vanilla) Nix so nix-darwin can manage the Nix installation
+  # itself. Do NOT use the Determinate installer here: its daemon makes
+  # nix-darwin abort activation ("Determinate detected"), and as of 2026 it no
+  # longer offers an upstream-Nix option. The official installer prompts once
+  # for confirmation (read from /dev/tty) and for your sudo password.
+  log "Nix not found; installing upstream Nix (multi-user)..."
+  curl --proto '=https' --tlsv1.2 -sSf -L https://nixos.org/nix/install \
+    | sh -s -- --daemon --no-channel-add
   . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 fi
 
@@ -36,7 +41,34 @@ cd "$DOTFILES_PATH"
 case "$(uname -s)" in
   Darwin)
     log "Activating darwinConfigurations.$HOST..."
-    sudo nix run github:LnL7/nix-darwin -- switch --flake "path:.#$HOST"
+    # nix-darwin insists on owning several /etc files, but on a fresh machine the
+    # upstream Nix installer already created them, so nix-darwin aborts
+    # ("Unexpected files in /etc") rather than clobber them. Move its managed
+    # files aside once — nix-darwin regenerates them. Idempotent via the guard;
+    # if a future nix-darwin flags more files, add them here.
+    for f in /etc/nix/nix.conf /etc/bashrc /etc/zshrc; do
+      if [ -e "$f" ] && [ ! -e "$f.before-nix-darwin" ]; then
+        sudo mv "$f" "$f.before-nix-darwin"
+      fi
+    done
+    # The switch below, annotated:
+    #   "$(command -v nix)"          absolute path — sudo's reduced PATH may not
+    #                                expose a freshly installed `nix`.
+    #   --extra-experimental-features  we just moved /etc/nix/nix.conf aside, so
+    #                                the outer `nix run` can't read nix-command/
+    #                                flakes from it (darwin-rebuild sets these
+    #                                itself for its inner build).
+    #   --option extra-substituters  bootstrap chicken-and-egg — our binary cache
+    #                                (modules/cachix.nix) isn't in the daemon's
+    #                                nix.conf until the first activation succeeds,
+    #                                so hand it to this first build. Honored:
+    #                                darwin-rebuild forwards --option and we run
+    #                                as root (trusted). Keep the URL/key in sync
+    #                                with modules/cachix.nix.
+    sudo "$(command -v nix)" run --extra-experimental-features "nix-command flakes" \
+      github:LnL7/nix-darwin -- switch --flake "path:.#$HOST" \
+      --option extra-substituters "https://romaingrx-dotfiles.cachix.org" \
+      --option extra-trusted-public-keys "romaingrx-dotfiles.cachix.org-1:8fwAzNpph5XT2vgLrEFXBKYxUPeaWdfeaGu5AUNkQDc="
     ;;
   Linux)
     log "Activating nixosConfigurations.$HOST..."
