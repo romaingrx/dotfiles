@@ -29,6 +29,12 @@
       url = "github:cachix/pre-commit-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Review-first terminal diff viewer; exposes a package + Home Manager module
+    # and is wired up as git's diff pager in modules/home/programs/hunk.nix.
+    hunk = {
+      url = "github:modem-dev/hunk";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
