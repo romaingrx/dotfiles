@@ -1,19 +1,19 @@
 ---
 name: stacking-pull-requests
 description: >-
-  Splits a large change into a chain of dependent GitHub pull requests using the
-  `gh stack` CLI extension: plans the layers, creates and pushes the branches,
-  submits linked pull requests, rebases the stack, and merges bottom-up. Use
-  when the user says "use stacked PRs", "stack this", "stacked pull requests",
-  "split this into a stack", asks to break a big change into dependent PRs, or
-  asks to update, rebase, or merge an existing stack.
+  Splits a large change into a chain of dependent GitHub pull requests with the
+  `gh stack` CLI extension, reading the current GitHub documentation before
+  running any command so the commands and flags used are never stale. Use when
+  the user says "use stacked PRs", "stack this", "stacked pull requests",
+  "split this into a stack", asks to break a big change into dependent pull
+  requests, or asks to update, rebase, restructure, or merge an existing stack.
 ---
 
 # Stacking pull requests
 
 A stack is a chain of branches in one repository: the bottom branch targets the
 trunk (usually `main`), and each branch above targets the branch below it. Each
-pull request shows only its own layer's diff.
+pull request shows only its own layer's diff, and they merge bottom-up.
 
 ```text
    ┌── feat/frontend     → PR #3 (base: feat/api-endpoints)  ← top
@@ -24,150 +24,88 @@ main (trunk)
 
 **Layering rule:** if code in one layer depends on code in another, the
 dependency must live in the same branch or a lower one. Start a new layer when
-the concern changes (schema → API → UI, logic → tests) or the current branch is
-already big enough to review on its own.
+the concern changes (schema → API → UI, logic → tests) or when the current
+branch is already big enough to review on its own.
 
-## Non-interactive use
+## Read the docs first
 
-Commands run without a TTY here, so **always** use the non-interactive forms
-below. The interactive ones open a full-screen TUI or a pager and will hang:
+The `gh stack` extension is evolving, so **do not run commands from memory.**
+Fetch the pages for the task at hand, then follow their commands and flags
+verbatim. Appending `.md` to any docs.github.com URL returns raw markdown.
 
-| Never run bare        | Use instead                                          |
-| --------------------- | ---------------------------------------------------- |
-| `gh stack init`       | `gh stack init BRANCH` (name the branch)             |
-| `gh stack add`        | `gh stack add BRANCH`                                |
-| `gh stack submit`     | `gh stack submit --auto` (add `--open` for non-draft)|
-| `gh stack view`       | `gh stack view --json` or `gh stack view --short`    |
-| `gh stack merge`      | `gh stack merge --yes` (plus a merge-method flag)    |
-| `gh stack checkout`   | `gh stack checkout <stack-no \| pr-no \| branch>`    |
-| `gh stack modify`     | `gh stack unstack --local` + `gh stack init A B C`   |
-| `gh stack switch`     | `gh stack up` / `down` / `top` / `bottom` / `trunk`  |
+| Read this                                                                                       | For                                                             |
+| ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `https://docs.github.com/en/pull-requests/reference/stacked-prs-cli-commands.md`                  | Every `gh stack` command, flag, and exit code. The main one.    |
+| `https://docs.github.com/en/pull-requests/get-started/stacked-prs-quickstart.md`                  | Install and prerequisites; creating a first stack end to end.   |
+| `https://docs.github.com/en/pull-requests/how-tos/create-pull-requests/creating-stacked-pull-requests.md` | Creating a stack; turning existing pull requests into one. |
+| `https://docs.github.com/en/pull-requests/how-tos/create-pull-requests/managing-stacked-pull-requests.md` | Editing a lower layer, rebasing, restructuring, syncing.   |
+| `https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/merging-stacked-pull-requests.md` | Merge requirements, merge queues, bottom-up merging. |
+| `https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-stacked-pull-requests.md` | Conflicts, interrupted sessions, stuck merges. Read on any error. |
+| `https://docs.github.com/en/pull-requests/reference/stacked-pull-requests.md`                     | Trunks, branch protection, required checks, linear history.     |
+| `https://docs.github.com/en/pull-requests/get-started/about-stacked-prs.md`                       | Concepts and limits. Read when explaining stacks to the user.   |
+| `https://docs.github.com/en/pull-requests/reference/use-other-tools-with-stacked-pull-requests.md` | Stacking branches managed by Jujutsu, Sapling, git-town, plain git. |
 
-Restructuring a stack has no non-interactive path: `gh stack modify` is TUI-only.
-Rebuild instead — `gh stack unstack --local`, then `gh stack init` with the
-branches in the order you want (existing branches are adopted).
+If a page contradicts anything below, the page wins — except for the
+[working rules](#working-rules), which are about this environment, not about
+the feature.
 
 ## Workflow
 
-Copy this checklist and check items off as you go:
-
 ```text
 Stack progress:
-- [ ] Step 1: Preflight (extension installed, clean tree, on trunk)
-- [ ] Step 2: Plan the layers and confirm with the user
-- [ ] Step 3: Create the bottom branch and commit
-- [ ] Step 4: Add each further layer and commit
-- [ ] Step 5: Submit the stack
-- [ ] Step 6: Report the stack back to the user
+- [ ] Step 1: Read the CLI reference (plus the how-to for this task)
+- [ ] Step 2: Preflight — extension installed, clean tree, trunk up to date
+- [ ] Step 3: Plan the layers and confirm them with the user
+- [ ] Step 4: Build each layer bottom-up — create branch, change, commit
+- [ ] Step 5: Push and submit the stack
+- [ ] Step 6: Report each layer's pull request number, title, and base
 ```
 
-**Step 1: Preflight**
+Preflight is `gh extension list | grep -q gh-stack || gh extension install
+github/gh-stack`, plus a clean `git status --porcelain` and an up-to-date trunk.
+The quickstart page lists the required `gh` and Git versions.
 
-```bash
-gh extension list | grep -q gh-stack || gh extension install github/gh-stack
-git status --porcelain          # must be clean before init
-```
+Plan the layers before creating anything and state them for the user — branch
+name and one-line scope per layer, bottom to top. Reordering a stack afterwards
+is expensive. Follow the repository's existing branch naming convention.
 
-Requires `gh` 2.90.0+ and an authenticated `gh auth login`. Start from an
-up-to-date trunk (`git switch main && git pull`) unless the user wants a
-different base, which goes in `--base`.
+## Working rules
 
-**Step 2: Plan the layers**
+These are constraints of this environment and of acting on someone's behalf, so
+they hold regardless of what the docs show.
 
-Decide the layers before creating anything, and state the plan (branch name +
-one-line scope per layer, bottom to top) for the user to confirm. Reordering
-later means rebuilding the stack. Follow the repository's existing branch naming
-convention.
+**No terminal is attached.** Commands that open a full-screen interface
+(`gh stack modify`, `gh stack switch`) or that page their output
+(`gh stack view`) will hang. Before running a command, check its entry in the
+CLI reference for the flag that makes it non-interactive — a JSON or short
+output mode, an auto or assume-yes mode, or passing the branch, stack, or pull
+request as an argument instead of being prompted for it. Prefer machine-readable
+output when reporting state back to the user.
 
-**Step 3: Create the bottom branch**
+Restructuring is interactive-only. Do it by unstacking locally and re-creating
+the stack with the branches in the order you want; the managing page covers this.
 
-```bash
-gh stack init feat/auth-layer          # --base develop to target another trunk
-# ... make the changes ...
-git add -A && git commit -m "feat(auth): add token middleware"
-```
+**Do not force-push a stack branch by hand.** The extension's own push, sync,
+and rebase commands already use `--force-with-lease` per branch and keep the
+pull requests linked. A manual `git push --force` breaks that.
 
-**Step 4: Add each further layer**
+**Commit each change to the layer it belongs to**, then re-sync the chain, so
+the layer boundaries stay meaningful. When a rebase conflicts, never resolve it
+by discarding the lower layer's changes — the lower layer is the dependency.
 
-Run from the topmost branch. One layer at a time: create, change, commit.
+**Confirm before merging.** Merging a stack is shared and hard to reverse, and
+it merges every layer below the target too. Only merge when the user asked for
+it in this session.
 
-```bash
-gh stack add feat/api-endpoints
-# ... make the changes ...
-git add -A && git commit -m "feat(api): add session routes"
-```
+**Report blocked states rather than retrying.** A non-zero exit from `gh stack`
+is meaningful — the reference lists what each code means, including the case
+where stacked pull requests are not enabled for the repository. Look the code up
+and tell the user; do not retry the command or work around it.
 
-`gh stack add -Am "MESSAGE" BRANCH` stages everything and commits in one step —
-but only when the message and branch name are both explicit.
+## Limits
 
-**Step 5: Submit**
+Worth knowing before proposing a stack; confirm details against the docs.
 
-```bash
-gh stack submit --auto          # pushes every branch, opens linked draft PRs
-gh stack submit --auto --open   # same, but ready for review
-```
-
-`--auto` generates PR titles from the commits. To control the title and body,
-create the PRs yourself with `gh pr create --base <branch below>` per layer, then
-link them: `gh stack link PR1 PR2 PR3`.
-
-**Step 6: Report**
-
-```bash
-gh stack view --json
-```
-
-Give the user the PR number, title, and base branch of each layer, bottom to top.
-
-## Updating an existing stack
-
-After trunk moves or after editing a lower layer, re-sync the whole chain:
-
-```bash
-gh stack sync          # fetch, rebase the cascade, force-push, relink PRs
-gh stack sync --prune  # same, and delete local branches for merged PRs
-```
-
-Commit the change on the layer it belongs to (`gh stack down`/`up` to move
-between them), then `gh stack sync`. Never `git push --force` a stack branch by
-hand; `sync` and `push` use `--force-with-lease` per branch.
-
-Use `gh stack rebase` when you only want the cascading rebase without pushing,
-or `gh stack push` to push branches without touching PRs.
-
-**On conflict** the rebase pauses and lists the conflicted files:
-
-1. Resolve the files, then `git add` them.
-2. `gh stack rebase --continue`.
-3. Repeat until it finishes; `gh stack rebase --abort` restores every branch.
-
-Never resolve a conflict by dropping the lower layer's changes — the lower layer
-is the dependency.
-
-## Merging
-
-Pull requests merge bottom-up; a stack cannot merge out of order.
-
-```bash
-gh stack merge --yes --squash      # whole stack, all-or-nothing
-gh stack merge 42 --yes --squash   # everything up to and including PR 42
-```
-
-Merging a mid-stack PR merges everything below it and re-targets the PRs above
-onto the trunk. Merging is all-or-nothing: if one layer cannot merge, none do.
-Match the repository's usual merge method (`--squash`, `--merge`, `--rebase`);
-with a merge queue the method flags are ignored and the stack is queued instead.
-
-Merging is a shared, hard-to-reverse action: confirm with the user before running
-it unless they explicitly asked to merge.
-
-## Constraints
-
-- All branches must live in the same repository — no cross-fork stacks.
-- Branch protection and CI apply to **every** layer, not just the bottom one.
-- Exit code `9` means stacked pull requests are not enabled for the repository;
-  report that instead of retrying. Other codes: `2` not in a stack, `3` rebase
-  conflict, `6` branch is in multiple stacks, `7` rebase already in progress.
-
-**Full CLI reference** — every command, flag, and exit code: see
-[reference.md](reference.md).
+- All branches must be in the same repository — no cross-fork stacks.
+- Branch protection and CI apply to every layer, not just the bottom one.
+- Pull requests merge bottom-up; merging mid-stack merges everything below it.
