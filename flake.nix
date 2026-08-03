@@ -12,7 +12,21 @@
       url = "github:LnL7/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    nix-homebrew.url = "github:zhaofengli/nix-homebrew";
+    nix-homebrew = {
+      url = "github:zhaofengli/nix-homebrew";
+      # nix-homebrew pins the brew binary, but cask definitions are fetched live
+      # from the formulae.brew.sh API, which always serves definitions generated
+      # by the latest brew. Left alone, brew tracks nix-homebrew's release
+      # cadence while the definitions track Homebrew's, and a new cask stanza on
+      # one side breaks `brew bundle` on the other. Own the pin here so both
+      # sides follow Homebrew and Renovate's lockFileMaintenance moves them
+      # together.
+      inputs.brew-src.follows = "brew-src";
+    };
+    brew-src = {
+      url = "github:Homebrew/brew";
+      flake = false;
+    };
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
