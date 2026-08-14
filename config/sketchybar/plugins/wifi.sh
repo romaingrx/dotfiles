@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+# Slow path: drives wifi.control and its popup rows (update_freq=30).
+# The net.activity graph now has its own fast plugin (plugins/net_activity.sh);
+# this script no longer touches it.
+#
+# SSID and link rate are deliberately absent — see helpers/network.sh. They were
+# read via the private `airport -I`, which macOS 26 removed, so both rows had
+# been rendering empty on every pass.
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../helpers/env.sh"
 sketchybar_resolve_paths "$SCRIPT_DIR"
@@ -10,43 +18,23 @@ source "$HELPER_DIR/app_icons.sh"
 source "$HELPER_DIR/network.sh"
 source "$HELPER_DIR/text.sh"
 
-ssid="$(network_wifi_ssid)"
-rate="$(network_wifi_rate)"
-iface="$(network_wifi_interface)"
-ip="$(network_local_ip "$iface")"
-vpn="$(network_vpn_name)"
-rates="$(network_rates "$iface" || true)"
-IFS="|" read -r down_graph up_graph down_label up_label <<EOF
-$rates
-EOF
+iface="$(network_wifi_interface || true)"
+ip="$(network_local_ip "$iface" || true)"
+vpn="$(network_vpn_name || true)"
 
 wifi_icon_color="$WHITE"
 wifi_label=""
 wifi_label_drawing=off
-ssid_label="${ssid:-Disconnected}"
-if [ -z "$rate" ]; then
-	rate="--"
-fi
-rate_label="$rate Mbps"
+ssid_label="Disconnected"
 ip_label="No IP"
 vpn_label="VPN off"
 vpn_color="$GREY"
 vpn_icon="$VPN_ICN"
 vpn_icon_font="$NERD_FONT:Regular:12.0"
-down_graph="${down_graph:-0}"
-up_graph="${up_graph:-0}"
-down_label="${down_label:-0B/s}"
-up_label="${up_label:-0B/s}"
-activity_graph="$down_graph"
-activity_label="↓${down_label%/s}"
-activity_color="$BLUE"
-activity_fill_color="$NET_DOWNLOAD_FILL"
 
 if [ -n "$iface" ] && [ -n "$ip" ]; then
 	ip_label="$iface: $ip"
-	if [ -z "$ssid" ]; then
-		ssid_label="Wi-Fi connected"
-	fi
+	ssid_label="Wi-Fi connected"
 else
 	wifi_icon_color="$GREY"
 fi
@@ -64,13 +52,6 @@ if [ -n "$vpn" ]; then
 	vpn_color="$GREEN"
 fi
 
-if awk -v down="$down_graph" -v up="$up_graph" 'BEGIN { exit !(up > down) }'; then
-	activity_graph="$up_graph"
-	activity_label="↑${up_label%/s}"
-	activity_color="$GREEN"
-	activity_fill_color="$NET_UPLOAD_FILL"
-fi
-
 sketchybar --set wifi.control \
 	icon="$WIFI_ICN" \
 	icon.color="$wifi_icon_color" \
@@ -78,12 +59,6 @@ sketchybar --set wifi.control \
 	label.font="$vpn_icon_font" \
 	label.color="$vpn_color" \
 	label.drawing="$wifi_label_drawing" \
-	--set net.activity \
-	label="$activity_label" \
-	label.color="$activity_color" \
-	graph.color="$activity_color" \
-	graph.fill_color="$activity_fill_color" \
-	--push net.activity "$activity_graph" \
 	--set wifi.ssid \
 	icon="$NETWORK_ICN" \
 	label="$ssid_label" \
@@ -94,7 +69,4 @@ sketchybar --set wifi.control \
 	label="$vpn_label" \
 	--set wifi.ip \
 	icon="$IP_ICN" \
-	label="$ip_label" \
-	--set wifi.speed \
-	icon="$SPEED_ICN" \
-	label="$rate_label - down $down_label / up $up_label"
+	label="$ip_label"

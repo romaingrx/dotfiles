@@ -13,7 +13,7 @@ sketchybar --add graph cpu.sys right 1 \
 status_graph cpu.user right "$BLUE" "$CPU_USER_FILL"
 sketchybar --set cpu.user \
 	label=0% \
-	update_freq=2 \
+	update_freq=10 \
 	script="$PLUGIN_DIR/cpu.sh" \
 	click_script="sketchybar --set cpu.user popup.drawing=toggle" \
 	popup.background.color="$POPUP_BG" \

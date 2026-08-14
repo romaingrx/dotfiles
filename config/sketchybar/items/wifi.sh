@@ -6,8 +6,8 @@ status_graph net.activity right "$BLUE" "$NET_DOWNLOAD_FILL"
 sketchybar --set net.activity \
 	label="0B" \
 	background.padding_right=4 \
-	script="$PLUGIN_DIR/wifi.sh" \
-	update_freq=2 \
+	script="$PLUGIN_DIR/net_activity.sh" \
+	update_freq=10 \
 	--subscribe net.activity system_woke wifi_change
 
 sketchybar --add item wifi.control right \
@@ -54,9 +54,6 @@ sketchybar --add item wifi.ip popup.wifi.control \
 	background.padding_left=6 \
 	background.padding_right=8
 
-sketchybar --add item wifi.speed popup.wifi.control \
-	--set wifi.speed \
-	icon="$SPEED_ICN" \
-	label="-- Mbps" \
-	background.padding_left=6 \
-	background.padding_right=8
+# wifi.speed removed: it displayed the Wi-Fi link rate from `airport -I`, which
+# macOS 26 deleted. It has been rendering "-- Mbps" ever since, and the rate is
+# not obtainable without root. See helpers/network.sh.

@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 
+# `pmset -g batt` costs 6.3 ms/call. The four accessors below used to invoke it
+# once each (four forks, four IOKit power queries) for one snapshot of the same
+# data. Cache it in the process instead.
+_BATTERY_PMSET_CACHE=""
+
 battery_pmset() {
-	pmset -g batt 2>/dev/null
+	[ -n "$_BATTERY_PMSET_CACHE" ] || _BATTERY_PMSET_CACHE="$(pmset -g batt 2>/dev/null)"
+	printf "%s\n" "$_BATTERY_PMSET_CACHE"
 }
 
 battery_percentage() {
