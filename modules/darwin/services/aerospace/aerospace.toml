@@ -88,29 +88,29 @@ alt-shift-tab = [
   'move-workspace-to-monitor --wrap-around next',
   'exec-and-forget /bin/bash -c "/run/current-system/sw/bin/sketchybar --trigger aerospace_monitor_change TARGET_MONITOR=$(/run/current-system/sw/bin/aerospace list-monitors --focused --format \"%{monitor-appkit-nsscreen-screens-id}\") FOCUSED_WORKSPACE=$(/run/current-system/sw/bin/aerospace list-workspaces --focused)"',
 ]
-alt-shift-semicolon = 'mode service'
+alt-shift-semicolon = ['mode service', 'exec-and-forget /run/current-system/sw/bin/sketchybar --trigger aerospace_mode_change MODE=service']
 alt-shift-e = 'enable toggle'
 
 [mode.service.binding]
-esc = ['reload-config', 'mode main']
-r = ['flatten-workspace-tree', 'mode main']
-f = ['layout floating tiling', 'mode main']
-backspace = ['close-all-windows-but-current', 'mode main']
+esc = ['reload-config', 'mode main', 'exec-and-forget /run/current-system/sw/bin/sketchybar --trigger aerospace_mode_change MODE=main']
+r = ['flatten-workspace-tree', 'mode main', 'exec-and-forget /run/current-system/sw/bin/sketchybar --trigger aerospace_mode_change MODE=main']
+f = ['layout floating tiling', 'mode main', 'exec-and-forget /run/current-system/sw/bin/sketchybar --trigger aerospace_mode_change MODE=main']
+backspace = ['close-all-windows-but-current', 'mode main', 'exec-and-forget /run/current-system/sw/bin/sketchybar --trigger aerospace_mode_change MODE=main']
 
-alt-shift-h = ['join-with left', 'mode main']
-alt-shift-j = ['join-with down', 'mode main']
-alt-shift-k = ['join-with up', 'mode main']
-alt-shift-l = ['join-with right', 'mode main']
+alt-shift-h = ['join-with left', 'mode main', 'exec-and-forget /run/current-system/sw/bin/sketchybar --trigger aerospace_mode_change MODE=main']
+alt-shift-j = ['join-with down', 'mode main', 'exec-and-forget /run/current-system/sw/bin/sketchybar --trigger aerospace_mode_change MODE=main']
+alt-shift-k = ['join-with up', 'mode main', 'exec-and-forget /run/current-system/sw/bin/sketchybar --trigger aerospace_mode_change MODE=main']
+alt-shift-l = ['join-with right', 'mode main', 'exec-and-forget /run/current-system/sw/bin/sketchybar --trigger aerospace_mode_change MODE=main']
 
-alt-1 = ['move-node-to-monitor 1', 'mode main']
-alt-2 = ['move-node-to-monitor 2', 'mode main']
-alt-3 = ['move-node-to-monitor 3', 'mode main']
-alt-b = ['move-node-to-monitor B', 'mode main']
-alt-c = ['move-node-to-monitor C', 'mode main']
+alt-1 = ['move-node-to-monitor 1', 'mode main', 'exec-and-forget /run/current-system/sw/bin/sketchybar --trigger aerospace_mode_change MODE=main']
+alt-2 = ['move-node-to-monitor 2', 'mode main', 'exec-and-forget /run/current-system/sw/bin/sketchybar --trigger aerospace_mode_change MODE=main']
+alt-3 = ['move-node-to-monitor 3', 'mode main', 'exec-and-forget /run/current-system/sw/bin/sketchybar --trigger aerospace_mode_change MODE=main']
+alt-b = ['move-node-to-monitor B', 'mode main', 'exec-and-forget /run/current-system/sw/bin/sketchybar --trigger aerospace_mode_change MODE=main']
+alt-c = ['move-node-to-monitor C', 'mode main', 'exec-and-forget /run/current-system/sw/bin/sketchybar --trigger aerospace_mode_change MODE=main']
 
 down = 'volume down'
 up = 'volume up'
-shift-down = ['volume set 0', 'mode main']
+shift-down = ['volume set 0', 'mode main', 'exec-and-forget /run/current-system/sw/bin/sketchybar --trigger aerospace_mode_change MODE=main']
 
 
 [[on-window-detected]]
