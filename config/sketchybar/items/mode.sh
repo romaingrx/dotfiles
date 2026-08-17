@@ -9,7 +9,7 @@ sketchybar --set mode.indicator \
 	drawing=off \
 	updates=on \
 	script="$PLUGIN_DIR/mode.sh" \
-	update_freq=1 \
+	update_freq=0 \
 	click_script="sketchybar --set mode.indicator popup.drawing=toggle" \
 	icon.color="$MAGENTA" \
 	label.color="$MAGENTA" \
