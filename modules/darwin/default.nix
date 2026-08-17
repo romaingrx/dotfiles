@@ -3,6 +3,7 @@
   imports = [
     ./homebrew.nix
     ./orbstack.nix
+    ./power.nix
     ./services
   ];
 
