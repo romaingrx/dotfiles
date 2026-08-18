@@ -4,6 +4,7 @@
     ./programs/agent-skills.nix
     ./programs/alacritty.nix
     ./programs/borders.nix
+    ./programs/claude-code.nix
     ./programs/hunk.nix
     ./programs/hypr.nix
     ./programs/rofi.nix

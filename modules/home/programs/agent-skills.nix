@@ -6,6 +6,7 @@
 }:
 let
   mkSubdirSymlinks = import ../../../lib/mkSubdirSymlinks.nix { inherit lib config; };
+  mkSourceCheck = import ../../../lib/mkSourceCheck.nix { inherit lib; };
 
   # One vendor-neutral source of truth, fanned out to each agent's skills
   # directory. Author a skill once in config/agents/skills/<name>/SKILL.md and
@@ -36,12 +37,9 @@ in
     map (target: mkSubdirSymlinks (source // { inherit target; })) agentSkillDirs
   );
 
-  # Links target the live checkout (the MAIN checkout via dotfilesPath), so warn
-  # at switch time if it is missing — e.g. activating from a worktree before
-  # merging — to make dangling links obvious instead of silent.
-  home.activation.agentSkillsSourceCheck = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
-    if [ ! -d ${lib.escapeShellArg source.liveDir} ]; then
-      printf 'agent-skills: source %s is missing; skill symlinks will dangle until it exists.\n' ${lib.escapeShellArg source.liveDir} >&2
-    fi
-  '';
+  # Links target the MAIN checkout via dotfilesPath, not the active worktree.
+  home.activation.agentSkillsSourceCheck = mkSourceCheck {
+    label = "agent-skills";
+    dir = source.liveDir;
+  };
 }
