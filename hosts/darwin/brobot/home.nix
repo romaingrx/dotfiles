@@ -4,6 +4,7 @@
   home.packages = with pkgs; [
     ffmpeg
     azure-cli
+    google-cloud-sdk
   ];
 
 }
