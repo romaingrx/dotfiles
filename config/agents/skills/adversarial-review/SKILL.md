@@ -63,9 +63,3 @@ Each finding needs a location, concrete failure scenario, and rationale.
 Distinguish verified defects from uncertainty; uncertainty alone does not
 establish a defect.
 Summarize covered criteria without requiring a separate section for each one.
-
----
-
-> Adapted from `.agents/skills/adversarial-review` in `operad-hq/operad`
-> (`f4c87ce`). Vendor-neutralized: `AGENTS.md`-only framing and
-> "authorized commit" session language replaced with repo-agnostic equivalents.
