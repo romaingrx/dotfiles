@@ -33,6 +33,20 @@ Add a playbook or principle by dropping a file in the folder and adding one
 line to the index. Each principle ends with a "You skipped this when" line, so
 an agent can audit its own diff against it.
 
+### Evals
+
+`evals/scenarios.json` holds test scenarios in the shape the skill authoring
+guidelines suggest: a query, the expected behavior, and machine checks.
+`evals/run.py` runs each one as a fresh headless Claude Code session in a copy
+of `evals/fixture/` with this checkout's skills linked in, and grades the tool
+calls it made. Run it after changing a stack skill:
+
+```sh
+python3 config/agents/evals/run.py --models haiku,sonnet,opus
+```
+
+It needs a logged-in `claude` CLI and spends real tokens (nine sessions).
+
 ## Skills against output styles
 
 A skill loads on demand, in any agent, including subagents. An output style is
