@@ -24,6 +24,7 @@ ALLOWED = [
     "Read", "Grep", "Glob", "Edit", "Write", "Skill", "TodoWrite", "Agent",
     "Bash(python3:*)", "Bash(python:*)", "Bash(pytest:*)", "Bash(ls:*)",
     "Bash(cat:*)", "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)",
+    "Bash(uptime)", "Bash(sysctl:*)", "Bash(which:*)",
 ]
 VERIFY = {
     "pages_disjoint": (
@@ -77,12 +78,13 @@ def result_event(transcript):
     return {"is_error": True, "result": "no result event (timeout or crash)"}
 
 
-def grade(checks, calls, workdir):
+def grade(checks, calls, workdir, reply=""):
     skills = [i.get("skill") or i.get("command") for n, i in calls if n == "Skill"]
     reads = [i.get("file_path", "") for n, i in calls if n == "Read"]
     bash = [(k, i.get("command", "")) for k, (n, i) in enumerate(calls) if n == "Bash"]
+    written = [i.get("content", "") + i.get("new_string", "") for n, i in calls if n in ("Write", "Edit")]
     edits = [(k, i.get("file_path", "")) for k, (n, i) in enumerate(calls) if n in ("Edit", "Write", "MultiEdit")]
-    todos = json.dumps([i for n, i in calls if "Todo" in n or n.startswith("Task")])
+    todos = json.dumps([i for n, i in calls if "Todo" in n or n.startswith("Task")]) + reply
     results = {}
     if "skill" in checks:
         results["skill " + checks["skill"]] = checks["skill"] in skills
@@ -102,7 +104,8 @@ def grade(checks, calls, workdir):
     if "edits_under" in checks:
         results["edits " + checks["edits_under"]] = any(checks["edits_under"] in p for _, p in edits)
     if "bash_mentions" in checks:
-        results["measures repeatedly"] = any(re.search(checks["bash_mentions"], c) for _, c in bash)
+        code = [c for _, c in bash] + written
+        results["measures repeatedly"] = any(re.search(checks["bash_mentions"], c) for c in code)
     for word in checks.get("no_git", []):
         results["no git " + word] = not any(f"git {word}" in c for _, c in bash)
     if "verify" in checks:
@@ -133,7 +136,7 @@ def run(scenario, model, out):
     (out / f"{name}.reply.md").write_text(result.get("result", ""))
     if result.get("is_error") and not tool_calls(transcript):
         return name, result.get("result") or "session error"
-    return name, grade(scenario["checks"], tool_calls(transcript), workdir)
+    return name, grade(scenario["checks"], tool_calls(transcript), workdir, result.get("result", ""))
 
 
 def main():

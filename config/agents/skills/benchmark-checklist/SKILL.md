@@ -1,12 +1,11 @@
 ---
 name: benchmark-checklist
 description: >-
-  Vets a perf measurement (limiter, tuning, limits, errors, repeatability,
-  relevance, and whether the work happened) before you report or act on it.
-  Use when you run a benchmark, report a speedup or regression you measured,
-  or the user asks "is it faster", "measure the speedup", "benchmark this",
-  "is this a perf regression", or wants a number checked before you report a
-  number.
+  Vets any speed comparison or measurement before it is reported. Use whenever
+  comparing or measuring speed, latency, throughput, or resource use: "is X
+  faster than Y", "how much faster", "measure it", "benchmark this", "is this
+  a perf regression", or before reporting any speedup you measured. Checks the
+  limiter, repeatability, errors, relevance, and whether the work happened.
 ---
 
 # Benchmark checklist

@@ -4,10 +4,11 @@ description: >-
   Router for substantial engineering work: matches the task to a playbook (bug
   fix, feature, refactoring, perf issue, investigation, prototype, autonomous
   run, pause, pickup), routes to the right skill, and applies
-  named principles with self-checks. Use when the user says "bob-stack", "bob
-  mode", "do it properly", "be rigorous", or "run until done", or hands over a
-  bug, feature, refactor, or perf problem that spans several files or steps.
-  Skip for questions, config tweaks, and small edits.
+  named principles with self-checks. Use when the user reports a bug or
+  regression to fix, asks for a feature, refactor, or perf fix, or says
+  "bob-stack", "fix it properly", "do it properly", "find the root cause", "be
+  rigorous", or "run until done". Skip for questions, renames, config tweaks,
+  and other one-line edits.
 ---
 
 # bob-stack
@@ -18,13 +19,15 @@ are relative to this skill's directory.
 ## Start every task here
 
 1. Match the task to a playbook below and open its file.
-2. Open a todo list whose first items are that playbook's steps, copied in
-   verbatim, before any task-specific todos. A step you choose not to do stays
-   in the list as `skip: <reason>`. Skipping is allowed. Hiding it is not.
+2. Follow the playbook's steps in order. For a task with more than a few
+   steps, copy them into your todo list first. A step you choose not to do is
+   named in the reply as `skip: <reason>`. Skipping is allowed. Hiding it is
+   not.
 3. No playbook fits: write your own numbered plan in which every step ends in a
    check you can run (`principles/sequence-verifiable-units.md`).
 
-Harnesses differ. Without a todo tool, keep the checklist in your reply. Without
+Harnesses differ. Without a todo tool, put the checklist at the top of your
+reply. Without
 subagents, do delegated work yourself in sequence with the same brief.
 
 ## Playbooks
