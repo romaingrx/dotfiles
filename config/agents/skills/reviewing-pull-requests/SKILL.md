@@ -82,6 +82,12 @@ link/cite relevant code, files, and URLs (see linking format under Notes).
 - Issues named in the conventions but explicitly silenced in code (e.g. a lint-ignore comment).
 - Functionality changes that are likely intentional or part of the broader change.
 - Real issues on lines the PR did not modify.
+- Hypotheticals. "What if this is null?" is a finding only if a caller can pass null.
+  Trace the call site before keeping it.
+- "I would have done it differently." A preference is not a finding unless it names a
+  concrete failure of the current approach.
+- Nitpick gravity. When every surviving issue is a nit, the PR is fine. Post "No issues
+  found" rather than padding the comment.
 
 ## Notes
 

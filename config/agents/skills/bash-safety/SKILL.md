@@ -306,5 +306,5 @@ see [reference.md](reference.md).
 
 ---
 
-> Vendored from [tenstorrent/tt-metal](https://github.com/tenstorrent/tt-metal)
-> (`.cursor/commands/skills/bash-safety`), licensed under Apache-2.0.
+> Vendored from [tenstorrent/tt-metal](https://github.com/tenstorrent/tt-metal),
+> licensed under Apache-2.0.

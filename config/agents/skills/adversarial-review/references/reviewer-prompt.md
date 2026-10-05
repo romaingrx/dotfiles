@@ -20,6 +20,9 @@ Keep the author's workspace read-only. Use an isolated copy for experiments requ
 Report concrete findings in severity order, with file:line, failure scenario, and rationale.
 Use MUST-FIX, SHOULD-FIX, or NICE-TO-HAVE.
 Distinguish uncertainty from a verified defect.
+Every finding needs evidence: the file:line, the caller, or the check you ran.
+No praise. Do not pad with nits; an empty finding list is a valid result.
+Challenge how the change achieves the request, not whether the request is right.
 Return SHIP when no actionable defect remains.
 Summarize review coverage and material verification limits.
 ```

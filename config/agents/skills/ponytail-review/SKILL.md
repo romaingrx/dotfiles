@@ -6,12 +6,23 @@ description: >
   dead flexibility. One line per finding: location, what to cut, what replaces
   it. Use when the user says "review for over-engineering", "what can we
   delete", "is this over-engineered", "simplify review", or invokes
-  /ponytail-review. Complements correctness-focused review, this one only
-  hunts complexity.
+  /ponytail-review. Also audits a whole repository when the user says "audit
+  this codebase", "audit for over-engineering", "what can I delete from this
+  repo", or "find bloat". Complements correctness-focused review, this one
+  only hunts complexity.
 ---
 
 Review diffs for unnecessary complexity. One line per finding: location, what
 to cut, what replaces it. The diff's best outcome is getting shorter.
+
+## Scope
+
+Review the diff by default. When the user asks for a repo-wide audit, scan the
+whole tree instead and rank findings biggest cut first. Hunt for: deps the
+stdlib or platform already ships, single-implementation interfaces, factories
+with one product, wrappers that only delegate, files exporting one thing, dead
+flags and config, hand-rolled stdlib. An audit always uses the
+`<file>:L<line>:` form.
 
 ## Format
 
@@ -43,7 +54,8 @@ considered whether all these validation rules are needed at this stage?"
 
 ## Scoring
 
-End with the only metric that matters: `net: -<N> lines possible.`
+End with the only metric that matters: `net: -<N> lines possible.` An audit
+also counts deps: `net: -<N> lines, -<M> deps possible.`
 
 If there is nothing to cut, say `Lean already. Ship.` and stop.
 
