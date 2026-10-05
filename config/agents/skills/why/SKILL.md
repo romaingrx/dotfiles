@@ -15,7 +15,7 @@ Investigate the motivation and intent behind code.
 
 Companion to the `how` skill. `how` answers what the code does and how it works. `why` answers what forces led to its shape.
 
-Model roles: investigators run on a fast model (Claude Code: `model: haiku`, or `sonnet` for a long or tangled history). The synthesizer runs on the strongest model (Claude Code: `model: opus`, or inherit).
+Model roles: investigators run on a fast model, or a mid-tier one for a long or tangled history. The synthesizer runs on the strongest model available. If your harness cannot spawn subagents, do each lane yourself in sequence with the same brief.
 
 ## Operating Posture
 
@@ -96,11 +96,11 @@ Optional lanes, each only if a matching MCP is connected in this session:
 
 ### Discovery
 
-To find connected MCPs, check the tools available in this session (Claude Code: MCP tools are named `mcp__<server>__<tool>`, and deferred ones can be found with ToolSearch). Classify each by its name, server instructions, and tool names. If an MCP could fit more than one lane, choose the one matching its primary evidence. Record ambiguous cases in the coverage map. Don't ask one agent to cover multiple lanes.
+To find connected MCPs, check the tools available in this session. Classify each by its name, server instructions, and tool names. If an MCP could fit more than one lane, choose the one matching its primary evidence. Record ambiguous cases in the coverage map. Don't ask one agent to cover multiple lanes.
 
 ### Investigator config
 
-Spawn each investigator as a fresh subagent (Claude Code: the Agent tool, `subagent_type: Explore` for the three default lanes; `general-purpose` for MCP lanes if your read-only agent type cannot call MCP tools). Investigators never write files, commit, or change external state.
+Spawn each investigator as a fresh subagent that can call the tools its lane needs. Investigators never write files, commit, or change external state.
 
 Each investigator gets:
 1. The base prompt from `references/investigator-prompt.md`
@@ -120,7 +120,7 @@ Aim for a complete **coverage map**, not a minimal one. Document the null, don't
 
 ## Step 4. Synthesize
 
-Spawn one synthesizer as a fresh subagent on the strongest model (Claude Code: `subagent_type: general-purpose`, `model: opus`). It may read the codebase, run `git` and `gh`, and call MCP tools to spot-check citations. It must not write files, commit, or change external state.
+Spawn one synthesizer as a fresh subagent on the strongest model. It may read the codebase, run `git` and `gh`, and call MCP tools to spot-check citations. It must not write files, commit, or change external state.
 
 The synthesizer gets:
 1. The investigator findings, including any null results and every lane skipped with its reason

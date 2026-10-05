@@ -13,7 +13,7 @@ description: >-
 
 Explore the codebase to answer "how does X work?" questions. Produce architectural explanations at the level of a senior engineer onboarding onto a subsystem, enough to build a working mental model, not so much that it reads like annotated source code.
 
-Model roles: explorers run on a fast model (Claude Code: `model: haiku`). The explainer runs on the strongest model (Claude Code: `model: opus`, or inherit).
+Model roles: explorers run on a fast model. The explainer runs on the strongest model available. If your harness cannot spawn subagents, do each lane yourself in sequence with the same brief.
 
 ## Step 1. Assess Complexity
 
@@ -26,19 +26,19 @@ When in doubt, take the simple path.
 
 ## Step 2a. Explore (complex questions only)
 
-Decompose the question into 2 to 4 exploration angles, each a distinct slice of the subsystem. Spawn all explorers in a single message so they run in parallel. Each explorer is a fresh read-only search subagent (Claude Code: the Agent tool, `subagent_type: Explore`, `model: haiku`).
+Decompose the question into 2 to 4 exploration angles, each a distinct slice of the subsystem. Spawn all explorers in a single message so they run in parallel. Each explorer is a fresh read-only subagent.
 
 Each explorer gets the prompt in `references/explorer-prompt.md` with its angle filled in. Then go to Step 3.
 
 ## Step 2b. Direct Explain (simple questions)
 
-Spawn one fresh subagent that explores and explains in one pass, on the strongest model (Claude Code: `subagent_type: general-purpose`, `model: opus`). Tell it the task is read-only: no file edits.
+Explore and explain in one pass yourself, or hand it to one fresh subagent on the strongest model. Either way the task is read-only: no file edits.
 
 Build its prompt from `references/explainer-prompt.md` without the explorer-findings section and without the spot-check step. Go to Step 4.
 
 ## Step 3. Synthesize (complex questions only)
 
-Once all explorers have returned, spawn one fresh subagent to synthesize their findings into one explanation, on the strongest model (Claude Code: `subagent_type: general-purpose`, `model: opus`). Tell it the task is read-only: no file edits.
+Once all explorers have returned, spawn one fresh subagent to synthesize their findings into one explanation, on the strongest model. Tell it the task is read-only: no file edits.
 
 Build its prompt from `references/explainer-prompt.md` with every explorer's findings filled in. Before it relies on the findings, the explainer spot-checks 2 to 3 load-bearing `file:line` claims against the code. The template carries this step.
 

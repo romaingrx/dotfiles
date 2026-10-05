@@ -27,7 +27,7 @@ in the `/config` picker as a style named "README".
 points to are plain files under it, not skills, so no agent lists them and they
 cost nothing until a task opens one. The index routes to the other skills here:
 `how`, `why`, `blast-radius`, `benchmark-checklist`, `tdd`, `show-me-your-work`,
-`recall`, the review skills, and the writing and commit skills.
+the review skills, and the writing and commit skills.
 
 Add a playbook or principle by dropping a file in the folder and adding one
 line to the index. Each principle ends with a "You skipped this when" line, so
@@ -77,7 +77,7 @@ hand. License: [`third-party/pstack.LICENSE`](third-party/pstack.LICENSE).
 | Content                                                              | Upstream                                                                 | Pinned commit |
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------- |
 | `skills/bob-stack/` (router, `playbooks/`, `principles/`)            | [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan (MIT) | `00b52d9`     |
-| `skills/{why,how,recall,blast-radius,benchmark-checklist,tdd,show-me-your-work}/` | same                                                        | `00b52d9`     |
+| `skills/{why,how,blast-radius,benchmark-checklist,tdd,show-me-your-work}/` | same                                                        | `00b52d9`     |
 | `skills/adversarial-review/references/lead-judgment.md`             | same (`interrogate/references/lead-judgment.md`)                         | `00b52d9`     |
 
 The skills the repository writes itself carry no row above. They have no

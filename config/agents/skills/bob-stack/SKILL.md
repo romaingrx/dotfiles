@@ -24,6 +24,9 @@ are relative to this skill's directory.
 3. No playbook fits: write your own numbered plan in which every step ends in a
    check you can run (`principles/sequence-verifiable-units.md`).
 
+Harnesses differ. Without a todo tool, keep the checklist in your reply. Without
+subagents, do delegated work yourself in sequence with the same brief.
+
 ## Playbooks
 
 - **Investigation.** Read-only question: how does X work, why is Y this way, are
@@ -63,7 +66,6 @@ are relative to this skill's directory.
 - Committing → **creating-commits**. Stacked PRs → **stacking-pull-requests**.
 - Shell scripts → **bash-safety**. Docs, READMEs, PR bodies → **simple-english**.
 - Long, autonomous, or step-away work → **show-me-your-work** for a decision log.
-- "What did we do last time", prior session context → **recall**.
 
 ## Principles
 

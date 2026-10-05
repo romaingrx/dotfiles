@@ -26,8 +26,8 @@ This pass is local and independent. It does not post a GitHub review comment
    verification results.
 2. Launch one fresh subagent with [the reviewer prompt](references/reviewer-prompt.md),
    when delegation is available and permitted. For a contested design or a risky
-   change, also send the same prompt to a second model family when one is available
-   (for example `codex exec`). A finding both raise independently is high-signal.
+   change, also send the same prompt to a different model when your harness offers
+   one. A finding both raise independently is high-signal.
 3. Judge the findings against the actual code and requested behavior with
    [lead judgment](references/lead-judgment.md). Filter, do not aggregate.
 4. For implementation tasks, fix confirmed defects and explain declined material

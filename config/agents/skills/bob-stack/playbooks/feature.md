@@ -12,7 +12,7 @@ Apply when the task adds or changes behavior, built from a named data shape.
    - **Shared mutable state.** Default to splitting the target (`principles/separate-before-serializing-shared-state.md`). Serialize only for real invariants.
    - **Smallest safe decomposition.** If one worker is best, name why.
 4. Delegate code-writing to a fresh subagent with a specific scope: file paths, the named data shape, and success criteria. The gain is review separation, so do not skip it to save lines. Keep a comment only for a non-obvious why. Port shared-primitive improvements to all consumers and verify each. Commit liberally.
-5. Verify on the real surface yourself (`principles/prove-it-works.md`). Drive the browser, simulator, or CLI (Claude Code: the built-in browser / iOS simulator tools / Bash). "Inconclusive" or wrong-surface is not a pass. Flag it.
+5. Verify on the real surface yourself (`principles/prove-it-works.md`). Drive it yourself (browser, simulator, or CLI, with whatever tools your harness provides). "Inconclusive" or wrong-surface is not a pass. Flag it.
 6. Rebase into small, ordered commits (`principles/sequence-verifiable-units.md`), building, verifying, and committing each unit before the next. Stack follow-ups.
 7. If the design is contested, run the **adversarial-review** skill before shipping.
 8. If the user asked for a commit or PR, run `playbooks/opening-a-pr.md`. Otherwise stop at the verified diff and say it is ready to commit.

@@ -60,7 +60,7 @@ Commit it only when the work is ambitious enough that a reviewer needs the trail
 
 ## Audit the log against the transcript
 
-At the end of the run, before handing back, check the log told the truth. Read this run's own transcript: in Claude Code, the session's file under `~/.claude/projects/<cwd-slug>/` (the most recently modified `.jsonl` there if you don't know the session id); in Codex, the matching file under `~/.codex/sessions/**/*.jsonl`. Open only this run's file. Don't glob across every project or session. That reads unrelated private chats. Walk this run's rows against what actually happened. Each stretch of them begins at one of this run's `start` rows, or at the first row if this run created the log, and ends at the next `start` row of another run:
+At the end of the run, before handing back, check the log told the truth. Read this run's own transcript if your harness exposes it; otherwise walk your own conversation, `git log`, and the command outputs you kept. Open only this run's record. Never read other projects' or sessions' transcripts. Walk this run's rows against what actually happened. Each stretch of them begins at one of this run's `start` rows, or at the first row if this run created the log, and ends at the next `start` row of another run:
 
 - Check that every row maps to a real decision or action.
 - Check that each row's evidence resolves and shows what the row claims.
@@ -70,7 +70,7 @@ Correct the log, not the story. The audit never edits or removes a row, even an 
 
 ## Cross-model review of the trail
 
-Before handing back, get an independent reviewer. Use a second model family when one is available (e.g. `codex exec` if the Codex CLI is installed and the work was done by Claude, or Claude Code if the work was done by Codex). Otherwise spawn a fresh subagent with no shared context (Claude Code: the Agent tool, `subagent_type: general-purpose`), and say independence was reduced. Self-review in the same conversation is not a substitute. The reviewer reads the audit trail and the run's transcript, then flags what the user should pay attention to. Not a redo of the work, a scan for what's suboptimal or risky.
+Before handing back, get an independent reviewer. Use a different model when your harness offers one. Otherwise use a fresh subagent with no shared context, and say independence was reduced. Self-review in the same conversation is not a substitute. The reviewer reads the audit trail and the run's transcript, then flags what the user should pay attention to. Not a redo of the work, a scan for what's suboptimal or risky.
 
 - Decisions logged with weak or absent evidence.
 - Verification steps skipped or claimed without proof in the transcript.
