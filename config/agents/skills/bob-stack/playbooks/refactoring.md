@@ -14,6 +14,6 @@ If the cleanup reveals a missing feature or a real bug, split it out and ship th
 6. Prove behavior is unchanged on the real artifact, not "it compiles" (`principles/prove-it-works.md`). For larger reshapes, run an equivalence check: a script that diffs old-vs-new outputs, a recorded baseline replayed against the new code, or a smoke run on the real surface.
 7. Confirm the change is worth keeping. The success measure is reduced reader load (`principles/minimize-reader-load.md`). If the diff does not lower reader load somewhere, revert it.
 8. Rebase into small ordered commits. A subtraction commit, then the reshape, then any follow-on cleanup, each green before the next (`principles/sequence-verifiable-units.md`).
-9. If the user asked for a commit or PR, run `playbooks/opening-a-pr.md`. Otherwise stop at the verified diff and say it is ready to commit.
+9. If the user asked for a commit or PR, use the **opening-pull-requests** skill. Otherwise stop at the verified diff and say it is ready to commit.
 
 **Reply:** the structure that changed, the pin you held it against, the equivalence proof, the reader-load delta, what shipped and what got reverted. No new behavior.

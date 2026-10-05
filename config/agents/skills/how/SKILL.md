@@ -48,4 +48,9 @@ Present the explainer's output to the user. Light edits for clarity or context f
 
 ## Output Format
 
+Answer a narrow question in a few paragraphs in the reply. For a subsystem-sized
+explanation, publish it as a rendered page with the diagrams drawn if your
+harness can (an artifact or similar), and reply with the link and the Overview.
+Otherwise write it as markdown in the reply, with Mermaid for flows.
+
 The explanation uses the sections defined in `references/explainer-prompt.md`, dropping any that do not apply: Overview, Key Concepts, How It Works, Where Things Live, Gotchas.

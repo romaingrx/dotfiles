@@ -14,6 +14,6 @@ Be scientific. Every shipped line traces to runtime evidence. Belt-and-suspender
 6. For a risky fix (shared code, a hot path, a public API), run the **blast-radius** skill before landing it.
 7. Verify on the same surface (`principles/prove-it-works.md`). The original repro now passes. "Inconclusive" or wrong-surface is not a pass. Flag it. Unit tests show branch behavior, not bug absence.
 8. Stage the commits so the failing repro lands before the fix in git history (`principles/sequence-verifiable-units.md`).
-9. If the user asked for a commit or PR, run `playbooks/opening-a-pr.md`. Otherwise stop at the verified diff and say it is ready to commit.
+9. If the user asked for a commit or PR, use the **opening-pull-requests** skill. Otherwise stop at the verified diff and say it is ready to commit.
 
 **Reply:** what was broken, root cause, fix, how you verified. Paste failing-then-passing repro output verbatim.

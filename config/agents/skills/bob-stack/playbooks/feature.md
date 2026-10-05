@@ -15,7 +15,7 @@ Apply when the task adds or changes behavior, built from a named data shape.
 5. Verify on the real surface yourself (`principles/prove-it-works.md`). Drive it yourself (browser, simulator, or CLI, with whatever tools your harness provides). "Inconclusive" or wrong-surface is not a pass. Flag it.
 6. Rebase into small, ordered commits (`principles/sequence-verifiable-units.md`), building, verifying, and committing each unit before the next. Stack follow-ups.
 7. If the design is contested, run the **adversarial-review** skill before shipping.
-8. If the user asked for a commit or PR, run `playbooks/opening-a-pr.md`. Otherwise stop at the verified diff and say it is ready to commit.
+8. If the user asked for a commit or PR, use the **opening-pull-requests** skill. Otherwise stop at the verified diff and say it is ready to commit.
 
 Code-coupled work (one feature, one migration) goes to a single owner with the checkpoint inline. Parent-level fan-out is for slices that produce independent artifacts (audits, cross-subsystem investigations, competing experiments). Rewrite the checkpoint at phase boundaries. Spawn a fresh owner rather than chaining interrupts.
 

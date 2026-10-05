@@ -4,7 +4,7 @@ Apply when resuming or taking over a prior agent's in-flight work from a transcr
 
 **You own the resume point. Read the prior trail, don't redo it.**
 
-1. Locate the prior trail: a resume note (`"$(git rev-parse --git-dir)/resume.md"`), a **show-me-your-work** decision log, a `wip:` commit, a pushed branch, or the harness's own resumed session. Stay inside the current project. Do not read across unrelated projects.
+1. Locate the prior trail: a resume note (`"$(git rev-parse --git-dir)/resume.md"`), a `wip:` commit, a pushed branch, or the harness's own resumed session. Stay inside the current project. Do not read across unrelated projects.
 2. Read the last messages first, then scan back for the decision points. Parse a long transcript in a fresh subagent and keep the reduced timeline in the main thread (`principles/guard-the-context-window.md`).
 3. Reconstruct operational state. The branch and worktree, what already landed (`git log`, `git diff` against the base), the open todos, the exit predicate, the decisions made. The prior trail is authoritative input. Resist the bias to re-derive it.
 4. Diff done vs pending. Compare what shipped against what was planned, name the resume point, and do not redo completed work. Step 6 checks the outcome once; it is not a redo.

@@ -3,7 +3,7 @@ name: bob-stack
 description: >-
   Router for substantial engineering work: matches the task to a playbook (bug
   fix, feature, refactoring, perf issue, investigation, prototype, autonomous
-  run, pause, pickup, opening a PR), routes to the right skill, and applies
+  run, pause, pickup), routes to the right skill, and applies
   named principles with self-checks. Use when the user says "bob-stack", "bob
   mode", "do it properly", "be rigorous", or "run until done", or hands over a
   bug, feature, refactor, or perf problem that spans several files or steps.
@@ -47,8 +47,6 @@ subagents, do delegated work yourself in sequence with the same brief.
   pause or before going offline. `playbooks/pause-safely.md`
 - **Session pickup.** Resume a prior agent's work from a branch, note, or
   transcript. `playbooks/session-pickup.md`
-- **Opening a PR.** Committing and opening a PR, when the user asks for it.
-  `playbooks/opening-a-pr.md`
 
 ## Route to skills
 
@@ -63,9 +61,9 @@ subagents, do delegated work yourself in sequence with the same brief.
 - Reviewing someone's PR and posting the result → **reviewing-pull-requests**.
 - Tempted to add a layer, a dependency, or a config knob → **ponytail**. Review a
   diff or repo for bloat → **ponytail-review**.
-- Committing → **creating-commits**. Stacked PRs → **stacking-pull-requests**.
+- Committing → **creating-commits**. Opening a PR → **opening-pull-requests**.
+  Stacked PRs → **stacking-pull-requests**.
 - Shell scripts → **bash-safety**. Docs, READMEs, PR bodies → **simple-english**.
-- Long, autonomous, or step-away work → **show-me-your-work** for a decision log.
 
 ## Principles
 

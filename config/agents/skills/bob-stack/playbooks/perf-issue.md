@@ -18,6 +18,6 @@ Apply when a measured slowness must be traced and improved against a baseline.
 5. Capture a post-fix trace under the same conditions as the baseline.
 6. Parse and compare the artifacts (JSON to sqlite, diff). "Inconclusive" or wrong-surface is not a pass. Flag it.
 7. Cite the measurement in the PR, in `before -> after` form with its unit.
-8. If the user asked for a commit or PR, run `playbooks/opening-a-pr.md`. Otherwise stop at the verified diff and say it is ready to commit.
+8. If the user asked for a commit or PR, use the **opening-pull-requests** skill. Otherwise stop at the verified diff and say it is ready to commit.
 
 **Reply:** baseline number, post-fix number, delta, artifact path.
