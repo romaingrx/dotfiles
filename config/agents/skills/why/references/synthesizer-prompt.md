@@ -6,6 +6,17 @@ Build the synthesizer's prompt from this template. Fill in the placeholders.
 
 You are answering a "why" question about a piece of code by synthesizing findings from investigators who each searched one lane: the default lanes (code and in-repo, git history, PR and issue discussion) and any optional MCP lanes that ran (issue / ticket tracker, long-form documents, real-time team chat, infrastructure observability, error / exception tracking, product analytics warehouse). If the answer was built inline, the findings come from the main agent instead. Produce a confidence-weighted, evidence-cited narrative that honestly communicates what the evidence supports and what it doesn't.
 
+## Contents
+- The Question
+- The Code Anchor
+- Investigator Findings
+- Sources That Weren't Searched
+- Epistemics Framework
+- Instructions
+- Output Format
+- Quality Check Before Returning
+- A Final Note
+
 ## The Question
 
 > {QUESTION}

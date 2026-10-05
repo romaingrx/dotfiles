@@ -104,7 +104,7 @@ Spawn each investigator as a fresh subagent that can call the tools its lane nee
 
 Each investigator gets:
 1. The base prompt from `references/investigator-prompt.md`
-2. The lane playbook from `references/sources/`, picked from the index in `references/source-playbook.md`. For an MCP lane, adapt the example playbook to the MCP actually connected.
+2. Its lane playbook: `references/sources/code-archaeology.md` (the code, git history, and PR lanes, one section each), `references/sources/linear.md` (an issue tracker), or `references/sources/notion.md` (long-form docs). For any other connected MCP, adapt the closest one. `references/source-playbook.md` maps lanes to playbooks.
 3. The cross-cutting `references/sources/incident-postmortem.md` **if the target code looks defensive**
 4. The code anchor from Step 2 (file paths, symbols, commit hashes, PR numbers, ticket IDs)
 5. The user's original question

@@ -1,8 +1,8 @@
 ---
 name: adversarial-review
 description: >-
-  Independent review of substantial local changes before commit, or on explicit
-  request. Checks correctness, architecture, duplication, repository conventions,
+  Runs an independent review of substantial local changes before commit, or on
+  explicit request. Checks correctness, architecture, duplication, repository conventions,
   and scope; returns SHIP or ranked findings. Use when the user asks for an
   adversarial review, a hostile review, a pre-commit review, or when committing
   substantial implementation work. Complements PR-comment review and

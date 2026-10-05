@@ -2,6 +2,15 @@
 
 The three default lanes all live here. Each investigator gets the shared sections plus only its own lane section.
 
+## Contents
+- What this source contains
+- Lane: code and in-repo
+- Lane: git history
+- Lane: PR and issue discussion
+- What good evidence looks like here
+- Common pitfalls
+- What to return
+
 ## What this source contains
 
 - Commit history (messages, dates, authors, diffs)

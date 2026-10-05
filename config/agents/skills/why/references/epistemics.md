@@ -4,6 +4,14 @@ How to reason about confidence when evidence is historical, fragmentary, and som
 
 Code doesn't carry its own motivation. You can read what code does. You can't read *why it exists*. That lives in commits, PRs, tickets, docs, and conversations, all incomplete, biased, and sometimes missing entirely. Pretending otherwise produces confident-sounding guesses that mislead the user.
 
+## Contents
+- Confidence Tiers
+- Phrasing Guide
+- The Sycophancy Trap
+- When Evidence Contradicts
+- When Evidence Is Missing
+- Calibration Check Before Finalizing
+
 ## Confidence Tiers
 
 Every claim in the final output must sit in one of these tiers. The tier determines which output section the claim goes in and how it's phrased.

@@ -1,8 +1,8 @@
 ---
 name: tdd
 description: >-
-  Fix a bug test-first: write a focused regression test, watch it fail for the
-  intended reason, then make the smallest fix and watch it pass. Use when the
+  Fixes a bug test-first: writes a focused regression test, watches it fail for
+  the intended reason, then makes the smallest fix and watches it pass. Use when the
   user says "tdd", "test first", "red green refactor", "write a failing test",
   or asks for a regression test, or when the bug has an obvious cheap local
   test target. Skip when the test path is unclear, expensive,
