@@ -58,7 +58,6 @@ subagents, do delegated work yourself in sequence with the same brief.
   before you trust or report the number.
 - A bug with a cheap local test target → **tdd**.
 - Substantial local change before commit, contested design → **adversarial-review**.
-- Reviewing someone's PR and posting the result → **reviewing-pull-requests**.
 - Tempted to add a layer, a dependency, or a config knob → **ponytail**. Review a
   diff or repo for bloat → **ponytail-review**.
 - Committing → **creating-commits**. Opening a PR → **opening-pull-requests**.

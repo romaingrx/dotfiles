@@ -16,9 +16,8 @@ commit. Also use this skill when the user requests an adversarial review.
 Skip mechanical edits and small documentation changes unless a specific risk
 warrants review.
 
-This pass is local and independent. It does not post a GitHub review comment
-(that is `reviewing-pull-requests`) and it does not hunt over-engineering
-(that is `ponytail-review`).
+This pass is local and independent. It does not post a GitHub review comment,
+and it does not hunt over-engineering (that is `ponytail-review`).
 
 ## Procedure
 

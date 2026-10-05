@@ -87,12 +87,8 @@ Add one investigator per connected optional lane when any of these hold:
 
 Optional lanes, each only if a matching MCP is connected in this session:
 
-4. **Issue / ticket tracker** (if a Linear, Jira, Plane, or Shortcut MCP is connected). Best at surfacing *the product or business forcing function*.
-5. **Long-form documents** (if a Notion, Confluence, Google Docs, or Coda MCP is connected). Best at surfacing *long-form design rationale written before the code*.
-6. **Real-time team chat** (if a Slack, Discord, Teams, or Mattermost MCP is connected). Best at surfacing *deliberation that never reached a doc*.
-7. **Infrastructure observability** (if a Datadog, New Relic, Honeycomb, Grafana, or Splunk MCP is connected). Best at surfacing *the runtime reality that motivated the code*.
-8. **Error / exception tracking** (if a Sentry, Rollbar, Bugsnag, or Airbrake MCP is connected). Best at surfacing *the exceptions that motivated defensive code*.
-9. **Product analytics warehouse** (if a Databricks, Snowflake, BigQuery, ClickHouse, or dbt MCP is connected). Best at surfacing *product and data reality, and where a number came from*.
+4. **Issue tracker** (if a Linear MCP is connected). Best at surfacing *the product or business forcing function*.
+5. **Any other connected MCP that holds team history** (chat, docs, observability, error tracking). Adapt the Linear playbook to it.
 
 ### Discovery
 
@@ -104,7 +100,7 @@ Spawn each investigator as a fresh subagent that can call the tools its lane nee
 
 Each investigator gets:
 1. The base prompt from `references/investigator-prompt.md`
-2. Its lane playbook: `references/sources/code-archaeology.md` (the code, git history, and PR lanes, one section each), `references/sources/linear.md` (an issue tracker), or `references/sources/notion.md` (long-form docs). For any other connected MCP, adapt the closest one. `references/source-playbook.md` maps lanes to playbooks.
+2. Its lane playbook: `references/sources/code-archaeology.md` (the code, git history, and PR lanes, one section each), or `references/sources/linear.md` (the issue tracker, and the template for any other connected MCP). `references/source-playbook.md` maps lanes to playbooks.
 3. The cross-cutting `references/sources/incident-postmortem.md` **if the target code looks defensive**
 4. The code anchor from Step 2 (file paths, symbols, commit hashes, PR numbers, ticket IDs)
 5. The user's original question
