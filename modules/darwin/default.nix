@@ -56,7 +56,8 @@
       CustomUserPreferences.NSGlobalDomain."com.apple.mouse.scaling" = 0.875;
       # Dock stacks with an explicit sort order. arrangement: 1=Name, 2=Date
       # Added, 3=Date Modified, 4=Date Created, 5=Kind (date sorts are always
-      # newest-first, i.e. descending). displayas: 1=folder. showas: 3=list.
+      # newest-first, i.e. descending). displayas: 1=folder. showas: 0=auto,
+      # 1=fan, 2=grid, 3=list.
       CustomUserPreferences."com.apple.dock".persistent-others =
         map
           (path: {
@@ -67,7 +68,7 @@
               };
               arrangement = 3;
               displayas = 1;
-              showas = 3;
+              showas = 2;
             };
             tile-type = "directory-tile";
           })
@@ -86,9 +87,9 @@
           "/System/Applications/Calendar.app"
           "/Applications/Raycast.app"
         ];
-        # persistent-others is set via CustomUserPreferences below so we can
-        # pin each stack's sort order (arrangement = 4 -> Date Created, newest
-        # first). The typed option only accepts bare paths and can't express it.
+        # persistent-others is set via CustomUserPreferences above so we can
+        # pin each stack's view and sort order. The typed option only accepts
+        # bare paths and can't express them.
       };
       finder = {
         FXPreferredViewStyle = "clmv";
