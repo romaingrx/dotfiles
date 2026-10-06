@@ -20,6 +20,19 @@ Keep `claude/output-styles/` free of files that are not styles. Claude Code
 reads every `.md` in that directory as one, so a `README.md` there would appear
 in the `/config` picker as a style named "README".
 
+## bob-stack
+
+`skills/bob-stack/` is the entry point for non-trivial engineering work. Its
+`SKILL.md` is a one-line-per-entry index. The playbooks and principles it
+points to are plain files under it, not skills, so no agent lists them and they
+cost nothing until a task opens one. The index routes to the other skills here:
+`how`, `why`, `blast-radius`, `benchmark-checklist`, `tdd`, the review and PR
+skills, and the writing and commit skills.
+
+Add a playbook or principle by dropping a file in the folder and adding one
+line to the index. Each principle ends with a "You skipped this when" line, so
+an agent can audit its own diff against it.
+
 ## Skills against output styles
 
 A skill loads on demand, in any agent, including subagents. An output style is
@@ -52,6 +65,20 @@ curl -sfL "$B/skills/simple-english/references/checklist.md" -o config/agents/sk
 curl -sfL "$B/skills/simple-english/references/use-cases.md" -o config/agents/skills/simple-english/references/use-cases.md
 curl -sfL "$B/output-styles/simple-english.md"               -o config/agents/claude/output-styles/simple-english.md
 ```
+
+### Adapted from pstack
+
+The bob-stack skills are adapted, not copied: tool-specific mechanics (model
+slugs, agent modes, transcript paths) were rewritten for any agent that reads
+`AGENTS.md` and skills, so there is no refresh script. To pull an upstream improvement, diff the
+upstream file at a newer commit against the pinned one and port the change by
+hand. License: [`third-party/pstack.LICENSE`](third-party/pstack.LICENSE).
+
+| Content                                                              | Upstream                                                                 | Pinned commit |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------- |
+| `skills/bob-stack/` (router, `playbooks/`, `principles/`)            | [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan (MIT) | `00b52d9`     |
+| `skills/{why,how,blast-radius,benchmark-checklist,tdd}/` | same                                                        | `00b52d9`     |
+| `skills/adversarial-review/references/lead-judgment.md`             | same (`interrogate/references/lead-judgment.md`)                         | `00b52d9`     |
 
 The skills the repository writes itself carry no row above. They have no
 upstream and are edited in place.

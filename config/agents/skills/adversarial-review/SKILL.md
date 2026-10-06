@@ -1,8 +1,8 @@
 ---
 name: adversarial-review
 description: >-
-  Independent review of substantial local changes before commit, or on explicit
-  request. Checks correctness, architecture, duplication, repository conventions,
+  Runs an independent review of substantial local changes before commit, or on
+  explicit request. Checks correctness, architecture, duplication, repository conventions,
   and scope; returns SHIP or ranked findings. Use when the user asks for an
   adversarial review, a hostile review, a pre-commit review, or when committing
   substantial implementation work. Complements PR-comment review and
@@ -16,17 +16,19 @@ commit. Also use this skill when the user requests an adversarial review.
 Skip mechanical edits and small documentation changes unless a specific risk
 warrants review.
 
-This pass is local and independent. It does not post a GitHub review comment
-(that is `reviewing-pull-requests`) and it does not hunt over-engineering
-(that is `ponytail-review`).
+This pass is local and independent. It does not post a GitHub review comment,
+and it does not hunt over-engineering (that is `ponytail-review`).
 
 ## Procedure
 
 1. Give the reviewer the request, diff, relevant instructions, and existing
    verification results.
 2. Launch one fresh subagent with [the reviewer prompt](references/reviewer-prompt.md),
-   when delegation is available and permitted.
-3. Review the findings against the actual code and requested behavior.
+   when delegation is available and permitted. For a contested design or a risky
+   change, also send the same prompt to a different model when your harness offers
+   one. A finding both raise independently is high-signal.
+3. Judge the findings against the actual code and requested behavior with
+   [lead judgment](references/lead-judgment.md). Filter, do not aggregate.
 4. For implementation tasks, fix confirmed defects and explain declined material
    findings. For review-only requests, report findings without editing.
 5. Repeat affected checks after fixes. Complete the review before committing.
@@ -51,9 +53,9 @@ Do not revert or modify the author's working files during review.
 
 Convention files are whatever the repo actually uses: a root `AGENTS.md` or
 `CLAUDE.md`, `CONTRIBUTING.md`, nested copies in directories the change
-touches, and local skills under `.agents/skills/`, `.claude/skills/`, or
-`.cursor/skills/`. Read the ones relevant to the diff; do not invent project
-rules that are not written down.
+touches, and local skills under `.agents/skills/` or `.claude/skills/`. Read
+the ones relevant to the diff; do not invent project rules that are not
+written down.
 
 ## Findings
 

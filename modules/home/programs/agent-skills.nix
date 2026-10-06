@@ -19,14 +19,12 @@ let
     requireFile = "SKILL.md"; # skip empty / malformed skill folders
   };
 
-  # Each agent reads its own global skills directory. `~/.agents/skills` is the
-  # shared project-style location (and Cline's global dir); other agents read
-  # their own and must be listed explicitly. Add an agent by appending its dir.
+  # `~/.agents/skills` is the shared location most agents read (Pi, Cline).
+  # Claude Code reads only its own dir, so it is listed explicitly.
   agentSkillDirs = [
-    ".agents/skills" # shared / project convention (Cline global)
+    ".agents/skills" # shared convention (Pi, Cline)
     ".claude/skills" # Claude Code
-    ".codex/skills" # Codex
-    # ".cursor/skills" ".gemini/skills" ".config/opencode/skills" — add as used
+    # add an agent's own dir here only if it ignores ~/.agents/skills
   ];
 in
 {
