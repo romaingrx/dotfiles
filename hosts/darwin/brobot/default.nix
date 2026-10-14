@@ -7,8 +7,6 @@
   networking.hostName = "brobot";
   networking.computerName = "brobot";
 
-  system.primaryUser = "romaingrx";
-
   system.defaults.loginwindow.LoginwindowText = "Hand-built, loyal, little brother";
 
   # MongoDB Compass + Notion GUIs — brobot-only, list-merge with the shared casks.

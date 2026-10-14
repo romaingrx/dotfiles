@@ -67,76 +67,54 @@
       ...
     }:
     let
-      dotfilesPath = ".dotfiles";
+      inherit (nixpkgs) lib;
+      forAllSystems =
+        f: lib.genAttrs [ "aarch64-darwin" "x86_64-linux" ] (s: f nixpkgs.legacyPackages.${s});
 
       mkSystem = import ./lib/mkSystem.nix {
-        inherit inputs dotfilesPath;
-        inherit (nixpkgs) lib;
+        inherit inputs lib;
+        dotfilesPath = ".dotfiles";
       };
-
     in
     {
-      # Formatter configuration - matches CI workflow (.github/workflows/check.yml)
-      formatter = {
-        aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.nixfmt;
-        x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt;
-      };
+      formatter = forAllSystems (pkgs: pkgs.nixfmt);
 
-      # Checks - matches CI workflow (.github/workflows/check.yml)
-      checks = nixpkgs.lib.genAttrs [ "aarch64-darwin" "x86_64-linux" ] (
-        system:
+      checks = forAllSystems (
+        pkgs:
         import ./checks {
-          inherit pre-commit-hooks system;
-          pkgs = nixpkgs.legacyPackages.${system};
+          inherit pkgs pre-commit-hooks;
+          inherit (pkgs.stdenv.hostPlatform) system;
           repoRoot = ./.;
         }
       );
 
-      # Development shells with pre-commit
-      devShells = nixpkgs.lib.genAttrs [ "aarch64-darwin" "x86_64-linux" ] (
-        system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-        in
-        {
-          default = pkgs.mkShell {
-            inherit (self.checks.${system}.pre-commit-check) shellHook;
-            buildInputs = with pkgs; [
-              nixfmt
-              deadnix
-              # statix's own tests fail to build on current nixpkgs; skip them
-              # (the linter works). Drop the override once fixed upstream.
-              (statix.overrideAttrs (_: {
-                doCheck = false;
-              }))
-              pre-commit
-            ];
-          };
+      devShells = forAllSystems (pkgs: {
+        default = pkgs.mkShell {
+          inherit (self.checks.${pkgs.stdenv.hostPlatform.system}.pre-commit-check) shellHook;
+          buildInputs = with pkgs; [
+            nixfmt
+            deadnix
+            # statix's own tests fail to build on current nixpkgs; skip them
+            # (the linter works). Drop the override once fixed upstream.
+            (statix.overrideAttrs (_: {
+              doCheck = false;
+            }))
+            pre-commit
+          ];
+        };
+      });
+
+      nixosConfigurations.carl = mkSystem "carl" {
+        system = "x86_64-linux";
+        user = "romaingrx";
+      };
+
+      darwinConfigurations = lib.genAttrs [ "goddard" "brobot" ] (
+        name:
+        mkSystem name {
+          system = "aarch64-darwin";
+          user = "romaingrx";
         }
       );
-
-      nixosConfigurations = {
-        "carl" = (mkSystem "carl") {
-          system = "x86_64-linux";
-          users = [ "romaingrx" ];
-        };
-      };
-
-      darwinConfigurations = {
-        "goddard" = (mkSystem "goddard") {
-          system = "aarch64-darwin";
-          users = [
-            "romaingrx"
-          ];
-          darwin = true;
-        };
-        "brobot" = (mkSystem "brobot") {
-          system = "aarch64-darwin";
-          users = [
-            "romaingrx"
-          ];
-          darwin = true;
-        };
-      };
     };
 }
