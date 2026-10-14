@@ -16,9 +16,6 @@ in
     scdaemonSettings = {
       disable-ccid = true;
     };
-
-    # Comment out the public keys to prevent automatic import during activation
-    # publicKeys = [{ source = ./pubkeys/github.asc; }];
   };
 
   services.gpg-agent = {
@@ -36,12 +33,5 @@ in
       default-cache-ttl-ssh 28800
       max-cache-ttl-ssh 86400
     '';
-  };
-
-  # Add required environment variables
-  home.sessionVariables = {
-    GPG_TTY = "$(tty)";
-    # Remove PINENTRY_USER_DATA since we're using pinentry-curses
-    SSH_AUTH_SOCK = "$(gpgconf --list-dirs agent-ssh-socket)";
   };
 }

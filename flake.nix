@@ -7,7 +7,6 @@
     # release check fails against a skewed nixpkgs. Renovate's
     # lockFileMaintenance performs this lockstep refresh automatically.
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-24.11";
     nix-darwin = {
       url = "github:LnL7/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -35,10 +34,6 @@
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    fenix = {
-      url = "github:nix-community/fenix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     pre-commit-hooks = {
       url = "github:cachix/pre-commit-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -48,14 +43,6 @@
     hunk = {
       url = "github:modem-dev/hunk";
       inputs.nixpkgs.follows = "nixpkgs";
-      # bun2nix is build-only tooling for hunk. Its flake-parts setup evaluates a
-      # treefmt formatter for every system it declares (incl. x86_64-darwin) while
-      # building the bun cache, which on unstable emits the "x86_64-darwin
-      # deprecation" warning that our CI turns fatal via abort-on-warn. Pin
-      # bun2nix's nixpkgs to the 25.11 release: new enough for its zig_0_15
-      # dependency, old enough to predate that warning. Build tooling only —
-      # hunk's runtime closure still uses unstable via the follows above.
-      inputs.bun2nix.inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     };
   };
 
@@ -67,86 +54,71 @@
       ...
     }:
     let
-
-      # Import structured overlays
-      overlaySet = import ./overlays/default.nix;
-
-      # Convert overlay set to list of overlay functions
-      overlays = [
-        overlaySet.patches
-        overlaySet.customPackages
-      ];
-
-      dotfilesPath = ".dotfiles";
+      inherit (nixpkgs) lib;
+      forAllSystems =
+        f: lib.genAttrs [ "aarch64-darwin" "x86_64-linux" ] (s: f nixpkgs.legacyPackages.${s});
 
       mkSystem = import ./lib/mkSystem.nix {
-        inherit inputs dotfilesPath overlays;
-        inherit (nixpkgs) lib;
+        inherit inputs lib;
+        dotfilesPath = ".dotfiles";
       };
-
     in
     {
-      # Formatter configuration - matches CI workflow (.github/workflows/check.yml)
-      formatter = {
-        aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.nixfmt;
-        x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt;
-      };
+      formatter = forAllSystems (pkgs: pkgs.nixfmt);
 
-      # Checks - matches CI workflow (.github/workflows/check.yml)
-      checks = nixpkgs.lib.genAttrs [ "aarch64-darwin" "x86_64-linux" ] (
-        system:
+      checks = forAllSystems (
+        pkgs:
         import ./checks {
-          inherit pre-commit-hooks system;
-          pkgs = nixpkgs.legacyPackages.${system};
+          inherit pkgs pre-commit-hooks;
+          inherit (pkgs.stdenv.hostPlatform) system;
           repoRoot = ./.;
         }
       );
 
-      # Development shells with pre-commit
-      devShells = nixpkgs.lib.genAttrs [ "aarch64-darwin" "x86_64-linux" ] (
-        system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-        in
-        {
-          default = pkgs.mkShell {
-            inherit (self.checks.${system}.pre-commit-check) shellHook;
-            buildInputs = with pkgs; [
-              nixfmt
-              deadnix
-              # statix's own tests fail to build on current nixpkgs; skip them
-              # (the linter works). Drop the override once fixed upstream.
-              (statix.overrideAttrs (_: {
-                doCheck = false;
-              }))
-              pre-commit
+      devShells = forAllSystems (pkgs: {
+        default = pkgs.mkShell {
+          inherit (self.checks.${pkgs.stdenv.hostPlatform.system}.pre-commit-check) shellHook;
+          buildInputs = with pkgs; [
+            nixfmt
+            deadnix
+            # statix's own tests fail to build on current nixpkgs; skip them
+            # (the linter works). Drop the override once fixed upstream.
+            (statix.overrideAttrs (_: {
+              doCheck = false;
+            }))
+            pre-commit
+          ];
+        };
+      });
+
+      # Home-manager activation for dev containers; built impurely by
+      # devcontainer.sh for whichever user the container runs as.
+      legacyPackages = forAllSystems (pkgs: {
+        devcontainer =
+          (inputs.home-manager.lib.homeManagerConfiguration {
+            inherit pkgs;
+            extraSpecialArgs.dotfilesPath = builtins.getEnv "DOTFILES";
+            modules = [
+              ./hosts/devcontainer/home.nix
+              {
+                home.username = builtins.getEnv "USER";
+                home.homeDirectory = builtins.getEnv "HOME";
+              }
             ];
-          };
+          }).activationPackage;
+      });
+
+      nixosConfigurations.carl = mkSystem "carl" {
+        system = "x86_64-linux";
+        user = "romaingrx";
+      };
+
+      darwinConfigurations = lib.genAttrs [ "goddard" "brobot" ] (
+        name:
+        mkSystem name {
+          system = "aarch64-darwin";
+          user = "romaingrx";
         }
       );
-
-      nixosConfigurations = {
-        "carl" = (mkSystem "carl") {
-          system = "x86_64-linux";
-          users = [ "romaingrx" ];
-        };
-      };
-
-      darwinConfigurations = {
-        "goddard" = (mkSystem "goddard") {
-          system = "aarch64-darwin";
-          users = [
-            "romaingrx"
-          ];
-          darwin = true;
-        };
-        "brobot" = (mkSystem "brobot") {
-          system = "aarch64-darwin";
-          users = [
-            "romaingrx"
-          ];
-          darwin = true;
-        };
-      };
     };
 }

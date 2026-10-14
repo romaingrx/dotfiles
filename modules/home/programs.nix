@@ -1,25 +1,17 @@
-{ pkgs, ... }:
 {
   imports = [
     ./programs/agent-skills.nix
     ./programs/alacritty.nix
     ./programs/borders.nix
     ./programs/claude-code.nix
+    ./programs/git.nix
     ./programs/hunk.nix
     ./programs/hypr.nix
     ./programs/rofi.nix
     ./programs/sketchybar.nix
+    ./programs/ssh.nix
     ./programs/tmux.nix
     ./programs/waybar.nix
+    ./programs/zsh.nix
   ];
-
-  programs = {
-    git = import ./programs/git.nix { };
-    zsh = import ./programs/zsh.nix { inherit pkgs; };
-    fzf = {
-      enable = true;
-      enableZshIntegration = true;
-    };
-    ssh = import ./programs/ssh.nix { inherit pkgs; };
-  };
 }
