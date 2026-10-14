@@ -60,23 +60,6 @@ lib.mkIf pkgs.stdenv.isLinux {
   #   gtk.enable = true;
   # };
 
-  # TODO: Fix this, it's not clean
-  programs.zsh.initContent = ''
-    # Script to set HYPRLAND_INSTANCE_SIGNATURE for hyprctl
-      # Function to automatically set HYPRLAND_INSTANCE_SIGNATURE for hyprctl
-      # Check if HYPRLAND_INSTANCE_SIGNATURE is already set
-      if [ -z "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
-        # Try to find the Hyprland instance signature
-        if [ -n "$XDG_RUNTIME_DIR" ] && [ -d "$XDG_RUNTIME_DIR/hypr" ]; then
-          INSTANCE_SIG=$(ls "$XDG_RUNTIME_DIR/hypr" 2>/dev/null | head -1)
-          if [ -n "$INSTANCE_SIG" ]; then
-            export HYPRLAND_INSTANCE_SIGNATURE="$INSTANCE_SIG"
-          fi
-        fi
-      fi
-      export PATH="''${PATH}:${config.home.homeDirectory}/.local/romaingrx-bin"
-  '';
-
   home.file.".profile".text = ''
     if uwsm check may-start && uwsm select; then
       exec uwsm start default

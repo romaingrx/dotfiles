@@ -37,11 +37,4 @@ in
       max-cache-ttl-ssh 86400
     '';
   };
-
-  # Add required environment variables
-  home.sessionVariables = {
-    GPG_TTY = "$(tty)";
-    # Remove PINENTRY_USER_DATA since we're using pinentry-curses
-    SSH_AUTH_SOCK = "$(gpgconf --list-dirs agent-ssh-socket)";
-  };
 }
