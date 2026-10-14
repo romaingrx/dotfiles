@@ -14,6 +14,6 @@ nix_profile="$HOME/.nix-profile/etc/profile.d/nix.sh"
 [ -e "$nix_profile" ] && . "$nix_profile"
 
 # --impure: the profile reads $USER, $HOME and $DOTFILES.
-nix run --inputs-from "$DOTFILES" home-manager -- switch --impure -b bckp --flake "$DOTFILES#devcontainer"
+HOME_MANAGER_BACKUP_EXT=bckp "$(nix build --impure --no-link --print-out-paths "$DOTFILES#devcontainer")/activate"
 
 sudo chsh -s "$HOME/.nix-profile/bin/zsh" "$USER" 2>/dev/null || true

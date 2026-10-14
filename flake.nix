@@ -91,18 +91,22 @@
         };
       });
 
-      # Applied impurely by devcontainer.sh for whichever user the container runs as.
-      homeConfigurations.devcontainer = inputs.home-manager.lib.homeManagerConfiguration {
-        pkgs = nixpkgs.legacyPackages.${builtins.currentSystem};
-        extraSpecialArgs.dotfilesPath = builtins.getEnv "DOTFILES";
-        modules = [
-          ./hosts/devcontainer/home.nix
-          {
-            home.username = builtins.getEnv "USER";
-            home.homeDirectory = builtins.getEnv "HOME";
-          }
-        ];
-      };
+      # Home-manager activation for dev containers; built impurely by
+      # devcontainer.sh for whichever user the container runs as.
+      legacyPackages = forAllSystems (pkgs: {
+        devcontainer =
+          (inputs.home-manager.lib.homeManagerConfiguration {
+            inherit pkgs;
+            extraSpecialArgs.dotfilesPath = builtins.getEnv "DOTFILES";
+            modules = [
+              ./hosts/devcontainer/home.nix
+              {
+                home.username = builtins.getEnv "USER";
+                home.homeDirectory = builtins.getEnv "HOME";
+              }
+            ];
+          }).activationPackage;
+      });
 
       nixosConfigurations.carl = mkSystem "carl" {
         system = "x86_64-linux";
