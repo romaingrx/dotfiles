@@ -1,11 +1,10 @@
 [general]
 import = [
-    "~/.local/share/alacritty/active-theme.toml",
+    "~/.config/theme/alacritty.toml",
 ]
 
 [font]
-# Family/style come from the generated theme import (active-theme.toml); see
-# lib/theme/fonts.nix. Size and offset are layout choices kept here.
+# The family comes from the theme import above (lib/theme).
 size = 13.0
 
 [font.offset]
