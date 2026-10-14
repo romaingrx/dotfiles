@@ -1,4 +1,3 @@
-# Catppuccin Latte (Light)
 [colors.primary]
 background = "#eff1f5"
 foreground = "#4c4f69"
@@ -15,7 +14,7 @@ cursor = "#7287fd"
 
 [colors.search.matches]
 foreground = "#eff1f5"
-background = "#9ca0b0"
+background = "#6c6f85"
 
 [colors.search.focused_match]
 foreground = "#eff1f5"
@@ -23,7 +22,7 @@ background = "#40a02b"
 
 [colors.footer_bar]
 foreground = "#eff1f5"
-background = "#9ca0b0"
+background = "#6c6f85"
 
 [colors.hints.start]
 foreground = "#eff1f5"
@@ -31,56 +30,36 @@ background = "#df8e1d"
 
 [colors.hints.end]
 foreground = "#eff1f5"
-background = "#9ca0b0"
+background = "#6c6f85"
 
 [colors.selection]
 text = "#eff1f5"
 background = "#dc8a78"
 
 [colors.normal]
-black = "#5c5f77"
+black = "#bcc0cc"
 red = "#d20f39"
 green = "#40a02b"
 yellow = "#df8e1d"
 blue = "#1e66f5"
 magenta = "#ea76cb"
 cyan = "#179299"
-white = "#acb0be"
+white = "#5c5f77"
 
 [colors.bright]
-black = "#6c6f85"
+black = "#acb0be"
 red = "#d20f39"
 green = "#40a02b"
 yellow = "#df8e1d"
 blue = "#1e66f5"
 magenta = "#ea76cb"
 cyan = "#179299"
-white = "#bcc0cc"
+white = "#6c6f85"
 
-[colors.dim]
-black = "#5c5f77"
-red = "#d20f39"
-green = "#40a02b"
-yellow = "#df8e1d"
-blue = "#1e66f5"
-magenta = "#ea76cb"
-cyan = "#179299"
-white = "#acb0be"
+[[colors.indexed_colors]]
+index = 16
+color = "#fe640b"
 
-# Font family from the central theme contract (lib/theme/fonts.nix). Size and
-# offset stay in the base alacritty.toml; styles are fixed per variant.
-[font.normal]
-family = "FiraCode Nerd Font"
-style = "Regular"
-
-[font.bold]
-family = "FiraCode Nerd Font"
-style = "Bold"
-
-[font.italic]
-family = "FiraCode Nerd Font"
-style = "Italic"
-
-[font.bold_italic]
-family = "FiraCode Nerd Font"
-style = "Bold Italic"
+[[colors.indexed_colors]]
+index = 17
+color = "#dc8a78"

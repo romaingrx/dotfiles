@@ -16,7 +16,7 @@ sketchybar_resolve_paths() {
 		HELPER_DIR="$CONFIG_DIR/helpers"
 	fi
 
-	# Vanilla fallback; the theme fragment (lib/theme/fonts.nix) sets these.
+	# Vanilla fallback; colors.sh (lib/theme) sets these.
 	: "${FONT:=FiraCode Nerd Font}"
 	: "${NERD_FONT:=FiraCode Nerd Font}"
 	: "${APP_FONT:=sketchybar-app-font}"

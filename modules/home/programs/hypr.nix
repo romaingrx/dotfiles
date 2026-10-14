@@ -6,54 +6,36 @@
   ...
 }:
 let
-  cfg = config.romaingrx.theme;
-  themeLib = import ../theme/lib.nix { inherit config dotfilesPath lib; };
-  renderTheme = import ./hypr/theme.nix { inherit lib; };
-  hyprConfigRoot = "${config.home.homeDirectory}/.config/hypr";
-  runtimeHyprRoot = themeLib.currentAppDir "hypr";
-  legacyHyprTargets = [
-    (themeLib.configSource "hypr")
-  ];
-  editableHyprFiles = [
-    "autostart.conf"
-    "bindings.conf"
-    "hypridle.conf"
-    "hyprland-core.conf"
-    "hyprlock.conf"
-    "hyprpaper.conf"
-    "media.conf"
-    "rules.conf"
-    "tiling.conf"
-  ];
-  editableConfigLinks = builtins.listToAttrs (
-    map (name: {
-      name = ".config/hypr/${name}";
-      value.source = themeLib.outOfStoreConfig "hypr/${name}";
-    }) editableHyprFiles
-  );
-  generatedArtifacts = themeLib.generatedArtifacts "hypr" (appearanceTheme: {
-    "hyprland-colors.conf" = renderTheme.hyprland appearanceTheme;
-    "hyprlock-colors.conf" = renderTheme.hyprlock appearanceTheme;
-  });
+  mkFileSymlinks = import ../../../lib/mkFileSymlinks.nix { inherit lib config; };
+  theme = import ../../../lib/theme;
+  p = theme.palette;
 in
 {
-  config = lib.mkIf (cfg.enable && pkgs.stdenv.isLinux) {
-    home = {
-      activation = {
-        romaingrxHyprLegacyConfig = themeLib.removeLegacySymlinkActivation {
-          path = hyprConfigRoot;
-          expectedTargets = legacyHyprTargets;
-        };
+  config = lib.mkIf pkgs.stdenv.isLinux {
+    home.file = mkFileSymlinks {
+      repoDir = ../../../config/hypr;
+      liveDir = "${dotfilesPath}/config/hypr";
+      target = ".config/hypr";
+      suffix = ".conf";
+    };
 
-        romaingrxHyprThemeLinks = themeLib.currentSymlinkActivation {
-          links = {
-            "${hyprConfigRoot}/theme/hyprland-colors.conf" = "${runtimeHyprRoot}/hyprland-colors.conf";
-            "${hyprConfigRoot}/theme/hyprlock-colors.conf" = "${runtimeHyprRoot}/hyprlock-colors.conf";
-          };
-        };
-      };
+    # Sourced by config/hypr/hyprland-core.conf and hyprlock.conf.
+    xdg.configFile = {
+      "theme/hyprland.conf".text = ''
+        general {
+            col.active_border = rgba(${p.mauve}ee) rgba(${p.blue}ee) 45deg
+            col.inactive_border = rgba(${p.overlay0}aa)
+        }
+      '';
 
-      file = generatedArtifacts // editableConfigLinks;
+      "theme/hyprlock.conf".text = ''
+        $color = rgb(${p.base})
+        $inner_color = rgb(${p.mantle})
+        $outer_color = rgb(${p.mauve})
+        $font_color = rgb(${p.text})
+        $font_family = ${theme.font.family}
+        $check_color = rgb(${p.blue})
+      '';
     };
   };
 }

@@ -22,7 +22,7 @@
     taps = [ ];
 
     casks = [
-      # FiraCode Nerd Font is installed from the theme contract via
+      # FiraCode Nerd Font is installed from lib/theme via
       # modules/fonts.nix (pkgs.nerd-fonts.fira-code), so no cask is needed.
       "sf-symbols"
       "firefox"
