@@ -66,6 +66,10 @@
     {
       formatter = forAllSystems (pkgs: pkgs.nixfmt);
 
+      packages = forAllSystems (pkgs: {
+        home-manager = inputs.home-manager.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      });
+
       checks = forAllSystems (
         pkgs:
         import ./checks {
@@ -90,6 +94,19 @@
           ];
         };
       });
+
+      # Applied impurely by devcontainer.sh for whichever user the container runs as.
+      homeConfigurations.devcontainer = inputs.home-manager.lib.homeManagerConfiguration {
+        pkgs = nixpkgs.legacyPackages.${builtins.currentSystem};
+        extraSpecialArgs.dotfilesPath = builtins.getEnv "DOTFILES";
+        modules = [
+          ./hosts/devcontainer/home.nix
+          {
+            home.username = builtins.getEnv "USER";
+            home.homeDirectory = builtins.getEnv "HOME";
+          }
+        ];
+      };
 
       nixosConfigurations.carl = mkSystem "carl" {
         system = "x86_64-linux";
