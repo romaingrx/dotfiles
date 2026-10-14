@@ -27,10 +27,6 @@
       awscli2
       kubectl
       k9s
-
-      # Productivity
-      obsidian
-      slack
     ]
     ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
       mactop

@@ -16,9 +16,6 @@ in
     scdaemonSettings = {
       disable-ccid = true;
     };
-
-    # Comment out the public keys to prevent automatic import during activation
-    # publicKeys = [{ source = ./pubkeys/github.asc; }];
   };
 
   services.gpg-agent = {

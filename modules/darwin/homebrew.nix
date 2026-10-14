@@ -33,7 +33,9 @@
       "arc"
       "claude"
       "linear"
+      "obsidian"
       "raycast"
+      "slack"
       # Standalone, self-updating Tailscale GUI — replaces the Mac App Store
       # version so a fresh host needs no App Store sign-in. Same /Applications path.
       "tailscale-app"

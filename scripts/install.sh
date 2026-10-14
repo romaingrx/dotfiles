@@ -66,7 +66,7 @@ case "$(uname -s)" in
     #                                as root (trusted). Keep the URL/key in sync
     #                                with modules/cachix.nix.
     sudo "$(command -v nix)" run --extra-experimental-features "nix-command flakes" \
-      github:LnL7/nix-darwin -- switch --flake "path:.#$HOST" \
+      --inputs-from . nix-darwin -- switch --flake "path:.#$HOST" \
       --option extra-substituters "https://romaingrx-dotfiles.cachix.org" \
       --option extra-trusted-public-keys "romaingrx-dotfiles.cachix.org-1:8fwAzNpph5XT2vgLrEFXBKYxUPeaWdfeaGu5AUNkQDc="
     ;;

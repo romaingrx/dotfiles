@@ -66,10 +66,6 @@
     {
       formatter = forAllSystems (pkgs: pkgs.nixfmt);
 
-      packages = forAllSystems (pkgs: {
-        home-manager = inputs.home-manager.packages.${pkgs.stdenv.hostPlatform.system}.default;
-      });
-
       checks = forAllSystems (
         pkgs:
         import ./checks {

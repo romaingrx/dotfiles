@@ -51,6 +51,8 @@ lib.mkIf pkgs.stdenv.isLinux {
     _1password-gui
     firefox
     thunderbird-latest
+    obsidian
+    slack
   ];
 
   # home.pointerCursor = {
