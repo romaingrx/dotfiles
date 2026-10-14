@@ -1,7 +1,6 @@
 # Function that creates a NixOS or Darwin system configuration
 {
   inputs,
-  overlays,
   lib,
   dotfilesPath,
 }:
@@ -15,7 +14,7 @@ name:
 let
   # Basic system configuration with unfree packages allowed
   pkgs = import inputs.nixpkgs {
-    inherit system overlays;
+    inherit system;
     config = {
       allowUnfree = true;
     };
@@ -66,7 +65,6 @@ systemFunc {
         config = {
           allowUnfree = true;
         };
-        inherit overlays;
       };
     }
 

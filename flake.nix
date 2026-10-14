@@ -67,20 +67,10 @@
       ...
     }:
     let
-
-      # Import structured overlays
-      overlaySet = import ./overlays/default.nix;
-
-      # Convert overlay set to list of overlay functions
-      overlays = [
-        overlaySet.patches
-        overlaySet.customPackages
-      ];
-
       dotfilesPath = ".dotfiles";
 
       mkSystem = import ./lib/mkSystem.nix {
-        inherit inputs dotfilesPath overlays;
+        inherit inputs dotfilesPath;
         inherit (nixpkgs) lib;
       };
 

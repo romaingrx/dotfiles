@@ -41,14 +41,18 @@
     };
     openssh = {
       enable = true;
-      settings.PasswordAuthentication = true;
-      settings.PermitRootLogin = "yes";
+      settings = {
+        PasswordAuthentication = false;
+        KbdInteractiveAuthentication = false;
+        PermitRootLogin = "no";
+      };
     };
     qemuGuest.enable = true;
   };
 
   networking = {
-    firewall.enable = false;
+    # sshd opens its own port; the tailnet is trusted as a whole.
+    firewall.trustedInterfaces = [ "tailscale0" ];
     hostName = "carl";
     interfaces.ens18 = {
       useDHCP = false;
