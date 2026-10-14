@@ -6,9 +6,11 @@
 {
   imports = [
     ./hardware-configuration.nix
+    ../../../modules/nixos/desktop.nix
   ];
 
   programs.nix-ld.enable = true;
+  virtualisation.docker.enable = true;
 
   nix.settings.experimental-features = [
     "nix-command"
@@ -78,7 +80,6 @@
       nvidiaSettings = true;
       powerManagement.enable = true;
     };
-    # nvidia-container-toolkit.enable = true;
     bluetooth = {
       enable = true;
     };
