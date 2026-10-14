@@ -17,13 +17,7 @@ let
   homeDirectory = "${if darwin then "/Users" else "/home"}/${user}";
 in
 systemFunc {
-  specialArgs = {
-    inherit inputs homeDirectory;
-    pkgs-stable = import inputs.nixpkgs-stable {
-      inherit system;
-      config.allowUnfree = true;
-    };
-  };
+  specialArgs = { inherit inputs homeDirectory; };
   modules = [
     hostDir
     ../users/${user}/${systemType}.nix

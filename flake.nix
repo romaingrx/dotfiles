@@ -7,7 +7,6 @@
     # release check fails against a skewed nixpkgs. Renovate's
     # lockFileMaintenance performs this lockstep refresh automatically.
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-24.11";
     nix-darwin = {
       url = "github:LnL7/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -35,10 +34,6 @@
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    fenix = {
-      url = "github:nix-community/fenix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     pre-commit-hooks = {
       url = "github:cachix/pre-commit-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -48,14 +43,6 @@
     hunk = {
       url = "github:modem-dev/hunk";
       inputs.nixpkgs.follows = "nixpkgs";
-      # bun2nix is build-only tooling for hunk. Its flake-parts setup evaluates a
-      # treefmt formatter for every system it declares (incl. x86_64-darwin) while
-      # building the bun cache, which on unstable emits the "x86_64-darwin
-      # deprecation" warning that our CI turns fatal via abort-on-warn. Pin
-      # bun2nix's nixpkgs to the 25.11 release: new enough for its zig_0_15
-      # dependency, old enough to predate that warning. Build tooling only —
-      # hunk's runtime closure still uses unstable via the follows above.
-      inputs.bun2nix.inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     };
   };
 

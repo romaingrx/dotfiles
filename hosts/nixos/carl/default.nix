@@ -2,7 +2,7 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 
-{ pkgs-stable, ... }:
+{ pkgs, ... }:
 {
   imports = [
     ./hardware-configuration.nix
@@ -15,14 +15,12 @@
     "flakes"
   ];
 
-  nixpkgs.config.allowBroken = true;
-
   boot.loader = {
     systemd-boot.enable = true;
     efi.canTouchEfiVariables = true;
   };
 
-  environment.systemPackages = with pkgs-stable.cudaPackages; [
+  environment.systemPackages = with pkgs.cudaPackages; [
     cudatoolkit
     cudnn
     nccl
