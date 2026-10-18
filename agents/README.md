@@ -20,6 +20,25 @@ Keep `claude/output-styles/` free of files that are not styles. Claude Code
 reads every `.md` in that directory as one, so a `README.md` there would appear
 in the `/config` picker as a style named "README".
 
+## Hosts without home-manager
+
+`sync.sh` links the skills the same way on hosts that do not run the flake:
+`devcontainer.sh` calls it, and so do Claude Code cloud sessions. It skips a
+skill that the current project also ships, because Claude Code prefers a
+personal skill to a project skill with the same name.
+
+For cloud sessions, paste this in the cloud environment's setup script. The
+setup script runs once and is cached, so the hook pulls and links on every
+session, when the project is known.
+
+```sh
+git clone --depth 1 https://github.com/romaingrx/dotfiles "$HOME/.dotfiles"
+mkdir -p "$HOME/.claude"
+cat > "$HOME/.claude/settings.json" <<'EOF'
+{"hooks":{"SessionStart":[{"matcher":"startup|resume","hooks":[{"type":"command","command":"~/.dotfiles/agents/sync.sh --pull"}]}]}}
+EOF
+```
+
 ## bob-stack
 
 `skills/bob-stack/` is the entry point for non-trivial engineering work. Its
@@ -60,10 +79,10 @@ commit and read the diff before committing.
 # refresh both from a chosen commit
 SHA=<commit>
 B="https://raw.githubusercontent.com/AminBlg/SimpleEnglish/$SHA"
-curl -sfL "$B/skills/simple-english/SKILL.md"                -o config/agents/skills/simple-english/SKILL.md
-curl -sfL "$B/skills/simple-english/references/checklist.md" -o config/agents/skills/simple-english/references/checklist.md
-curl -sfL "$B/skills/simple-english/references/use-cases.md" -o config/agents/skills/simple-english/references/use-cases.md
-curl -sfL "$B/output-styles/simple-english.md"               -o config/agents/claude/output-styles/simple-english.md
+curl -sfL "$B/skills/simple-english/SKILL.md"                -o agents/skills/simple-english/SKILL.md
+curl -sfL "$B/skills/simple-english/references/checklist.md" -o agents/skills/simple-english/references/checklist.md
+curl -sfL "$B/skills/simple-english/references/use-cases.md" -o agents/skills/simple-english/references/use-cases.md
+curl -sfL "$B/output-styles/simple-english.md"               -o agents/claude/output-styles/simple-english.md
 ```
 
 ### Adapted from pstack

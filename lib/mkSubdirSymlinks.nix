@@ -10,8 +10,8 @@
 #
 # Usage example:
 # home.file = mkSubdirSymlinks {
-#   repoDir     = ../../config/agents/skills;              # read at eval time
-#   liveDir     = "${dotfilesPath}/config/agents/skills";  # live checkout (link target)
+#   repoDir     = ../../agents/skills;              # read at eval time
+#   liveDir     = "${dotfilesPath}/agents/skills";  # live checkout (link target)
 #   target      = ".agents/skills";                        # destination prefix in $HOME
 #   requireFile = "SKILL.md";                              # optional: skip folders without it
 # };
