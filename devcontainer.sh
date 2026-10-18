@@ -57,7 +57,7 @@ mkdir -p ~/.config
 ln -sf "$DOTFILES_DIR/config/nvim" ~/.config/nvim
 
 # --- agent skills (shared with the Nix hosts via agents/skills) ---
-"$DOTFILES_DIR/agents/sync.sh"
+"$DOTFILES_DIR/agents/sync.sh" --install-hook
 
 # --- set default shell to zsh ---
 sudo chsh -s "$(which zsh)" "$(whoami)" 2>/dev/null || true

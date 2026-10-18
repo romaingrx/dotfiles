@@ -4,7 +4,7 @@ Instructions for coding agents, split by how many agents can read them.
 
 | Path                            | Read by                              | Linked by                                 |
 | ------------------------------- | ------------------------------------ | ----------------------------------------- |
-| `skills/<name>/SKILL.md`        | every agent (Agent Skills standard)  | `modules/home/programs/agent-skills.nix`  |
+| `skills/<name>/SKILL.md`        | every agent (Agent Skills standard)  | `modules/home/programs/agent-skills.nix`, `sync.sh` |
 | `claude/output-styles/<name>.md`| Claude Code only                     | `modules/home/programs/claude-code.nix`   |
 
 Both are symlinked from the live checkout, so an edit applies to the next agent
@@ -31,21 +31,19 @@ in the `/config` picker as a style named "README".
 
 ## Hosts without home-manager
 
-`sync.sh` makes the same links on hosts that do not run the flake:
-`devcontainer.sh` calls it, and so do Claude Code cloud sessions. It skips a
-skill that the current project also ships, because Claude Code prefers a
-personal skill to a project skill with the same name.
+`sync.sh` makes the same skill links on hosts that do not run the flake, such as
+Claude Code cloud sessions and devcontainers. It does not link output styles.
+It skips a skill that the current project also ships, because Claude Code
+prefers a personal skill to a project skill with the same name.
 
-For cloud sessions, paste this in the cloud environment's setup script. The
-setup script runs once and is cached, so the hook pulls and links on every
-session, when the project is known.
+A setup that runs once cannot know the project. So `--install-hook` writes a
+`SessionStart` hook into `~/.claude/settings.json` that runs `sync.sh --pull` at
+each session. `devcontainer.sh` does this. For cloud sessions, paste this in the
+cloud environment's setup script, which runs once and is cached:
 
 ```sh
 git clone --depth 1 https://github.com/romaingrx/dotfiles "$HOME/.dotfiles"
-mkdir -p "$HOME/.claude"
-cat > "$HOME/.claude/settings.json" <<'EOF'
-{"hooks":{"SessionStart":[{"matcher":"startup|resume","hooks":[{"type":"command","command":"~/.dotfiles/agents/sync.sh --pull"}]}]}}
-EOF
+"$HOME/.dotfiles/agents/sync.sh" --install-hook
 ```
 
 ## bob-stack
