@@ -14,11 +14,7 @@
     # goddard was set to displaysleep=180 on BOTH power sources, against macOS
     # defaults of 2 (battery) and 10 (AC) — the panel, the single largest draw
     # on the machine, went three hours before sleeping while unattended.
-    #
-    # Found in the August 2026 idle-power audit; see docs/perf-audit-2026-08.md.
-    # Unlike the rest of that audit these numbers are a judgement call, not a
-    # measurement: the saving is real but was never quantified in milliwatts,
-    # because that needs `sudo powermetrics`. Tune to taste.
+    # These numbers are a judgement call, not a measurement. Tune to taste.
     pmset -b displaysleep 5
     pmset -c displaysleep 30
   '';

@@ -5,24 +5,15 @@
   ...
 }:
 let
-  mkFileSymlinks = import ../../../lib/mkFileSymlinks.nix { inherit lib config; };
-  mkSourceCheck = import ../../../lib/mkSourceCheck.nix { inherit lib; };
-
-  liveDir = "${dotfilesPath}/agents/claude/output-styles";
+  styles = lib.filter (lib.hasSuffix ".md") (
+    lib.attrNames (builtins.readDir ../../../agents/claude/output-styles)
+  );
 in
 {
-  # Output styles are Claude-only, so they sit outside the vendor-neutral tree
-  # agent-skills.nix fans out. Per-file links, as in that module, so a style
-  # dropped in by hand coexists instead of landing inside the repo.
-  home.file = mkFileSymlinks {
-    repoDir = ../../../agents/claude/output-styles;
-    target = ".claude/output-styles";
-    suffix = ".md";
-    inherit liveDir;
-  };
-
-  home.activation.claudeOutputStylesSourceCheck = mkSourceCheck {
-    label = "claude-code";
-    dir = liveDir;
-  };
+  home.file = lib.genAttrs' styles (
+    name:
+    lib.nameValuePair ".claude/output-styles/${name}" {
+      source = config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/agents/claude/output-styles/${name}";
+    }
+  );
 }

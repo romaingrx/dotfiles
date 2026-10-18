@@ -6,18 +6,20 @@
   ...
 }:
 let
-  mkFileSymlinks = import ../../../lib/mkFileSymlinks.nix { inherit lib config; };
   theme = import ../../../lib/theme;
   p = theme.palette;
 in
 {
   config = lib.mkIf pkgs.stdenv.isLinux {
-    home.file = mkFileSymlinks {
-      repoDir = ../../../config/hypr;
-      liveDir = "${dotfilesPath}/config/hypr";
-      target = ".config/hypr";
-      suffix = ".conf";
-    };
+    home.file =
+      lib.genAttrs'
+        (lib.filter (lib.hasSuffix ".conf") (lib.attrNames (builtins.readDir ../../../config/hypr)))
+        (
+          name:
+          lib.nameValuePair ".config/hypr/${name}" {
+            source = config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/hypr/${name}";
+          }
+        );
 
     # Sourced by config/hypr/hyprland-core.conf and hyprlock.conf.
     xdg.configFile = {

@@ -1,7 +1,4 @@
 { pkgs, ... }:
 {
-  users.users.romaingrx = {
-    home = "/Users/romaingrx";
-    shell = pkgs.zsh;
-  };
+  users.users.romaingrx.shell = pkgs.zsh;
 }

@@ -2,27 +2,27 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 
-{ pkgs-stable, ... }:
+{ pkgs, ... }:
 {
   imports = [
     ./hardware-configuration.nix
+    ../../../modules/nixos/desktop.nix
   ];
 
   programs.nix-ld.enable = true;
+  virtualisation.docker.enable = true;
 
   nix.settings.experimental-features = [
     "nix-command"
     "flakes"
   ];
 
-  nixpkgs.config.allowBroken = true;
-
   boot.loader = {
     systemd-boot.enable = true;
     efi.canTouchEfiVariables = true;
   };
 
-  environment.systemPackages = with pkgs-stable.cudaPackages; [
+  environment.systemPackages = with pkgs.cudaPackages; [
     cudatoolkit
     cudnn
     nccl
@@ -41,14 +41,18 @@
     };
     openssh = {
       enable = true;
-      settings.PasswordAuthentication = true;
-      settings.PermitRootLogin = "yes";
+      settings = {
+        PasswordAuthentication = false;
+        KbdInteractiveAuthentication = false;
+        PermitRootLogin = "no";
+      };
     };
     qemuGuest.enable = true;
   };
 
   networking = {
-    firewall.enable = false;
+    # sshd opens its own port; the tailnet is trusted as a whole.
+    firewall.trustedInterfaces = [ "tailscale0" ];
     hostName = "carl";
     interfaces.ens18 = {
       useDHCP = false;
@@ -76,7 +80,6 @@
       nvidiaSettings = true;
       powerManagement.enable = true;
     };
-    # nvidia-container-toolkit.enable = true;
     bluetooth = {
       enable = true;
     };

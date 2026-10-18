@@ -11,8 +11,7 @@
 # CAVEAT, unchanged from the original: `ps -o pcpu` is a process-LIFETIME average,
 # not current load, so this number has always been closer to "average CPU since
 # boot" than "CPU now". Making it correct needs a sampling source; the compiled
-# event provider `sketchybar-system-stats` is the real fix. See
-# docs/perf-audit-2026-08.md.
+# event provider `sketchybar-system-stats` is the real fix.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../helpers/env.sh"

@@ -1,6 +1,5 @@
 {
   config,
-  lib,
   pkgs,
   ...
 }:
@@ -21,10 +20,6 @@ in
         sopsFile = gpg_sops_file;
         mode = "0600";
       };
-    }
-    # The GitHub SSH key, decrypted to where ssh.nix expects it. Inert until
-    # secrets/ssh.yaml exists — add it with: sops users/romaingrx/secrets/ssh.yaml
-    // lib.optionalAttrs (builtins.pathExists ssh_sops_file) {
       "github_ssh_private_key" = {
         path = "${homeDirectory}/.ssh/github";
         sopsFile = ssh_sops_file;

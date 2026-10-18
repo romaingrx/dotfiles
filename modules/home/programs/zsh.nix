@@ -1,62 +1,84 @@
 { pkgs, ... }:
 {
-  enable = true;
-  enableCompletion = true;
-  autosuggestion.enable = true;
-  syntaxHighlighting.enable = true;
+  programs.zsh = {
+    enable = true;
+    autocd = true;
+    autosuggestion.enable = true;
+    syntaxHighlighting.enable = true;
 
-  plugins = with pkgs; [
-    {
-      name = "zsh-vi-mode";
-      src = fetchFromGitHub {
-        owner = "jeffreytse";
-        repo = "zsh-vi-mode";
-        rev = "v0.11.0";
-        sha256 = "sha256-xbchXJTFWeABTwq6h4KWLh+EvydDrDzcY9AQVK65RS8=";
-      };
-    }
-    {
-      name = "zsh-syntax-highlighting";
-      src = fetchFromGitHub {
-        owner = "zsh-users";
-        repo = "zsh-syntax-highlighting";
-        rev = "0.6.0";
-        sha256 = "sha256-hH4qrpSotxNB7zIT3u7qcog51yTQr5j5Lblq9ZsxuH4=";
-      };
-      file = "zsh-syntax-highlighting.zsh";
-    }
-    {
-      name = "powerlevel10k";
-      src = fetchFromGitHub {
-        owner = "romkatv";
-        repo = "powerlevel10k";
-        rev = "v1.19.0";
-        sha256 = "sha256-+hzjSbbrXr0w1rGHm6m2oZ6pfmD6UUDBfPd7uMg5l5c=";
-      };
-    }
-    {
-      name = "zsh-autosuggestions";
-      src = fetchFromGitHub {
-        owner = "zsh-users";
-        repo = "zsh-autosuggestions";
-        rev = "v0.7.0";
-        sha256 = "sha256-KLUYpUu4DHRumQZ3w59m9aTW6TBKMCXl2UcKi4uMd7w=";
-      };
-    }
-  ];
+    # Rebuild the completion dump at most once a day.
+    completionInit = ''
+      autoload -Uz compinit
+      if [[ -n $HOME/.zcompdump(#qN.mh+24) ]]; then compinit; else compinit -C; fi
+    '';
 
-  initContent = ''
-    # Shared portable config (aliases, options, keybindings, history)
-    source ${../../../config/zsh/zshrc}
+    history = {
+      size = 50000;
+      save = 50000;
+      share = false;
+      extended = true;
+      ignoreDups = true;
+      ignoreSpace = true;
+      findNoDups = true;
+      saveNoDups = true;
+      expireDuplicatesFirst = true;
+    };
 
-    # Nix-specific: powerlevel10k theme
-    source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme
-    [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+    shellAliases = {
+      ll = "ls -l";
+      la = "ls -la";
+      gs = "git status";
+      gc = "git commit";
+      gp = "git push";
+      gl = "git pull";
+    };
 
-    # Nix-specific: fzf integration
-    if [ -n "$(command -v fzf)" ]; then
-      source ${pkgs.fzf}/share/fzf/key-bindings.zsh
-      source ${pkgs.fzf}/share/fzf/completion.zsh
-    fi
-  '';
+    plugins = [
+      {
+        name = "zsh-vi-mode";
+        src = pkgs.zsh-vi-mode;
+        file = "share/zsh-vi-mode/zsh-vi-mode.plugin.zsh";
+      }
+      {
+        name = "powerlevel10k";
+        src = pkgs.zsh-powerlevel10k;
+        file = "share/zsh-powerlevel10k/powerlevel10k.zsh-theme";
+      }
+    ];
+
+    initContent = ''
+      setopt HIST_VERIFY INC_APPEND_HISTORY_TIME AUTO_PUSHD PUSHD_IGNORE_DUPS PUSHD_MINUS
+
+      zstyle ':completion:*' menu select
+      zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+
+      bindkey '^[[A' up-line-or-search
+      bindkey '^[[B' down-line-or-search
+      bindkey '^[[H' beginning-of-line
+      bindkey '^[[F' end-of-line
+      bindkey '^[[3~' delete-char
+      bindkey '^[[1;5C' forward-word
+      bindkey '^[[1;5D' backward-word
+
+      [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+    '';
+  };
+
+  programs.fzf = {
+    enable = true;
+    defaultOptions = [
+      "--height 40%"
+      "--layout=reverse"
+      "--border"
+    ];
+    historyWidgetOptions = [
+      "--sort"
+      "--exact"
+    ];
+  };
+
+  home.sessionVariables = {
+    CLICOLOR = "1";
+    LSCOLORS = "ExFxBxDxCxegedabagacad";
+  };
 }
