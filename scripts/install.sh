@@ -59,12 +59,12 @@ case "$(uname -s)" in
     #                                flakes from it (darwin-rebuild sets these
     #                                itself for its inner build).
     #   --option extra-substituters  bootstrap chicken-and-egg — our binary cache
-    #                                (modules/cachix.nix) isn't in the daemon's
+    #                                (modules/nix.nix) isn't in the daemon's
     #                                nix.conf until the first activation succeeds,
     #                                so hand it to this first build. Honored:
     #                                darwin-rebuild forwards --option and we run
     #                                as root (trusted). Keep the URL/key in sync
-    #                                with modules/cachix.nix.
+    #                                with modules/nix.nix.
     sudo "$(command -v nix)" run --extra-experimental-features "nix-command flakes" \
       --inputs-from . nix-darwin -- switch --flake "path:.#$HOST" \
       --option extra-substituters "https://romaingrx-dotfiles.cachix.org" \
