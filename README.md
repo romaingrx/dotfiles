@@ -26,4 +26,4 @@ nix flake check      # eval + lint every host
 nix fmt
 ```
 
-`hosts/` per-host · `modules/` shared · `users/` · `overlays/` · `config/` app configs · `lib/` · `scripts/`
+`hosts/` per-host · `modules/` shared · `users/` · `overlays/` · `config/` app configs · `agents/` agent skills · `lib/` · `scripts/`

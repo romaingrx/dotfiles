@@ -12,8 +12,8 @@
 #
 # Usage example:
 # home.file = mkFileSymlinks {
-#   repoDir = ../../config/agents/claude/output-styles;              # read at eval time
-#   liveDir = "${dotfilesPath}/config/agents/claude/output-styles";  # live checkout
+#   repoDir = ../../agents/claude/output-styles;              # read at eval time
+#   liveDir = "${dotfilesPath}/agents/claude/output-styles";  # live checkout
 #   target  = ".claude/output-styles";                               # prefix in $HOME
 #   suffix  = ".md";                                                 # optional
 # };

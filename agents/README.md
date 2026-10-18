@@ -4,13 +4,22 @@ Instructions for coding agents, split by how many agents can read them.
 
 | Path                            | Read by                              | Linked by                                 |
 | ------------------------------- | ------------------------------------ | ----------------------------------------- |
-| `skills/<name>/SKILL.md`        | every agent (Agent Skills standard)  | `modules/home/programs/agent-skills.nix`  |
+| `skills/<name>/SKILL.md`        | every agent (Agent Skills standard)  | `modules/home/programs/agent-skills.nix`, `sync.sh` |
 | `claude/output-styles/<name>.md`| Claude Code only                     | `modules/home/programs/claude-code.nix`   |
 
 Both are symlinked from the live checkout, so an edit applies to the next agent
 session with no rebuild. Add a skill by creating `skills/<name>/SKILL.md`, add a
 style by creating `claude/output-styles/<name>.md`, then `git add` it — the
 flake only sees tracked files.
+
+Skills land in `~/.agents/skills`, the hub that most agents read (Codex, Pi,
+Cline). Each folder listed in `mirrors` links back to the hub, for agents that
+ignore it, such as Claude Code. To add such an agent, add its folder to
+`mirrors`.
+
+```
+~/.claude/skills/tdd -> ~/.agents/skills/tdd -> ~/.dotfiles/agents/skills/tdd
+```
 
 Each entry is linked on its own, never the folder, so the destinations stay real
 directories. A skill or style dropped straight into `~/.claude` is machine-local
@@ -19,6 +28,23 @@ and survives a switch; only what lives here is portable across hosts.
 Keep `claude/output-styles/` free of files that are not styles. Claude Code
 reads every `.md` in that directory as one, so a `README.md` there would appear
 in the `/config` picker as a style named "README".
+
+## Hosts without home-manager
+
+`sync.sh` makes the same skill links on hosts that do not run the flake, such as
+Claude Code cloud sessions and devcontainers. It does not link output styles.
+It skips a skill that the current project also ships, because Claude Code
+prefers a personal skill to a project skill with the same name.
+
+A setup that runs once cannot know the project. So `--install-hook` writes a
+`SessionStart` hook into `~/.claude/settings.json` that runs `sync.sh --pull` at
+each session. `devcontainer.sh` does this. For cloud sessions, paste this in the
+cloud environment's setup script, which runs once and is cached:
+
+```sh
+git clone --depth 1 https://github.com/romaingrx/dotfiles "$HOME/.dotfiles"
+"$HOME/.dotfiles/agents/sync.sh" --install-hook
+```
 
 ## bob-stack
 
@@ -60,10 +86,10 @@ commit and read the diff before committing.
 # refresh both from a chosen commit
 SHA=<commit>
 B="https://raw.githubusercontent.com/AminBlg/SimpleEnglish/$SHA"
-curl -sfL "$B/skills/simple-english/SKILL.md"                -o config/agents/skills/simple-english/SKILL.md
-curl -sfL "$B/skills/simple-english/references/checklist.md" -o config/agents/skills/simple-english/references/checklist.md
-curl -sfL "$B/skills/simple-english/references/use-cases.md" -o config/agents/skills/simple-english/references/use-cases.md
-curl -sfL "$B/output-styles/simple-english.md"               -o config/agents/claude/output-styles/simple-english.md
+curl -sfL "$B/skills/simple-english/SKILL.md"                -o agents/skills/simple-english/SKILL.md
+curl -sfL "$B/skills/simple-english/references/checklist.md" -o agents/skills/simple-english/references/checklist.md
+curl -sfL "$B/skills/simple-english/references/use-cases.md" -o agents/skills/simple-english/references/use-cases.md
+curl -sfL "$B/output-styles/simple-english.md"               -o agents/claude/output-styles/simple-english.md
 ```
 
 ### Adapted from pstack
