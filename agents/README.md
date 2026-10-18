@@ -12,6 +12,15 @@ session with no rebuild. Add a skill by creating `skills/<name>/SKILL.md`, add a
 style by creating `claude/output-styles/<name>.md`, then `git add` it — the
 flake only sees tracked files.
 
+Skills land in `~/.agents/skills`, the hub that most agents read (Codex, Pi,
+Cline). Each folder listed in `mirrors` links back to the hub, for agents that
+ignore it, such as Claude Code. To add such an agent, add its folder to
+`mirrors`.
+
+```
+~/.claude/skills/tdd -> ~/.agents/skills/tdd -> ~/.dotfiles/agents/skills/tdd
+```
+
 Each entry is linked on its own, never the folder, so the destinations stay real
 directories. A skill or style dropped straight into `~/.claude` is machine-local
 and survives a switch; only what lives here is portable across hosts.
@@ -22,7 +31,7 @@ in the `/config` picker as a style named "README".
 
 ## Hosts without home-manager
 
-`sync.sh` links the skills the same way on hosts that do not run the flake:
+`sync.sh` makes the same links on hosts that do not run the flake:
 `devcontainer.sh` calls it, and so do Claude Code cloud sessions. It skips a
 skill that the current project also ships, because Claude Code prefers a
 personal skill to a project skill with the same name.

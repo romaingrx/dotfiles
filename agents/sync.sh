@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Links each skill in agents/skills into the agent skill folders of $HOME, for
-# hosts without home-manager: cloud agent sessions and devcontainers. Nix hosts
-# get the same links from modules/home/programs/agent-skills.nix.
+# Links each skill in agents/skills into ~/.agents/skills, and links each folder
+# in agents/mirrors back to it, for hosts without home-manager: cloud agent
+# sessions and devcontainers. Nix hosts get the same links from
+# modules/home/programs/agent-skills.nix.
 #
 # Claude Code prefers a personal skill to a project skill with the same name.
 # So a skill that the current project also ships is unlinked, and the project
@@ -11,7 +12,7 @@
 #   --pull  fast-forward this checkout first, for a SessionStart hook.
 set -euo pipefail
 
-root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 project="${CLAUDE_PROJECT_DIR:-$PWD}"
 
 if [[ "${1:-}" == --pull ]]; then
@@ -30,16 +31,24 @@ project_ships() {
   return 1
 }
 
-for target in .claude/skills .agents/skills .codex/skills; do
-  mkdir -p "$HOME/$target"
-  for skill in "$root"/skills/*/; do
-    skill="${skill%/}"
-    name="${skill##*/}"
-    link="$HOME/$target/$name"
-    if project_ships "$name"; then
-      if [[ -L "$link" ]]; then rm "$link"; fi
-    elif [[ -f "$skill/SKILL.md" ]]; then
-      ln -sfn "$skill" "$link"
-    fi
-  done
+hub="$HOME/.agents/skills"
+mirrors=()
+while IFS= read -r line; do
+  if [[ -n "$line" && "$line" != \#* ]]; then mirrors+=("$HOME/$line"); fi
+done <"$root/mirrors"
+
+mkdir -p "$hub" "${mirrors[@]}"
+for skill in "$root"/skills/*/; do
+  skill="${skill%/}"
+  name="${skill##*/}"
+  if project_ships "$name"; then
+    for dir in "$hub" "${mirrors[@]}"; do
+      if [[ -L "$dir/$name" ]]; then rm "$dir/$name"; fi
+    done
+  elif [[ -f "$skill/SKILL.md" ]]; then
+    ln -sfn "$skill" "$hub/$name"
+    for dir in "${mirrors[@]}"; do
+      ln -sfn "$hub/$name" "$dir/$name"
+    done
+  fi
 done
