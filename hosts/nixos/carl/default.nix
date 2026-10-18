@@ -12,21 +12,26 @@
   programs.nix-ld.enable = true;
   virtualisation.docker.enable = true;
 
-  nix.settings.experimental-features = [
-    "nix-command"
-    "flakes"
-  ];
+  nix.settings = {
+    experimental-features = [
+      "nix-command"
+      "flakes"
+    ];
+    # cache.nixos.org skips unfree CUDA; this cache carries it.
+    substituters = [ "https://cache.nixos-cuda.org" ];
+    trusted-public-keys = [ "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M=" ];
+  };
 
   boot.loader = {
     systemd-boot.enable = true;
     efi.canTouchEfiVariables = true;
   };
 
+  # Prebuilt NVIDIA binaries only. nccl compiles from source for every GPU
+  # arch, so it stays out; cudatoolkit already bundles libcublas.
   environment.systemPackages = with pkgs.cudaPackages; [
     cudatoolkit
     cudnn
-    nccl
-    libcublas
   ];
 
   services = {
