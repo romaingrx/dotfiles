@@ -11,6 +11,10 @@ description: >-
 
 # Stacking pull requests
 
+Use `gh stack` by default. If it fails with a GraphQL error (for example HTTP
+403 "GitHub GraphQL is not available from Claude Code sessions"), follow
+[the REST fallback](references/rest-fallback.md) instead.
+
 A stack is a chain of branches in one repository: the bottom branch targets the
 trunk (usually `main`), and each branch above targets the branch below it. Each
 pull request shows only its own layer's diff, and they merge bottom-up.

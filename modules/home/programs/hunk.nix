@@ -1,4 +1,7 @@
 { inputs, ... }:
+let
+  theme = import ../../../lib/theme;
+in
 {
   # Home Manager module shipped by the hunk flake input. It provides the
   # flake-built `hunk` package (not in nixpkgs) and manages both the package and
@@ -16,9 +19,7 @@
     enableGitIntegration = true;
 
     settings = {
-      # Match the rest of the setup, which themes everything with Catppuccin
-      # (dark default). Use "auto" instead to follow the terminal background.
-      theme = "catppuccin-mocha";
+      theme = "catppuccin-${theme.flavor}";
       mode = "auto"; # auto | split | stack
       line_numbers = true;
     };

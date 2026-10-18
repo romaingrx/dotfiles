@@ -1,0 +1,4 @@
+# Skill folders, relative to $HOME, for agents that do not read ~/.agents/skills.
+# Each skill in ~/.agents/skills gets a link here that points back to it.
+# Read by modules/home/programs/agent-skills.nix and agents/sync.sh.
+.claude/skills

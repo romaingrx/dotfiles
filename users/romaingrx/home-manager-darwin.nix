@@ -29,19 +29,4 @@ lib.mkIf pkgs.stdenv.isDarwin {
   home.activation.ensureScreenshotDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     run mkdir -p "${config.home.homeDirectory}/Pictures/screenshots"
   '';
-
-  launchd.agents.appearance-theme-switcher = {
-    enable = true;
-    config = {
-      Label = "com.romaingrx.appearance-theme-switcher";
-      ProgramArguments = [
-        "${pkgs.bash}/bin/bash"
-        "${config.home.homeDirectory}/.local/bin/romaingrx-theme-watch"
-      ];
-      RunAtLoad = true;
-      KeepAlive = true;
-      StandardOutPath = "/tmp/appearance-theme-switcher.log";
-      StandardErrorPath = "/tmp/appearance-theme-switcher.err";
-    };
-  };
 }
