@@ -32,7 +32,9 @@ let
   logo =
     name: lit: dim:
     let
-      dot = x: y: on: ''<circle cx="${toString x}" cy="${toString y}" r="2.7" fill="#${if on then lit else dim}"/>'';
+      dot =
+        x: y: on:
+        ''<circle cx="${toString x}" cy="${toString y}" r="2.7" fill="#${if on then lit else dim}"/>'';
       svg = pkgs.writeText "tailscale-${name}.svg" ''
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
           ${dot 4 4 false}${dot 12 4 false}${dot 20 4 false}
