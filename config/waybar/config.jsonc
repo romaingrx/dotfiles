@@ -20,22 +20,12 @@
   ],
   "hyprland/workspaces": {
     "on-click": "activate",
-    // The number, then an icon per open window. The active one is accented in
+    // The number, then an icon per open window. The icons come from
+    // sketchybar-app-font's own app map (see modules/home/programs/waybar.nix),
+    // the same one sketchybar uses on macOS. The active one is accented in
     // style.css.
     "format": "{name}{windows}",
     "format-window-separator": "",
-    "window-rewrite-default": " 󰣆",
-    "window-rewrite": {
-      "class<Alacritty|kitty|com.mitchellh.ghostty>": " 󰆍",
-      "class<firefox>": " 󰈹",
-      "class<[Ss]potify>": " 󰓇",
-      "class<signal>": " 󰭹",
-      "class<obsidian>": " ",
-      "class<thunderbird>": " 󰇮",
-      "class<[Ss]lack>": " 󰒱",
-      "class<1[Pp]assword>": " 󰌆",
-      "class<org.gnome.Nautilus>": " 󰉋"
-    },
     "persistent-workspaces": {
       "1": [],
       "2": [],

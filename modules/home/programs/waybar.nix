@@ -60,6 +60,13 @@ let
       rsvg-convert --width 48 --height 48 ${svg} --output $out
     '';
 
+  # Window-rewrite rules for the workspace app icons, generated from the app map
+  # that ships with the font, so a new app needs no edit here.
+  appIcons = pkgs.runCommand "waybar-app-icons.json" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+    python3 -I ${../../../config/waybar/scripts/app-icons.py} \
+      ${pkgs.sketchybar-app-font}/bin/icon_map.sh sketchybar-app-font > $out
+  '';
+
   tailscaleStatus = pkgs.writeShellApplication {
     name = "waybar-tailscale";
     runtimeInputs = [
@@ -84,7 +91,10 @@ in
         # Replaces the symlink left by the old runtime theme switcher.
         force = true;
         text = builtins.toJSON {
-          include = [ "${config.xdg.configHome}/waybar/config-base.jsonc" ];
+          include = [
+            "${config.xdg.configHome}/waybar/config-base.jsonc"
+            "${appIcons}"
+          ];
           clock.calendar.format = {
             months = span roles.accent;
             weekdays = span roles.fg;
