@@ -18,7 +18,7 @@ cells=(⠀ ⢀ ⢠ ⢰ ⢸ ⡀ ⣀ ⣠ ⣰ ⣸ ⡄ ⣄ ⣤ ⣴ ⣼ ⡆ ⣆ ⣦ �
 # of braille, oldest first. Missing samples are left blank.
 graph() {
   local -n values=$1
-  local rows=$2 count=$3 out="" row i j level=() pad
+  local rows=$2 count=$3 out="" row i j left right level=() pad
   pad=$((count - ${#values[@]}))
   for ((i = 0; i < count; i++)); do
     j=$((i - pad))
@@ -26,19 +26,14 @@ graph() {
   done
   for ((row = rows - 1; row >= 0; row--)); do
     for ((i = 0; i < count; i += 2)); do
-      out+=${cells[$(dots "${level[i]}" "$row") * 5 + $(dots "${level[i + 1]:-0}" "$row")]}
+      # Dots lit in this row (0 is the bottom) for each column, 0 to 4.
+      ((left = level[i] - row * 4, left = left < 0 ? 0 : left > 4 ? 4 : left))
+      ((right = level[i + 1] - row * 4, right = right < 0 ? 0 : right > 4 ? 4 : right))
+      out+=${cells[left * 5 + right]}
     done
     ((row)) && out+='\n'
   done
   printf '%s' "$out"
-}
-
-# Dots lit in braille row ROW (0 is the bottom) for a column of height LEVEL.
-dots() {
-  local d=$(($1 - $2 * 4))
-  ((d < 0)) && d=0
-  ((d > 4)) && d=4
-  echo "$d"
 }
 
 push() { # ARRAY VALUE
@@ -130,18 +125,28 @@ mem() {
   done
 }
 
-# scale RATES OUT: RATES as 0-100 of their busiest sample, with a floor so an
-# idle link stays flat.
-scale() {
-  local -n from=$1 to=$2
+# track RATES GRAPH VALUE: keep VALUE (bytes/s) in RATES and redraw GRAPH as
+# 0-100 of the busiest sample, with a floor so an idle link stays flat.
+track() {
+  local -n rates=$1 scaled=$2
   local r peak=131072
-  for r in "${from[@]}"; do ((r > peak)) && peak=$r; done
-  to=()
-  for r in "${from[@]}"; do to+=($((100 * r / peak))); done
+  push "$1" "$3"
+  for r in "${rates[@]}"; do ((r > peak)) && peak=$r; done
+  scaled=()
+  for r in "${rates[@]}"; do scaled+=($((100 * r / peak))); done
+}
+
+# direction ARROW RATES GRAPH COLOR: a tooltip block for one direction.
+direction() {
+  local -n rates=$2
+  local peak
+  read -r _ peak < <(stats "$2")
+  printf '<b>%s</b> %s/s  peak %s/s\\n%s' "$1" "$(human "${rates[-1]}")" "$(human "$peak")" \
+    "$(paint "$4" "$(graph "$3" 2 $keep)")"
 }
 
 net() {
-  local iface rx tx prev_rx=0 prev_tx=0 down up addr dpeak upeak
+  local iface rx tx prev_rx=0 prev_tx=0 addr
   local downs=() ups=() down_graph=() up_graph=()
   while :; do
     # The interface holding the default route, so nothing is hard-coded.
@@ -155,16 +160,11 @@ net() {
     read -r rx </sys/class/net/"$iface"/statistics/rx_bytes
     read -r tx </sys/class/net/"$iface"/statistics/tx_bytes
     if ((prev_rx)); then
-      down=$(((rx - prev_rx) / interval)) up=$(((tx - prev_tx) / interval))
-      push downs "$down"
-      push ups "$up"
-      scale downs down_graph
-      scale ups up_graph
-      read -r _ dpeak < <(stats downs)
-      read -r _ upeak < <(stats ups)
+      track downs down_graph $(((rx - prev_rx) / interval))
+      track ups up_graph $(((tx - prev_tx) / interval))
       addr=$(ip -4 -brief address show dev "$iface" | awk '{ print $3 }')
-      emit "$(paint "$THEME_MUTED" '󰈀') $(paint "$THEME_ACCENT" "$(graph down_graph 1 $shown)") $(human "$down")" normal \
-        "<b>⇣</b> $(human "$down")/s  peak $(human "$dpeak")/s\\n$(paint "$THEME_ACCENT" "$(graph down_graph 2 $keep)")\\n<b>⇡</b> $(human "$up")/s  peak $(human "$upeak")/s\\n$(paint "$THEME_SECONDARY" "$(graph up_graph 2 $keep)")\\n$(paint "$THEME_MUTED" "$iface  $addr · last 2 min")"
+      emit "$(paint "$THEME_MUTED" '󰈀') $(paint "$THEME_ACCENT" "$(graph down_graph 1 $shown)") $(human "${downs[-1]}")" normal \
+        "$(direction ⇣ downs down_graph "$THEME_ACCENT")\\n$(direction ⇡ ups up_graph "$THEME_SECONDARY")\\n$(paint "$THEME_MUTED" "$iface  $addr · last 2 min")"
     fi
     prev_rx=$rx prev_tx=$tx
     sleep "$interval"

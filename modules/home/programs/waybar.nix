@@ -11,6 +11,21 @@ let
   link = name: config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/waybar/${name}";
   span = color: "<span color='#${color}'><b>{}</b></span>";
 
+  # What each color means on the bar, defined once for the CSS (as @theme_<role>)
+  # and the scripts (as $THEME_<ROLE>).
+  roles = {
+    bg = p.base;
+    fg = p.text;
+    muted = p.overlay1;
+    accent = p.mauve;
+    secondary = p.teal;
+    warning = p.peach;
+    danger = p.red;
+    surface = p.surface0;
+    mantle = p.mantle;
+  };
+  roleEnv = lib.mapAttrs' (role: lib.nameValuePair "THEME_${lib.toUpper role}") roles;
+
   # Right-side modules, built here so they read the palette.
   stats = pkgs.writeShellApplication {
     name = "waybar-stats";
@@ -19,13 +34,7 @@ let
       gawk
       iproute2
     ];
-    runtimeEnv = {
-      THEME_MUTED = p.overlay1;
-      THEME_ACCENT = p.mauve;
-      THEME_WARNING = p.peach;
-      THEME_DANGER = p.red;
-      THEME_SECONDARY = p.teal;
-    };
+    runtimeEnv = roleEnv;
     # The script hands arrays to helpers by name (local -n), which shellcheck
     # reads as unused.
     excludeShellChecks = [ "SC2034" ];
@@ -58,7 +67,7 @@ let
       pkgs.tailscale
     ];
     runtimeEnv = {
-      TAILSCALE_ON = "${logo "on" p.text p.surface2}";
+      TAILSCALE_ON = "${logo "on" roles.fg p.surface2}";
       TAILSCALE_OFF = "${logo "off" p.surface2 p.surface1}";
     };
     text = builtins.readFile ../../../config/waybar/scripts/tailscale.sh;
@@ -77,9 +86,9 @@ in
         text = builtins.toJSON {
           include = [ "${config.xdg.configHome}/waybar/config-base.jsonc" ];
           clock.calendar.format = {
-            months = span p.mauve;
-            weekdays = span p.subtext0;
-            today = span p.red;
+            months = span roles.accent;
+            weekdays = span roles.fg;
+            today = span roles.danger;
           };
           "custom/cpu".exec = "${lib.getExe stats} cpu";
           "custom/memory".exec = "${lib.getExe stats} mem";
@@ -92,14 +101,7 @@ in
       "waybar/theme.css" = {
         force = true;
         text = ''
-          @define-color theme_bg #${p.base};
-          @define-color theme_fg #${p.text};
-          @define-color theme_muted #${p.subtext0};
-          @define-color theme_accent #${p.mauve};
-          @define-color theme_warning #${p.yellow};
-          @define-color theme_danger #${p.red};
-          @define-color theme_surface #${p.surface0};
-          @define-color theme_mantle #${p.mantle};
+          ${lib.concatLines (lib.mapAttrsToList (role: hex: "@define-color theme_${role} #${hex};") roles)}
 
           * {
             font-family: "${theme.font.family}";
