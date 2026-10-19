@@ -30,6 +30,10 @@
   opacity: 0.5;
 }
 
+#workspaces button.active label {
+  color: @theme_accent;
+}
+
 /* The graphs color themselves from lib/theme (config/waybar/scripts/stats.sh). */
 #custom-network,
 #image.tailscale,

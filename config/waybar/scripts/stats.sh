@@ -1,26 +1,61 @@
 # Streams one waybar JSON line per tick for `stats cpu|mem|net`: an icon, a
-# sparkline of the last samples and the current value. Colors come from the
-# environment (set from lib/theme in modules/home/programs/waybar.nix).
+# btop-style braille graph of the last half minute and the current value. The
+# tooltip holds a taller graph of the last two minutes with its average and
+# peak. Colors come from the environment (set from lib/theme in
+# modules/home/programs/waybar.nix).
 # shellcheck shell=bash
 
 kind=${1:?usage: stats cpu|mem|net}
 interval=2
-width=8
-bars=(▁ ▂ ▃ ▄ ▅ ▆ ▇ █)
-history=()
+keep=60 # samples kept, for the tooltip graph: two minutes
+shown=16 # samples on the bar: two per braille character
 
-# Sparkline of `history` (0-100), oldest first, padded so the width is fixed.
+# Braille cell with `left` and `right` dots lit from the bottom, at
+# cells[left * 5 + right].
+cells=(⠀ ⢀ ⢠ ⢰ ⢸ ⡀ ⣀ ⣠ ⣰ ⣸ ⡄ ⣄ ⣤ ⣴ ⣼ ⡆ ⣆ ⣦ ⣶ ⣾ ⡇ ⣇ ⣧ ⣷ ⣿)
+
+# graph ARRAY ROWS COUNT: the last COUNT values (0-100) of ARRAY as ROWS lines
+# of braille, oldest first. Missing samples are left blank.
 graph() {
-  local out="" v
-  for ((i = ${#history[@]}; i < width; i++)); do out+=" "; done
-  for v in "${history[@]}"; do out+=${bars[v * 7 / 100]}; done
+  local -n values=$1
+  local rows=$2 count=$3 out="" row i j level=() pad
+  pad=$((count - ${#values[@]}))
+  for ((i = 0; i < count; i++)); do
+    j=$((i - pad))
+    if ((j < 0)); then level+=(0); else level+=($(((values[j] * rows * 4 + 99) / 100))); fi
+  done
+  for ((row = rows - 1; row >= 0; row--)); do
+    for ((i = 0; i < count; i += 2)); do
+      out+=${cells[$(dots "${level[i]}" "$row") * 5 + $(dots "${level[i + 1]:-0}" "$row")]}
+    done
+    ((row)) && out+='\n'
+  done
   printf '%s' "$out"
 }
 
-push() {
-  history+=("$1")
-  ((${#history[@]} > width)) && history=("${history[@]:1}")
+# Dots lit in braille row ROW (0 is the bottom) for a column of height LEVEL.
+dots() {
+  local d=$(($1 - $2 * 4))
+  ((d < 0)) && d=0
+  ((d > 4)) && d=4
+  echo "$d"
+}
+
+push() { # ARRAY VALUE
+  local -n into=$1
+  into+=("$2")
+  ((${#into[@]} > keep)) && into=("${into[@]:1}")
   return 0
+}
+
+stats() { # ARRAY: "avg peak" of the values
+  local -n values=$1
+  local v sum=0 peak=0
+  for v in "${values[@]}"; do
+    sum=$((sum + v))
+    ((v > peak)) && peak=$v
+  done
+  echo "$((sum / ${#values[@]})) $peak"
 }
 
 state() {
@@ -33,9 +68,10 @@ color() {
   esac
 }
 
-emit() { # icon value class tooltip
-  printf '{"text":"<span color=\\"#%s\\">%s</span> <span color=\\"#%s\\">%s</span> %s","class":"%s","tooltip":"%s"}\n' \
-    "$THEME_MUTED" "$1" "$(color "$3")" "$(graph)" "$2" "$3" "$4"
+paint() { printf '<span color=\\"#%s\\">%s</span>' "$1" "$2"; }
+
+emit() { # TEXT CLASS TOOLTIP
+  printf '{"text":"%s","class":"%s","tooltip":"%s"}\n' "$1" "$2" "$3"
 }
 
 # Bytes per second, four characters wide.
@@ -47,8 +83,18 @@ human() {
   }'
 }
 
+# percent ICON NAME VALUE DETAILS: the bar and tooltip for a 0-100 metric kept
+# in `history`.
+percent() {
+  local avg peak cls
+  read -r avg peak < <(stats history)
+  cls=$(state "$3")
+  emit "$(paint "$THEME_MUTED" "$1") $(paint "$(color "$cls")" "$(graph history 1 $shown)") $(printf '%3d%%' "$3")" "$cls" \
+    "<b>$2</b>  $3%    avg $avg%  peak $peak%\\n$(paint "$(color "$cls")" "$(graph history 3 $keep)")\\n$(paint "$THEME_MUTED" "$4")"
+}
+
 cpu() {
-  local prev_total=0 prev_idle=0 total idle pct cores
+  local prev_total=0 prev_idle=0 total idle pct cores l1 l5 l15
   cores=$(nproc)
   while :; do
     read -r _ user nice system idle iowait irq softirq steal _ </proc/stat
@@ -56,10 +102,9 @@ cpu() {
     idle=$((idle + iowait))
     if ((prev_total)); then
       pct=$((100 * (total - prev_total - idle + prev_idle) / (total - prev_total)))
-      push "$pct"
+      push history "$pct"
       read -r l1 l5 l15 _ </proc/loadavg
-      emit '󰻠' "$(printf '%3d%%' "$pct")" "$(state "$pct")" \
-        "CPU $pct% across $cores cores\\nLoad $l1  $l5  $l15"
+      percent '󰻠' CPU "$pct" "$cores cores · load $l1 $l5 $l15 · last 2 min"
     fi
     prev_total=$total prev_idle=$idle
     sleep "$interval"
@@ -77,24 +122,33 @@ mem() {
     done </proc/meminfo
     used=$((total - avail))
     pct=$((100 * used / total))
-    push "$pct"
-    emit '󰍛' "$(printf '%3d%%' "$pct")" "$(state "$pct")" \
-      "$(awk -v u="$used" -v t="$total" -v s=$((swap_total - swap_free)) 'BEGIN {
-        printf "Memory %.1f / %.1f GiB\\nSwap %.1f GiB", u / 1048576, t / 1048576, s / 1048576
-      }')"
+    push history "$pct"
+    percent '󰍛' Memory "$pct" "$(awk -v u="$used" -v t="$total" -v s=$((swap_total - swap_free)) 'BEGIN {
+      printf "%.1f / %.1f GiB · swap %.1f GiB · last 2 min", u / 1048576, t / 1048576, s / 1048576
+    }')"
     sleep "$interval"
   done
 }
 
+# scale RATES OUT: RATES as 0-100 of their busiest sample, with a floor so an
+# idle link stays flat.
+scale() {
+  local -n from=$1 to=$2
+  local r peak=131072
+  for r in "${from[@]}"; do ((r > peak)) && peak=$r; done
+  to=()
+  for r in "${from[@]}"; do to+=($((100 * r / peak))); done
+}
+
 net() {
-  local iface rx tx prev_rx=0 prev_tx=0 down up peak floor=131072 addr
+  local iface rx tx prev_rx=0 prev_tx=0 down up addr dpeak upeak
+  local downs=() ups=() down_graph=() up_graph=()
   while :; do
     # The interface holding the default route, so nothing is hard-coded.
     iface=$(awk '$2 == "00000000" { print $1; exit }' /proc/net/route)
     if [[ -z $iface ]]; then
-      history=() prev_rx=0
-      printf '{"text":"<span color=\\"#%s\\">%s</span>","class":"disconnected","tooltip":"Disconnected"}\n' \
-        "$THEME_DANGER" '󰈂'
+      downs=() ups=() prev_rx=0
+      emit "$(paint "$THEME_DANGER" '󰈂')" disconnected Disconnected
       sleep "$interval"
       continue
     fi
@@ -102,21 +156,20 @@ net() {
     read -r tx </sys/class/net/"$iface"/statistics/tx_bytes
     if ((prev_rx)); then
       down=$(((rx - prev_rx) / interval)) up=$(((tx - prev_tx) / interval))
-      rates+=("$down")
-      ((${#rates[@]} > width)) && rates=("${rates[@]:1}")
-      # Scale the graph to the busiest sample, with a floor so idle stays flat.
-      peak=$floor
-      for r in "${rates[@]}"; do ((r > peak)) && peak=$r; done
-      history=()
-      for r in "${rates[@]}"; do history+=($((100 * r / peak))); done
+      push downs "$down"
+      push ups "$up"
+      scale downs down_graph
+      scale ups up_graph
+      read -r _ dpeak < <(stats downs)
+      read -r _ upeak < <(stats ups)
       addr=$(ip -4 -brief address show dev "$iface" | awk '{ print $3 }')
-      emit '󰈀' "$(human "$down")" normal \
-        "$iface  $addr\\n⇣ $(human "$down")/s  ⇡ $(human "$up")/s"
+      emit "$(paint "$THEME_MUTED" '󰈀') $(paint "$THEME_ACCENT" "$(graph down_graph 1 $shown)") $(human "$down")" normal \
+        "<b>⇣</b> $(human "$down")/s  peak $(human "$dpeak")/s\\n$(paint "$THEME_ACCENT" "$(graph down_graph 2 $keep)")\\n<b>⇡</b> $(human "$up")/s  peak $(human "$upeak")/s\\n$(paint "$THEME_SECONDARY" "$(graph up_graph 2 $keep)")\\n$(paint "$THEME_MUTED" "$iface  $addr · last 2 min")"
     fi
     prev_rx=$rx prev_tx=$tx
     sleep "$interval"
   done
 }
 
-rates=()
+history=()
 "$kind"

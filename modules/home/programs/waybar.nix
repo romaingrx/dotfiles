@@ -24,7 +24,11 @@ let
       THEME_ACCENT = p.mauve;
       THEME_WARNING = p.peach;
       THEME_DANGER = p.red;
+      THEME_SECONDARY = p.teal;
     };
+    # The script hands arrays to helpers by name (local -n), which shellcheck
+    # reads as unused.
+    excludeShellChecks = [ "SC2034" ];
     text = builtins.readFile ../../../config/waybar/scripts/stats.sh;
   };
 
