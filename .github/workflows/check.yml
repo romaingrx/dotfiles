@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
+  flake-check:
     strategy:
       fail-fast: false
       matrix:
@@ -31,3 +31,12 @@ jobs:
       - name: Pre-commit hooks
         run: nix flake check --print-build-logs --option abort-on-warn true
 
+
+  # Single required status for branch protection, whatever the matrix holds.
+  check:
+    if: always()
+    needs: flake-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: test "${{ needs.flake-check.result }}" = success
