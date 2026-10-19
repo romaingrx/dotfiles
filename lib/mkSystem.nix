@@ -21,7 +21,7 @@ systemFunc {
   modules = [
     hostDir
     ../users/${user}/${systemType}.nix
-    ../modules/cachix.nix
+    ../modules/nix.nix
     ../modules/fonts.nix
     inputs.home-manager.${modulesFor}.home-manager
     inputs.sops-nix.${modulesFor}.sops
