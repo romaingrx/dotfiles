@@ -22,7 +22,7 @@ let
     warning = p.peach;
     danger = p.red;
     surface = p.surface0;
-    mantle = p.mantle;
+    inherit (p) mantle;
   };
   roleEnv = lib.mapAttrs' (role: lib.nameValuePair "THEME_${lib.toUpper role}") roles;
 
