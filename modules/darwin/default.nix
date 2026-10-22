@@ -9,19 +9,6 @@
 
   security.pam.services.sudo_local.touchIdAuth = true;
 
-  nix.optimise.automatic = true;
-  # Necessary for using flakes on this system.
-  nix.settings = {
-    experimental-features = [
-      "nix-command"
-      "flakes"
-    ];
-    max-jobs = "auto";
-    cores = 0; # Use all available cores
-    keep-derivations = true;
-    keep-outputs = true;
-  };
-
   system = {
     # Used for backwards compatibility
     stateVersion = 5;
