@@ -11,19 +11,8 @@ let
   link = name: config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/waybar/${name}";
   span = color: "<span color='#${color}'><b>{}</b></span>";
 
-  # What each color means on the bar, defined once for the CSS (as @theme_<role>)
-  # and the scripts (as $THEME_<ROLE>).
-  roles = {
-    bg = p.base;
-    fg = p.text;
-    muted = p.overlay1;
-    accent = p.mauve;
-    secondary = p.teal;
-    warning = p.peach;
-    danger = p.red;
-    surface = p.surface0;
-    inherit (p) mantle;
-  };
+  # Defined once for the CSS (as @theme_<role>) and the scripts (as $THEME_<ROLE>).
+  inherit (theme) roles;
   roleEnv = lib.mapAttrs' (role: lib.nameValuePair "THEME_${lib.toUpper role}") roles;
 
   # Right-side modules, built here so they read the palette.
@@ -38,7 +27,10 @@ let
     # The script hands arrays to helpers by name (local -n), which shellcheck
     # reads as unused.
     excludeShellChecks = [ "SC2034" ];
-    text = builtins.readFile ../../../config/waybar/scripts/stats.sh;
+    text = lib.concatMapStrings builtins.readFile [
+      ../../../config/statusbar/graph.sh
+      ../../../config/waybar/scripts/stats.sh
+    ];
   };
 
   # The Tailscale logo, a 3x3 grid of dots with a lit T.

@@ -1,8 +1,26 @@
-{ homeDirectory, pkgs, ... }:
+{
+  homeDirectory,
+  lib,
+  pkgs,
+  ...
+}:
 let
   userName = builtins.baseNameOf homeDirectory;
   configDirectory = "${homeDirectory}/.config/sketchybar";
   appFont = pkgs.sketchybar-app-font;
+
+  # The CPU, memory and network graphs (config/sketchybar/items/stats.sh).
+  stats = pkgs.writeShellApplication {
+    name = "sketchybar-stats";
+    runtimeInputs = [ pkgs.gawk ];
+    # The script hands arrays to helpers by name (local -n), which shellcheck
+    # reads as unused.
+    excludeShellChecks = [ "SC2034" ];
+    text = lib.concatMapStrings builtins.readFile [
+      ../../../../config/statusbar/graph.sh
+      ../../../../config/sketchybar/providers/stats.sh
+    ];
+  };
 in
 {
   services.sketchybar = {
@@ -20,6 +38,7 @@ in
       jq
       tree
       appFont
+      stats
     ];
   };
 
