@@ -1,4 +1,8 @@
 { pkgs, inputs, ... }:
+let
+  # Tools we want ahead of unstable; see the nixpkgs-master input in flake.nix.
+  master = inputs.nixpkgs-master.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+in
 {
   home.packages =
     with pkgs;
@@ -14,14 +18,14 @@
       jq
       yq
       nix-prefetch-git
-      gh
+      master.gh
       _1password-cli
 
       # Development
       lazygit
       git-lfs
       pre-commit
-      inputs.nixpkgs-master.legacyPackages.${pkgs.stdenv.hostPlatform.system}.uv
+      master.uv
       pnpm
       nodejs
       awscli2
