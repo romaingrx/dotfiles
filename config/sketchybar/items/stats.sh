@@ -41,8 +41,8 @@ stats_item() {
 }
 
 # Added right to left: CPU ends up rightmost, as on waybar.
-stats_item cpu 󰻠 5
-stats_item mem 󰍛 5
+stats_item cpu  5
+stats_item mem  5
 stats_item net 󰓡 7
 
 if command -v sketchybar-stats >/dev/null; then

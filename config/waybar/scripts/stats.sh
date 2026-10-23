@@ -37,7 +37,7 @@ cpu() {
       pct=$((100 * (total - prev_total - idle + prev_idle) / (total - prev_total)))
       push history "$pct"
       read -r l1 l5 l15 _ </proc/loadavg
-      percent '󰻠' CPU "$pct" "$cores cores · load $l1 $l5 $l15 · last 2 min"
+      percent '' CPU "$pct" "$cores cores · load $l1 $l5 $l15 · last 2 min"
     fi
     prev_total=$total prev_idle=$idle
     sleep "$interval"
@@ -56,7 +56,7 @@ mem() {
     used=$((total - avail))
     pct=$((100 * used / total))
     push history "$pct"
-    percent '󰍛' Memory "$pct" "$(awk -v u="$used" -v t="$total" -v s=$((swap_total - swap_free)) 'BEGIN {
+    percent '' Memory "$pct" "$(awk -v u="$used" -v t="$total" -v s=$((swap_total - swap_free)) 'BEGIN {
       printf "%.1f / %.1f GiB · swap %.1f GiB · last 2 min", u / 1048576, t / 1048576, s / 1048576
     }')"
     sleep "$interval"
