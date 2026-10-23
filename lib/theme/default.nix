@@ -6,10 +6,23 @@
 # an editable config in config/ sources are written to ~/.config/theme/.
 let
   flavor = "mocha";
+  palette = (import ./catppuccin.nix).${flavor};
 in
 {
-  inherit flavor;
-  palette = (import ./catppuccin.nix).${flavor};
+  inherit flavor palette;
+
+  # What each color means on the status bars (waybar and sketchybar).
+  roles = with palette; {
+    bg = base;
+    fg = text;
+    muted = overlay1;
+    accent = mauve;
+    secondary = teal;
+    warning = peach;
+    danger = red;
+    surface = surface0;
+    inherit mantle;
+  };
 
   font = {
     family = "FiraCode Nerd Font";

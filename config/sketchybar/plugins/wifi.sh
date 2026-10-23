@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
 # Slow path: drives wifi.control and its popup rows (update_freq=30).
-# The net.activity graph now has its own fast plugin (plugins/net_activity.sh);
-# this script no longer touches it.
+# The network graph is items/stats.sh.
 #
 # SSID and link rate are deliberately absent — see helpers/network.sh. They were
 # read via the private `airport -I`, which macOS 26 removed, so both rows had

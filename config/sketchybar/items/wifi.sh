@@ -1,22 +1,12 @@
 #!/usr/bin/env bash
 
-source "$HELPER_DIR/components.sh"
-
-status_graph net.activity right "$BLUE" "$NET_DOWNLOAD_FILL"
-sketchybar --set net.activity \
-	label="0B" \
-	background.padding_right=4 \
-	script="$PLUGIN_DIR/net_activity.sh" \
-	update_freq=10 \
-	--subscribe net.activity system_woke wifi_change
-
 sketchybar --add item wifi.control right \
 	--set wifi.control \
 	icon="$WIFI_ICN" \
 	icon.padding_left=6 \
 	icon.padding_right=3 \
 	label.font="$APP_FONT:Regular:12.0" \
-	label.padding_left=1 \
+	label.padding_left=6 \
 	label.padding_right=6 \
 	label.drawing=off \
 	script="$PLUGIN_DIR/wifi.sh" \
