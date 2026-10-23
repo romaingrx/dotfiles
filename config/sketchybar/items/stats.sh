@@ -12,7 +12,7 @@ stats_item() {
 		icon="$2" \
 		icon.color="$THEME_MUTED" \
 		icon.padding_left=6 \
-		icon.padding_right=2 \
+		icon.padding_right=8 \
 		label.font="$FONT:Medium:12.0" \
 		label.padding_left=0 \
 		label.padding_right=7 \
