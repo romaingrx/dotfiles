@@ -41,7 +41,6 @@ sketchybar --default updates=when_shown \
 	icon.padding_left=4 \
 	icon.padding_right=4
 
-source $ITEM_DIR/apple.sh
 source $ITEM_DIR/display_recovery.sh
 source $ITEM_DIR/spaces.sh
 source $ITEM_DIR/mode.sh

@@ -6,7 +6,7 @@ sketchybar --add item wifi.control right \
 	icon.padding_left=6 \
 	icon.padding_right=3 \
 	label.font="$APP_FONT:Regular:12.0" \
-	label.padding_left=1 \
+	label.padding_left=6 \
 	label.padding_right=6 \
 	label.drawing=off \
 	script="$PLUGIN_DIR/wifi.sh" \
