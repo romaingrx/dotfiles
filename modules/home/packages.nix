@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, inputs, ... }:
 {
   home.packages =
     with pkgs;
@@ -21,7 +21,7 @@
       lazygit
       git-lfs
       pre-commit
-      uv
+      inputs.nixpkgs-master.legacyPackages.${pkgs.stdenv.hostPlatform.system}.uv
       pnpm
       nodejs
       awscli2

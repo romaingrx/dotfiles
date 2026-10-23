@@ -227,6 +227,22 @@
         "type": "github"
       }
     },
+    "nixpkgs-master": {
+      "locked": {
+        "lastModified": 1792783757,
+        "narHash": "sha256-BcV+XQ6zGb+7PC7XFTnA1kccEqA4ojAR8/aF9Uo9HSA=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "492279ce3b1fa927cfbd088f1365441b6a5d5231",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "master",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "pre-commit-hooks": {
       "inputs": {
         "flake-compat": "flake-compat",
@@ -257,6 +273,7 @@
         "nix-darwin": "nix-darwin",
         "nix-homebrew": "nix-homebrew",
         "nixpkgs": "nixpkgs",
+        "nixpkgs-master": "nixpkgs-master",
         "pre-commit-hooks": "pre-commit-hooks",
         "sops-nix": "sops-nix"
       }
