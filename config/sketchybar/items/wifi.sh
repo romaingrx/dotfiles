@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 
+# The Tailscale logo (lib/tailscale-logo.nix), lit while connected.
+sketchybar --add item tailscale right \
+	--set tailscale \
+	icon.drawing=off \
+	label.drawing=off \
+	background.drawing=on \
+	background.color="$STATUS_BG" \
+	background.corner_radius="$STATUS_RADIUS" \
+	background.height="$STATUS_HEIGHT" \
+	background.image="${SKETCHYBAR_TAILSCALE_OFF:-}" \
+	background.image.scale=0.3 \
+	background.padding_left=3 \
+	background.padding_right=3 \
+	width=26 \
+	script="$PLUGIN_DIR/tailscale.sh" \
+	update_freq=10 \
+	--subscribe tailscale system_woke wifi_change
+
 sketchybar --add item wifi.control right \
 	--set wifi.control \
 	icon="$WIFI_ICN" \
@@ -16,6 +34,8 @@ sketchybar --add item wifi.control right \
 	background.color="$STATUS_BG" \
 	background.corner_radius="$STATUS_RADIUS" \
 	background.height="$STATUS_HEIGHT" \
+	background.padding_left=3 \
+	background.padding_right=3 \
 	popup.background.color="$POPUP_BG" \
 	popup.blur_radius=50 \
 	popup.background.corner_radius=5 \

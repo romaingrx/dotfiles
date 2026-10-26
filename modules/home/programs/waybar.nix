@@ -7,7 +7,6 @@
 }:
 let
   theme = import ../../../lib/theme;
-  p = theme.palette;
   link = name: config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/waybar/${name}";
   span = color: "<span color='#${color}'><b>{}</b></span>";
 
@@ -33,24 +32,7 @@ let
     ];
   };
 
-  # The Tailscale logo, a 3x3 grid of dots with a lit T.
-  logo =
-    name: lit: dim:
-    let
-      dot =
-        x: y: on:
-        ''<circle cx="${toString x}" cy="${toString y}" r="2.7" fill="#${if on then lit else dim}"/>'';
-      svg = pkgs.writeText "tailscale-${name}.svg" ''
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-          ${dot 4 4 false}${dot 12 4 false}${dot 20 4 false}
-          ${dot 4 12 true}${dot 12 12 true}${dot 20 12 true}
-          ${dot 4 20 false}${dot 12 20 true}${dot 20 20 false}
-        </svg>
-      '';
-    in
-    pkgs.runCommand "tailscale-${name}.png" { nativeBuildInputs = [ pkgs.librsvg ]; } ''
-      rsvg-convert --width 48 --height 48 ${svg} --output $out
-    '';
+  tailscaleLogo = import ../../../lib/tailscale-logo.nix pkgs;
 
   # Window-rewrite rules for the workspace app icons, generated from the app map
   # that ships with the font, so a new app needs no edit here.
@@ -70,8 +52,8 @@ let
       pkgs.tailscale
     ];
     runtimeEnv = {
-      TAILSCALE_ON = "${logo "on" roles.fg p.surface2}";
-      TAILSCALE_OFF = "${logo "off" p.surface2 p.surface1}";
+      TAILSCALE_ON = "${tailscaleLogo.on}";
+      TAILSCALE_OFF = "${tailscaleLogo.off}";
     };
     text = builtins.readFile ../../../config/waybar/scripts/tailscale.sh;
   };

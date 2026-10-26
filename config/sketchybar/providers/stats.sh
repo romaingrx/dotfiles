@@ -12,7 +12,7 @@ source "${CONFIG_DIR:-$HOME/.config/sketchybar}/colors.sh"
 
 interval=2
 keep=60 # samples kept, for the popup graph: two minutes
-shown=16 # samples on the bar: two per braille character
+shown=10 # samples on the bar: two per braille character
 
 args=() # the `sketchybar` call for this tick, sent once at its end
 

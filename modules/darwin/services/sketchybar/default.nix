@@ -8,6 +8,13 @@ let
   userName = builtins.baseNameOf homeDirectory;
   configDirectory = "${homeDirectory}/.config/sketchybar";
   appFont = pkgs.sketchybar-app-font;
+  tailscaleLogo = import ../../../../lib/tailscale-logo.nix pkgs;
+  env = {
+    SKETCHYBAR_APP_FONT_PATH = "${appFont}/share/fonts/truetype/sketchybar-app-font.ttf";
+    SKETCHYBAR_APP_ICON_MAP = "${appFont}/bin/icon_map.sh";
+    SKETCHYBAR_TAILSCALE_ON = "${tailscaleLogo.on}";
+    SKETCHYBAR_TAILSCALE_OFF = "${tailscaleLogo.off}";
+  };
 
   # The CPU, memory and network graphs (config/sketchybar/items/stats.sh).
   stats = pkgs.writeShellApplication {
@@ -29,8 +36,8 @@ in
     config = ''
       #!${pkgs.bash}/bin/bash
       export CONFIG_DIR="${configDirectory}"
-      export SKETCHYBAR_APP_FONT_PATH="${appFont}/share/fonts/truetype/sketchybar-app-font.ttf"
-      export SKETCHYBAR_APP_ICON_MAP="${appFont}/bin/icon_map.sh"
+      ${lib.toShellVars env}
+      export ${lib.concatStringsSep " " (lib.attrNames env)}
       exec "${configDirectory}/sketchybarrc"
     '';
     extraPackages = with pkgs; [
@@ -44,12 +51,10 @@ in
 
   fonts.packages = [ appFont ];
 
-  launchd.user.agents.sketchybar.serviceConfig.EnvironmentVariables = {
+  launchd.user.agents.sketchybar.serviceConfig.EnvironmentVariables = env // {
     HOME = homeDirectory;
     USER = userName;
     LOGNAME = userName;
-    SKETCHYBAR_APP_FONT_PATH = "${appFont}/share/fonts/truetype/sketchybar-app-font.ttf";
-    SKETCHYBAR_APP_ICON_MAP = "${appFont}/bin/icon_map.sh";
   };
   launchd.user.agents.sketchybar.serviceConfig.ProcessType = "Interactive";
 }

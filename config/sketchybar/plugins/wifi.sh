@@ -51,6 +51,11 @@ if [ -n "$vpn" ]; then
 	vpn_color="$GREEN"
 fi
 
+# Tailscale has its own item with its logo (items/wifi.sh).
+case "$vpn" in
+*[Tt]ailscale*) wifi_label_drawing=off ;;
+esac
+
 sketchybar --set wifi.control \
 	icon="$WIFI_ICN" \
 	icon.color="$wifi_icon_color" \
