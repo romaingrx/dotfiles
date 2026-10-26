@@ -7,6 +7,10 @@
     # release check fails against a skewed nixpkgs. Renovate's
     # lockFileMaintenance performs this lockstep refresh automatically.
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    # Tools that need to run ahead of unstable, picked one by one in
+    # modules/home/packages.nix: uv (>= 0.13.4 drops the compromised eMudhra
+    # emSign ECC G3 root) and gh.
+    nixpkgs-master.url = "github:NixOS/nixpkgs/master";
     nix-darwin = {
       url = "github:LnL7/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";

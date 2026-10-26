@@ -9,6 +9,10 @@
 
   security.pam.services.sudo_local.touchIdAuth = true;
 
+  # eMudhra emSign ECC G3 key compromise (Oct 2026). NSS 3.131.1 removes it;
+  # drop this once unstable's cacert reaches that release.
+  security.pki.caCertificateBlacklist = [ "emSign ECC Root CA - G3" ];
+
   system = {
     # Used for backwards compatibility
     stateVersion = 5;
