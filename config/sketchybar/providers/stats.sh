@@ -10,6 +10,11 @@
 # shellcheck source=/dev/null
 source "${CONFIG_DIR:-$HOME/.config/sketchybar}/colors.sh"
 
+# One feeder at a time: the newest replaces any earlier one, which then
+# notices on its next tick and exits.
+pidfile=${TMPDIR:-/tmp}/sketchybar-stats.pid
+echo $$ >"$pidfile"
+
 interval=2
 keep=60 # samples kept, for the popup graph: two minutes
 shown=10 # samples on the bar: two per braille character
@@ -107,7 +112,7 @@ net() {
   prev_rx=$rx prev_tx=$tx
 }
 
-while :; do
+while [[ $(<"$pidfile") == "$$" ]]; do
   cpu
   mem
   net

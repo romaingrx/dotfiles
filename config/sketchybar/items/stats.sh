@@ -53,7 +53,7 @@ stats_item cpu  5
 stats_item mem  5
 stats_item net 󰓡 7
 
+# A new feeder makes any earlier one exit (providers/stats.sh).
 if command -v sketchybar-stats >/dev/null; then
-	pkill -f bin/sketchybar-stats
 	sketchybar-stats &
 fi

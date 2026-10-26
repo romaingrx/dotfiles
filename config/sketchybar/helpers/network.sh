@@ -44,6 +44,7 @@ network_local_ip() {
 	ipconfig getifaddr "$iface" 2>/dev/null
 }
 
+# macOS numbers a VPN profile whose name is taken ("Tailscale 3"); drop that.
 network_vpn_name() {
-	scutil --nc list 2>/dev/null | awk -F '"' '/\(Connected\)/ { print $2; exit }'
+	scutil --nc list 2>/dev/null | awk -F '"' '/\(Connected\)/ { sub(/ [0-9]+$/, "", $2); print $2; exit }'
 }
