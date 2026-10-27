@@ -128,6 +128,7 @@ label_color="$GREY"
 background_color="$TRANSPARENT"
 background_drawing=off
 label_drawing=on
+drawing=on
 
 if [ -z "$apps_label" ]; then
 	label_drawing=off
@@ -145,8 +146,8 @@ elif [ "$is_visible" = "true" ]; then
 	background_color="$SPACE_VISIBLE_BG"
 	background_drawing=on
 elif [ "$window_count" -eq 0 ]; then
-	icon_color="$GREY"
-	label_color="$GREY"
+	# Empty workspaces stay hidden unless you are on them.
+	drawing=off
 fi
 
 display_properties=()
@@ -155,7 +156,7 @@ if [ -n "$display" ]; then
 fi
 
 sketchybar --set "$NAME" \
-	drawing=on \
+	drawing="$drawing" \
 	"${display_properties[@]}" \
 	icon="$workspace" \
 	icon.color="$icon_color" \

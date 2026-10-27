@@ -14,11 +14,7 @@ sketchybar --set mode.indicator \
 	icon.color="$MAGENTA" \
 	label.color="$MAGENTA" \
 	background.color="$MODE_BG" \
-	popup.background.color="$POPUP_BG" \
-	popup.blur_radius=50 \
-	popup.background.corner_radius=5 \
 	popup.align=left \
-	popup.height=26 \
 	--subscribe mode.indicator aerospace_mode_change system_woke
 
 popup_row mode.indicator mode.exit "$LAYOUT_ICN" "esc - reload config / main"

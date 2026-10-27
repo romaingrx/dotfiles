@@ -1,31 +1,21 @@
 #!/usr/bin/env bash
 
-status_graph() {
+# status_item NAME [ARG...]: a right-side item with the bar's spacing and type,
+# then ARGs (more properties, or --subscribe and the like).
+status_item() {
 	local name="$1"
-	local position="$2"
-	local color="$3"
-	local fill_color="$4"
+	shift
 
-	sketchybar --add graph "$name" "$position" "$STATUS_GRAPH_WIDTH" \
+	sketchybar --add item "$name" right \
 		--set "$name" \
-		graph.color="$color" \
-		graph.fill_color="$fill_color" \
-		graph.line_width=0.8 \
-		label=0 \
-		label.drawing=on \
-		label.font="$FONT:Medium:9.0" \
-		label.color="$color" \
-		label.width="$STATUS_GRAPH_LABEL_WIDTH" \
-		label.align=right \
-		label.padding_left=2 \
-		label.padding_right=3 \
-		icon.drawing=off \
-		background.drawing=on \
-		background.color="$STATUS_GRAPH_BG" \
-		background.corner_radius="$STATUS_RADIUS" \
-		background.height="$STATUS_GRAPH_HEIGHT" \
-		background.padding_left=3 \
-		background.padding_right=5
+		padding_left="$STATUS_GAP" \
+		padding_right="$STATUS_GAP" \
+		icon.padding_left=0 \
+		icon.padding_right=6 \
+		label.font="$FONT:Medium:13.0" \
+		label.padding_left=0 \
+		label.padding_right=0 \
+		"$@"
 }
 
 status_pill() {

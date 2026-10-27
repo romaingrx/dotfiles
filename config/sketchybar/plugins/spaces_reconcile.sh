@@ -7,7 +7,7 @@
 #     (display assignments may have changed), and
 #   - in the background after a plain workspace switch, to reconcile whatever the
 #     instant 2-set in spaces_update.sh could not know without querying:
-#     multi-monitor PREV visibility, empty-vs-occupied icon shade, and app-icon
+#     multi-monitor PREV visibility, hiding an empty workspace, and app-icon
 #     labels (which change when move-node-to-workspace fires this same event).
 #
 # It derives the whole picture in two queries and repaints in one batched
@@ -25,7 +25,6 @@ source "$HELPER_DIR/app_icons.sh"
 source "$HELPER_DIR/display_map.sh"
 
 MAX_WORKSPACE_APPS="${MAX_WORKSPACE_APPS:-4}"
-AEROSPACE_FALLBACK_WORKSPACES="${AEROSPACE_FALLBACK_WORKSPACES:-1 2 3 B C M U S}"
 
 # Only used to seed focus in the synthesized fallback below; the real repaint
 # reads focus from each workspace's own query flag, never from this env value.
@@ -132,6 +131,8 @@ while IFS="|" read -r ws is_focused is_visible appkit; do
 	background_drawing="off"
 	label_drawing="on"
 	[ -n "$wlabel" ] || label_drawing="off"
+	# Empty workspaces stay hidden unless you are on them.
+	drawing="on"
 
 	if [ "$is_focused" = "true" ]; then
 		icon_color="$WHITE"
@@ -144,11 +145,10 @@ while IFS="|" read -r ws is_focused is_visible appkit; do
 		background_color="$SPACE_VISIBLE_BG"
 		background_drawing="on"
 	elif [ "$wcount" -eq 0 ]; then
-		icon_color="$GREY"
-		label_color="$GREY"
+		drawing="off"
 	fi
 
-	args+=(--set "space.$ws" drawing=on)
+	args+=(--set "space.$ws" drawing="$drawing")
 	if [ "$do_display" = "1" ]; then
 		d="$(resolve_display "$appkit" || true)"
 		[ -n "$d" ] && args+=(display="$d")

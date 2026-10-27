@@ -2,35 +2,15 @@
 
 source "$HELPER_DIR/components.sh"
 
-status_graph net.activity right "$BLUE" "$NET_DOWNLOAD_FILL"
-sketchybar --set net.activity \
-	label="0B" \
-	background.padding_right=4 \
-	script="$PLUGIN_DIR/net_activity.sh" \
-	update_freq=10 \
-	--subscribe net.activity system_woke wifi_change
-
-sketchybar --add item wifi.control right \
-	--set wifi.control \
+# The VPN, Tailscale included, is listed in the popup.
+status_item wifi.control \
 	icon="$WIFI_ICN" \
-	icon.padding_left=6 \
-	icon.padding_right=3 \
-	label.font="$APP_FONT:Regular:12.0" \
-	label.padding_left=1 \
-	label.padding_right=6 \
+	icon.padding_right=0 \
 	label.drawing=off \
 	script="$PLUGIN_DIR/wifi.sh" \
 	update_freq=30 \
 	click_script="$PLUGIN_DIR/wifi_click.sh" \
-	background.drawing=on \
-	background.color="$STATUS_BG" \
-	background.corner_radius="$STATUS_RADIUS" \
-	background.height="$STATUS_HEIGHT" \
-	popup.background.color="$POPUP_BG" \
-	popup.blur_radius=50 \
-	popup.background.corner_radius=5 \
 	popup.align=right \
-	popup.height=26 \
 	--subscribe wifi.control system_woke wifi_change
 
 sketchybar --add item wifi.ssid popup.wifi.control \
