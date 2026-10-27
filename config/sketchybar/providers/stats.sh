@@ -25,21 +25,11 @@ label() { # ITEM COLOR TEXT
   args+=(--set "$1" label.color="$2" label="$3")
 }
 
-# sketchybar sizes a label by its ink, so the blank cells of a graph would
-# count for nothing: the label would grow as history fills in and its end
-# would be clipped. So the label just set gets a fixed width instead: CHARS
-# characters of the monospaced FONT at SIZE pt (items/stats.sh), each
-# 1200/1950 em wide (FiraCode).
-fixed() { # CHARS SIZE
-  args+=(label.width=$((($1 * $2 * 1200 + 1949) / 1950)))
-}
-
 # lines ITEM FIRST COLOR GRAPH: each line of GRAPH on popup rows ITEM.FIRST on.
 lines() {
   local row=$2 line
   while IFS= read -r line; do
     label "$1.$row" "$3" "$line"
-    fixed $((keep / 2)) 12
     row=$((row + 1))
   done <<<"$4"
 }
@@ -51,7 +41,6 @@ percent() {
   read -r avg peak < <(stats "$3")
   hue=$(color "$(state "$4")")
   label "$1" "$hue" "$(graph "$3" 1 $shown) $(printf '%3d%%' "$4")"
-  fixed $((shown / 2 + 5)) 13
   label "$1.0" "$THEME_FG" "$2  $4%    avg $avg%  peak $peak%"
   lines "$1" 1 "$hue" "$(graph "$3" 3 $keep)"
   label "$1.4" "$THEME_MUTED" "$5"
@@ -116,7 +105,6 @@ net() {
     track ups up_graph $(((tx - prev_tx) / interval))
     addr=$(ipconfig getifaddr "$iface" 2>/dev/null || true)
     label stats.net "$THEME_ACCENT" "$(graph down_graph 1 $shown) $(human "${downs[-1]}")"
-    fixed $((shown / 2 + 5)) 13
     direction stats.net 0 ⇣ downs down_graph "$THEME_ACCENT"
     direction stats.net 3 ⇡ ups up_graph "$THEME_SECONDARY"
     label stats.net.6 "$THEME_MUTED" "$iface  ${addr:-no IPv4} · last 2 min"

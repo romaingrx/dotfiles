@@ -8,6 +8,22 @@ let
   userName = builtins.baseNameOf homeDirectory;
   configDirectory = "${homeDirectory}/.config/sketchybar";
   appFont = pkgs.sketchybar-app-font;
+
+  # 2.24.1 adds label.font.typographical_width, which the graphs need
+  # (items/stats.sh). Builds it until the pinned nixpkgs has it.
+  sketchybar =
+    if lib.versionOlder pkgs.sketchybar.version "2.24.1" then
+      pkgs.sketchybar.overrideAttrs (_: rec {
+        version = "2.24.1";
+        src = pkgs.fetchFromGitHub {
+          owner = "FelixKratz";
+          repo = "SketchyBar";
+          rev = "v${version}";
+          hash = "sha256-fEbVzafjFTigR7TjQ41gOnDpk6S4B8qCwpz890ZNgwE=";
+        };
+      })
+    else
+      pkgs.sketchybar;
   tailscaleLogo = import ../../../../lib/tailscale-logo.nix pkgs;
   env = {
     SKETCHYBAR_APP_FONT_PATH = "${appFont}/share/fonts/truetype/sketchybar-app-font.ttf";
@@ -32,7 +48,7 @@ in
 {
   services.sketchybar = {
     enable = true;
-    package = pkgs.sketchybar;
+    package = sketchybar;
     config = ''
       #!${pkgs.bash}/bin/bash
       export CONFIG_DIR="${configDirectory}"
