@@ -21,7 +21,7 @@ in
         MAGENTA = argb "ff" p.mauve;
         GREY = argb "ff" p.overlay2;
         TRANSPARENT = argb "00" p.base;
-        BAR_BG = argb "15" p.base;
+        BAR_BG = argb "e6" p.base;
         STATUS_BG = argb "22" p.base;
         POPUP_BG = argb "70" p.base;
         SPACE_INITIAL_BG = argb "44" p.text;

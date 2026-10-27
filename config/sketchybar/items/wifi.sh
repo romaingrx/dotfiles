@@ -6,14 +6,12 @@ sketchybar --add item tailscale right \
 	icon.drawing=off \
 	label.drawing=off \
 	background.drawing=on \
-	background.color="$STATUS_BG" \
-	background.corner_radius="$STATUS_RADIUS" \
-	background.height="$STATUS_HEIGHT" \
+	background.color="$TRANSPARENT" \
 	background.image="${SKETCHYBAR_TAILSCALE_OFF:-}" \
 	background.image.scale=0.3 \
-	background.padding_left=3 \
-	background.padding_right=3 \
-	width=26 \
+	width=15 \
+	padding_left=6 \
+	padding_right=17 \
 	script="$PLUGIN_DIR/tailscale.sh" \
 	update_freq=10 \
 	--subscribe tailscale system_woke wifi_change
@@ -21,21 +19,17 @@ sketchybar --add item tailscale right \
 sketchybar --add item wifi.control right \
 	--set wifi.control \
 	icon="$WIFI_ICN" \
-	icon.padding_left=6 \
-	icon.padding_right=3 \
+	icon.padding_left=0 \
+	icon.padding_right=0 \
 	label.font="$APP_FONT:Regular:12.0" \
 	label.padding_left=6 \
-	label.padding_right=6 \
+	label.padding_right=0 \
 	label.drawing=off \
 	script="$PLUGIN_DIR/wifi.sh" \
 	update_freq=30 \
 	click_script="$PLUGIN_DIR/wifi_click.sh" \
-	background.drawing=on \
-	background.color="$STATUS_BG" \
-	background.corner_radius="$STATUS_RADIUS" \
-	background.height="$STATUS_HEIGHT" \
-	background.padding_left=3 \
-	background.padding_right=3 \
+	padding_left=0 \
+	padding_right=0 \
 	popup.background.color="$POPUP_BG" \
 	popup.blur_radius=50 \
 	popup.background.corner_radius=5 \

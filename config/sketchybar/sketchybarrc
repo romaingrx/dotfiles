@@ -25,8 +25,8 @@ fi
 sketchybar --bar height=30 \
 	blur_radius=30 \
 	position=top \
-	padding_left=10 \
-	padding_right=10 \
+	padding_left=12 \
+	padding_right=12 \
 	color="$BAR_BG" \
 	shadow=off
 
