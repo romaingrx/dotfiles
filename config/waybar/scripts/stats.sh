@@ -1,6 +1,5 @@
 # Streams one waybar JSON line per tick for `stats cpu|mem|net`: an icon, a
-# btop-style braille graph of the last half minute and the current value. The
-# tooltip holds a taller graph of the last two minutes with its average and
+# bar graph of the last 16 seconds and the current value. The tooltip holds a taller graph of the last two minutes with its average and
 # peak. The graph helpers come from config/statusbar/graph.sh. Colors come
 # from the environment (set from lib/theme in modules/home/programs/waybar.nix).
 # shellcheck shell=bash
@@ -8,7 +7,7 @@
 kind=${1:?usage: stats cpu|mem|net}
 interval=2
 keep=60 # samples kept, for the tooltip graph: two minutes
-shown=16 # samples on the bar: two per braille character
+shown=8 # samples on the bar, one bar each
 
 paint() { printf '<span color=\\"#%s\\">%s</span>' "$1" "$2"; }
 
@@ -22,8 +21,8 @@ percent() {
   local avg peak cls
   read -r avg peak < <(stats history)
   cls=$(state "$3")
-  emit "$(paint "$THEME_MUTED" "$1") $(paint "$(color "$cls")" "$(graph history 1 $shown)") $(printf '%3d%%' "$3")" "$cls" \
-    "<b>$2</b>  $3%    avg $avg%  peak $peak%\\n$(paint "$(color "$cls")" "$(graph history 3 $keep)")\\n$(paint "$THEME_MUTED" "$4")"
+  emit "$(paint "$THEME_MUTED" "$1") $(paint "$(color "$cls")" "$(graph history 1 $shown $shown)") $(printf '%3d%%' "$3")" "$cls" \
+    "<b>$2</b>  $3%    avg $avg%  peak $peak%\\n$(paint "$(color "$cls")" "$(graph history 3 $keep $((keep / 2)))")\\n$(paint "$THEME_MUTED" "$4")"
 }
 
 cpu() {
@@ -69,7 +68,7 @@ direction() {
   local peak
   read -r _ peak < <(stats "$2")
   printf '<b>%s</b> %s/s  peak %s/s\\n%s' "$1" "$(human "${rates[-1]}")" "$(human "$peak")" \
-    "$(paint "$4" "$(graph "$3" 2 $keep)")"
+    "$(paint "$4" "$(graph "$3" 2 $keep $((keep / 2)))")"
 }
 
 net() {
@@ -90,7 +89,7 @@ net() {
       track downs down_graph $(((rx - prev_rx) / interval))
       track ups up_graph $(((tx - prev_tx) / interval))
       addr=$(ip -4 -brief address show dev "$iface" | awk '{ print $3 }')
-      emit "$(paint "$THEME_MUTED" '󰈀') $(paint "$THEME_ACCENT" "$(graph down_graph 1 $shown)") $(human "${downs[-1]}")" normal \
+      emit "$(paint "$THEME_MUTED" '󰈀') $(paint "$THEME_ACCENT" "$(graph down_graph 1 $shown $shown)") $(human "${downs[-1]}")" normal \
         "$(direction ⇣ downs down_graph "$THEME_ACCENT")\\n$(direction ⇡ ups up_graph "$THEME_SECONDARY")\\n$(paint "$THEME_MUTED" "$iface  $addr · last 2 min")"
     fi
     prev_rx=$rx prev_tx=$tx

@@ -1,6 +1,6 @@
 # Feeds the stats.cpu, stats.mem and stats.net items (items/stats.sh) every
-# two seconds: a btop-style braille graph of the last half minute and the
-# current value on the bar, and the last two minutes with average and peak in
+# two seconds: a bar graph of the last 16 seconds and the current value on
+# the bar, and the last two minutes with average and peak in
 # the hover popup, like the waybar modules. The graph helpers come from
 # config/statusbar/graph.sh. Built with Nix's bash by
 # modules/darwin/services/sketchybar, since the bash macOS ships has no
@@ -17,7 +17,7 @@ echo $$ >"$pidfile"
 
 interval=2
 keep=60 # samples kept, for the popup graph: two minutes
-shown=10 # samples on the bar: two per braille character
+shown=8 # samples on the bar, one bar each
 
 args=() # the `sketchybar` call for this tick, sent once at its end
 
@@ -40,9 +40,9 @@ percent() {
   local avg peak hue
   read -r avg peak < <(stats "$3")
   hue=$(color "$(state "$4")")
-  label "$1" "$hue" "$(graph "$3" 1 $shown) $(printf '%3d%%' "$4")"
+  label "$1" "$hue" "$(graph "$3" 1 $shown $shown) $(printf '%3d%%' "$4")"
   label "$1.0" "$THEME_FG" "$2  $4%    avg $avg%  peak $peak%"
-  lines "$1" 1 "$hue" "$(graph "$3" 3 $keep)"
+  lines "$1" 1 "$hue" "$(graph "$3" 3 $keep $((keep / 2)))"
   label "$1.4" "$THEME_MUTED" "$5"
 }
 
@@ -53,7 +53,7 @@ direction() {
   local peak
   read -r _ peak < <(stats "$4")
   label "$1.$2" "$THEME_FG" "$3 $(human "${rates[-1]}")/s  peak $(human "$peak")/s"
-  lines "$1" $(($2 + 1)) "$6" "$(graph "$5" 2 $keep)"
+  lines "$1" $(($2 + 1)) "$6" "$(graph "$5" 2 $keep $((keep / 2)))"
 }
 
 cores=$(sysctl -n hw.logicalcpu)
@@ -104,7 +104,7 @@ net() {
     track downs down_graph $(((rx - prev_rx) / interval))
     track ups up_graph $(((tx - prev_tx) / interval))
     addr=$(ipconfig getifaddr "$iface" 2>/dev/null || true)
-    label stats.net "$THEME_ACCENT" "$(graph down_graph 1 $shown) $(human "${downs[-1]}")"
+    label stats.net "$THEME_ACCENT" "$(graph down_graph 1 $shown $shown) $(human "${downs[-1]}")"
     direction stats.net 0 ⇣ downs down_graph "$THEME_ACCENT"
     direction stats.net 3 ⇡ ups up_graph "$THEME_SECONDARY"
     label stats.net.6 "$THEME_MUTED" "$iface  ${addr:-no IPv4} · last 2 min"

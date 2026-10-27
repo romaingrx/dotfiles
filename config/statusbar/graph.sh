@@ -1,30 +1,40 @@
-# Braille graphs and the sample bookkeeping shared by the status bars:
+# Bar graphs and the sample bookkeeping shared by the status bars:
 # config/waybar/scripts/stats.sh and config/sketchybar/providers/stats.sh.
 # Each bar's Nix module prepends this file to its script. The caller sets
 # `keep` (samples kept) and the THEME_ACCENT, THEME_WARNING and THEME_DANGER
 # colors in its own format.
 # shellcheck shell=bash
 
-# Braille cell with `left` and `right` dots lit from the bottom, at
-# cells[left * 5 + right].
-cells=(⠀ ⢀ ⢠ ⢰ ⢸ ⡀ ⣀ ⣠ ⣰ ⣸ ⡄ ⣄ ⣤ ⣴ ⣼ ⡆ ⣆ ⣦ ⣶ ⣾ ⡇ ⣇ ⣧ ⣷ ⣿)
+# Block heights, from blank to full.
+bars=(' ' ▁ ▂ ▃ ▄ ▅ ▆ ▇ █)
 
-# graph ARRAY ROWS COUNT: the last COUNT values (0-100) of ARRAY as ROWS lines
-# of braille (one per line), oldest first. Missing samples are left blank.
+# graph ARRAY ROWS SAMPLES COLS: the last SAMPLES values (0-100) of ARRAY as
+# ROWS lines (one per line) of COLS block bars, oldest first. Each bar is the
+# peak of its share of the samples, at least a sliver so an idle graph still
+# shows. Bars with no samples yet are left blank.
 graph() {
   local -n values=$1
-  local rows=$2 count=$3 out="" row i j left right level=() pad
-  pad=$((count - ${#values[@]}))
-  for ((i = 0; i < count; i++)); do
-    j=$((i - pad))
-    if ((j < 0)); then level+=(0); else level+=($(((values[j] * rows * 4 + 99) / 100))); fi
+  local rows=$2 samples=$3 cols=$4 out="" row c k j v peak span level=() pad
+  span=$((samples / cols))
+  pad=$((samples - ${#values[@]}))
+  for ((c = 0; c < cols; c++)); do
+    peak=-1
+    for ((k = 0; k < span; k++)); do
+      j=$((c * span + k - pad))
+      ((j >= 0 && values[j] > peak)) && peak=${values[j]}
+    done
+    if ((peak < 0)); then
+      level+=(-1)
+    else
+      ((v = (peak * rows * 8 + 99) / 100, v = v < 1 ? 1 : v))
+      level+=("$v")
+    fi
   done
   for ((row = rows - 1; row >= 0; row--)); do
-    for ((i = 0; i < count; i += 2)); do
-      # Dots lit in this row (0 is the bottom) for each column, 0 to 4.
-      ((left = level[i] - row * 4, left = left < 0 ? 0 : left > 4 ? 4 : left))
-      ((right = level[i + 1] - row * 4, right = right < 0 ? 0 : right > 4 ? 4 : right))
-      out+=${cells[left * 5 + right]}
+    for ((c = 0; c < cols; c++)); do
+      # Eighths of this row (0 is the bottom) filled for this bar, 0 to 8.
+      ((v = level[c] - row * 8, v = v < 0 ? 0 : v > 8 ? 8 : v))
+      out+=${bars[v]}
     done
     ((row)) && out+=$'\n'
   done

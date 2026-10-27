@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 
-# The Tailscale logo (lib/tailscale-logo.nix), lit while connected.
+# The Tailscale logo from sketchybar-app-font, lit while connected.
 sketchybar --add item tailscale right \
 	--set tailscale \
-	icon.drawing=off \
+	icon=":tailscale:" \
+	icon.font="$APP_FONT:Regular:14.0" \
+	icon.color="$THEME_MUTED" \
+	icon.padding_left=0 \
+	icon.padding_right=0 \
 	label.drawing=off \
-	background.drawing=on \
-	background.color="$TRANSPARENT" \
-	background.image="${SKETCHYBAR_TAILSCALE_OFF:-}" \
-	background.image.scale=0.3 \
-	width=16 \
 	padding_left=8 \
 	padding_right=7 \
 	script="$PLUGIN_DIR/tailscale.sh" \

@@ -24,12 +24,9 @@ let
       })
     else
       pkgs.sketchybar;
-  tailscaleLogo = import ../../../../lib/tailscale-logo.nix pkgs;
   env = {
     SKETCHYBAR_APP_FONT_PATH = "${appFont}/share/fonts/truetype/sketchybar-app-font.ttf";
     SKETCHYBAR_APP_ICON_MAP = "${appFont}/bin/icon_map.sh";
-    SKETCHYBAR_TAILSCALE_ON = "${tailscaleLogo.on}";
-    SKETCHYBAR_TAILSCALE_OFF = "${tailscaleLogo.off}";
   };
 
   # The CPU, memory and network graphs (config/sketchybar/items/stats.sh).

@@ -1,5 +1,6 @@
 # The Tailscale logo, a 3x3 grid of dots with a lit T, as PNGs in the theme's
-# colors for the status bars: `on` while connected, `off` otherwise.
+# colors for waybar: `on` while connected, `off` otherwise. (sketchybar uses
+# the glyph in sketchybar-app-font.)
 pkgs:
 let
   theme = import ./theme;

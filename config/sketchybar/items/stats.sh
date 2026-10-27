@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-# CPU, memory and network as braille graphs, fed by `sketchybar-stats`
+# CPU, memory and network as bar graphs, fed by `sketchybar-stats`
 # (providers/stats.sh). Hovering shows the last two minutes.
 #
 # typographical_width: sketchybar sizes text by its ink by default, so the
-# blank braille cells of a graph would count for nothing and the label would
+# blank cells of a graph would count for nothing and the label would
 # grow as history fills in, with its end clipped.
 
 # stats_item NAME ICON ROWS: a bar item with ROWS popup rows, NAME.0 on.
