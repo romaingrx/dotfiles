@@ -16,13 +16,14 @@ sketchybar_resolve_paths() {
 		HELPER_DIR="$CONFIG_DIR/helpers"
 	fi
 
-	# Vanilla fallback; colors.sh (lib/theme) sets these.
+	# Fonts fall back to these when colors.sh (lib/theme) has not set them.
+	# APP_FONT is the SketchyBar glyph font.
 	: "${FONT:=FiraCode Nerd Font}"
 	: "${NERD_FONT:=FiraCode Nerd Font}"
 	: "${APP_FONT:=sketchybar-app-font}"
 	: "${STATUS_RADIUS:=6}"
 	: "${STATUS_HEIGHT:=22}"
-	: "${STATUS_GAP:=7}"
+	: "${STATUS_GAP:=7}" # on each side of a right-side item
 
 	export CONFIG_DIR PLUGIN_DIR HELPER_DIR FONT NERD_FONT APP_FONT
 	export STATUS_BG STATUS_RADIUS STATUS_HEIGHT STATUS_GAP

@@ -30,16 +30,10 @@ let
   };
 
   # The CPU, memory and network graphs (config/sketchybar/items/stats.sh).
-  stats = pkgs.writeShellApplication {
+  stats = import ../../../../lib/statusbar-script.nix pkgs {
     name = "sketchybar-stats";
+    script = ../../../../config/sketchybar/providers/stats.sh;
     runtimeInputs = [ pkgs.gawk ];
-    # The script hands arrays to helpers by name (local -n), which shellcheck
-    # reads as unused.
-    excludeShellChecks = [ "SC2034" ];
-    text = lib.concatMapStrings builtins.readFile [
-      ../../../../config/statusbar/graph.sh
-      ../../../../config/sketchybar/providers/stats.sh
-    ];
   };
 in
 {

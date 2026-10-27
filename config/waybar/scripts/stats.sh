@@ -1,13 +1,11 @@
 # Streams one waybar JSON line per tick for `stats cpu|mem|net`: an icon, a
-# bar graph of the last 16 seconds and the current value. The tooltip holds a taller graph of the last two minutes with its average and
-# peak. The graph helpers come from config/statusbar/graph.sh. Colors come
-# from the environment (set from lib/theme in modules/home/programs/waybar.nix).
+# bar graph of the last 16 seconds and the current value. The tooltip holds a
+# taller graph of the last two minutes with its average and peak. The graph
+# helpers come from config/statusbar/graph.sh. Colors come from the
+# environment (set from lib/theme in modules/home/programs/waybar.nix).
 # shellcheck shell=bash
 
 kind=${1:?usage: stats cpu|mem|net}
-interval=2
-keep=60 # samples kept, for the tooltip graph: two minutes
-shown=8 # samples on the bar, one bar each
 
 paint() { printf '<span color=\\"#%s\\">%s</span>' "$1" "$2"; }
 
@@ -18,11 +16,10 @@ emit() { # TEXT CLASS TOOLTIP, with newlines escaped for JSON
 # percent ICON NAME VALUE DETAILS: the bar and tooltip for a 0-100 metric kept
 # in `history`.
 percent() {
-  local avg peak cls
-  read -r avg peak < <(stats history)
+  local cls
   cls=$(state "$3")
-  emit "$(paint "$THEME_MUTED" "$1") $(paint "$(color "$cls")" "$(graph history 1 $shown $shown)") $(printf '%3d%%' "$3")" "$cls" \
-    "<b>$2</b>  $3%    avg $avg%  peak $peak%\\n$(paint "$(color "$cls")" "$(graph history 3 $keep $((keep / 2)))")\\n$(paint "$THEME_MUTED" "$4")"
+  emit "$(paint "$THEME_MUTED" "$1") $(paint "$(color "$cls")" "$(spark history)") $(printf '%3d%%' "$3")" "$cls" \
+    "$(summary "<b>$2</b>" "$3" history)\\n$(paint "$(color "$cls")" "$(history_graph history 3)")\\n$(paint "$THEME_MUTED" "$4 · $window")"
 }
 
 cpu() {
@@ -36,7 +33,7 @@ cpu() {
       pct=$((100 * (total - prev_total - idle + prev_idle) / (total - prev_total)))
       push history "$pct"
       read -r l1 l5 l15 _ </proc/loadavg
-      percent '' CPU "$pct" "$cores cores · load $l1 $l5 $l15 · last 2 min"
+      percent '' CPU "$pct" "$cores cores · load $l1 $l5 $l15"
     fi
     prev_total=$total prev_idle=$idle
     sleep "$interval"
@@ -56,7 +53,7 @@ mem() {
     pct=$((100 * used / total))
     push history "$pct"
     percent '' Memory "$pct" "$(awk -v u="$used" -v t="$total" -v s=$((swap_total - swap_free)) 'BEGIN {
-      printf "%.1f / %.1f GiB · swap %.1f GiB · last 2 min", u / 1048576, t / 1048576, s / 1048576
+      printf "%.1f / %.1f GiB · swap %.1f GiB", u / 1048576, t / 1048576, s / 1048576
     }')"
     sleep "$interval"
   done
@@ -68,7 +65,7 @@ direction() {
   local peak
   read -r _ peak < <(stats "$2")
   printf '<b>%s</b> %s/s  peak %s/s\\n%s' "$1" "$(human "${rates[-1]}")" "$(human "$peak")" \
-    "$(paint "$4" "$(graph "$3" 2 $keep $((keep / 2)))")"
+    "$(paint "$4" "$(history_graph "$3" 2)")"
 }
 
 net() {
@@ -89,8 +86,8 @@ net() {
       track downs down_graph $(((rx - prev_rx) / interval))
       track ups up_graph $(((tx - prev_tx) / interval))
       addr=$(ip -4 -brief address show dev "$iface" | awk '{ print $3 }')
-      emit "$(paint "$THEME_MUTED" '󰈀') $(paint "$THEME_ACCENT" "$(graph down_graph 1 $shown $shown)") $(human "${downs[-1]}")" normal \
-        "$(direction ⇣ downs down_graph "$THEME_ACCENT")\\n$(direction ⇡ ups up_graph "$THEME_SECONDARY")\\n$(paint "$THEME_MUTED" "$iface  $addr · last 2 min")"
+      emit "$(paint "$THEME_MUTED" '󰈀') $(paint "$THEME_ACCENT" "$(spark down_graph)") $(human "${downs[-1]}")" normal \
+        "$(direction ⇣ downs down_graph "$THEME_ACCENT")\\n$(direction ⇡ ups up_graph "$THEME_SECONDARY")\\n$(paint "$THEME_MUTED" "$iface  $addr · $window")"
     fi
     prev_rx=$rx prev_tx=$tx
     sleep "$interval"

@@ -9,15 +9,13 @@ in
   xdg.configFile."theme/sketchybar.sh" = lib.mkIf pkgs.stdenv.isDarwin {
     text = lib.toShellVars (
       # THEME_<ROLE>, the bar-wide meanings shared with waybar.
-      lib.mapAttrs' (role: hex: lib.nameValuePair "THEME_${lib.toUpper role}" (argb "ff" hex)) theme.roles
+      theme.roleVars (argb "ff")
       // {
-        BLACK = argb "ff" p.mantle;
         WHITE = argb "ff" p.text;
         RED = argb "ff" p.red;
         GREEN = argb "ff" p.green;
         BLUE = argb "ff" p.blue;
         YELLOW = argb "ff" p.yellow;
-        ORANGE = argb "ff" p.peach;
         MAGENTA = argb "ff" p.mauve;
         GREY = argb "ff" p.overlay2;
         TRANSPARENT = argb "00" p.base;

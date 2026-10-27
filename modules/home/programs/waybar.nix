@@ -12,24 +12,17 @@ let
 
   # Defined once for the CSS (as @theme_<role>) and the scripts (as $THEME_<ROLE>).
   inherit (theme) roles;
-  roleEnv = lib.mapAttrs' (role: lib.nameValuePair "THEME_${lib.toUpper role}") roles;
 
   # Right-side modules, built here so they read the palette.
-  stats = pkgs.writeShellApplication {
+  stats = import ../../../lib/statusbar-script.nix pkgs {
     name = "waybar-stats";
+    script = ../../../config/waybar/scripts/stats.sh;
     runtimeInputs = with pkgs; [
       coreutils
       gawk
       iproute2
     ];
-    runtimeEnv = roleEnv;
-    # The script hands arrays to helpers by name (local -n), which shellcheck
-    # reads as unused.
-    excludeShellChecks = [ "SC2034" ];
-    text = lib.concatMapStrings builtins.readFile [
-      ../../../config/statusbar/graph.sh
-      ../../../config/waybar/scripts/stats.sh
-    ];
+    runtimeEnv = theme.roleVars (hex: hex);
   };
 
   tailscaleLogo = import ../../../lib/tailscale-logo.nix pkgs;

@@ -15,10 +15,6 @@ source "${CONFIG_DIR:-$HOME/.config/sketchybar}/colors.sh"
 pidfile=${TMPDIR:-/tmp}/sketchybar-stats.pid
 echo $$ >"$pidfile"
 
-interval=2
-keep=60 # samples kept, for the popup graph: two minutes
-shown=8 # samples on the bar, one bar each
-
 args=() # the `sketchybar` call for this tick, sent once at its end
 
 label() { # ITEM COLOR TEXT
@@ -37,13 +33,12 @@ lines() {
 # percent ITEM NAME HISTORY VALUE DETAILS: the bar and popup (rows 0-4) for a
 # 0-100 metric.
 percent() {
-  local avg peak hue
-  read -r avg peak < <(stats "$3")
+  local hue
   hue=$(color "$(state "$4")")
-  label "$1" "$hue" "$(graph "$3" 1 $shown $shown) $(printf '%3d%%' "$4")"
-  label "$1.0" "$THEME_FG" "$2  $4%    avg $avg%  peak $peak%"
-  lines "$1" 1 "$hue" "$(graph "$3" 3 $keep $((keep / 2)))"
-  label "$1.4" "$THEME_MUTED" "$5"
+  label "$1" "$hue" "$(spark "$3") $(printf '%3d%%' "$4")"
+  label "$1.0" "$THEME_FG" "$(summary "$2" "$4" "$3")"
+  lines "$1" 1 "$hue" "$(history_graph "$3" 3)"
+  label "$1.4" "$THEME_MUTED" "$5 · $window"
 }
 
 # direction ITEM FIRST ARROW RATES GRAPH COLOR: a popup block (3 rows) for
@@ -53,7 +48,7 @@ direction() {
   local peak
   read -r _ peak < <(stats "$4")
   label "$1.$2" "$THEME_FG" "$3 $(human "${rates[-1]}")/s  peak $(human "$peak")/s"
-  lines "$1" $(($2 + 1)) "$6" "$(graph "$5" 2 $keep $((keep / 2)))"
+  lines "$1" $(($2 + 1)) "$6" "$(history_graph "$5" 2)"
 }
 
 cores=$(sysctl -n hw.logicalcpu)
@@ -66,7 +61,7 @@ cpu() {
   read -r user system _ l1 l5 l15 < <(iostat -C -U -n 0 -c 2 -w "$interval" | tail -n 1)
   pct=$((user + system))
   push cpus "$pct"
-  percent stats.cpu CPU cpus "$pct" "$cores cores · load $l1 $l5 $l15 · last 2 min"
+  percent stats.cpu CPU cpus "$pct" "$cores cores · load $l1 $l5 $l15"
 }
 
 mems=()
@@ -82,7 +77,7 @@ mem() {
   pct=$((100 * used / memory))
   push mems "$pct"
   percent stats.mem Memory mems "$pct" "$(awk -v u="$used" -v t="$memory" -v s="$swap" 'BEGIN {
-    printf "%.1f / %.1f GiB · swap %s · last 2 min", u / 2^30, t / 2^30, s
+    printf "%.1f / %.1f GiB · swap %s", u / 2^30, t / 2^30, s
   }')"
 }
 
@@ -104,10 +99,10 @@ net() {
     track downs down_graph $(((rx - prev_rx) / interval))
     track ups up_graph $(((tx - prev_tx) / interval))
     addr=$(ipconfig getifaddr "$iface" 2>/dev/null || true)
-    label stats.net "$THEME_ACCENT" "$(graph down_graph 1 $shown $shown) $(human "${downs[-1]}")"
+    label stats.net "$THEME_ACCENT" "$(spark down_graph) $(human "${downs[-1]}")"
     direction stats.net 0 ⇣ downs down_graph "$THEME_ACCENT"
     direction stats.net 3 ⇡ ups up_graph "$THEME_SECONDARY"
-    label stats.net.6 "$THEME_MUTED" "$iface  ${addr:-no IPv4} · last 2 min"
+    label stats.net.6 "$THEME_MUTED" "$iface  ${addr:-no IPv4} · $window"
   fi
   prev_rx=$rx prev_tx=$tx
 }

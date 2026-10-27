@@ -1,9 +1,13 @@
 # Bar graphs and the sample bookkeeping shared by the status bars:
 # config/waybar/scripts/stats.sh and config/sketchybar/providers/stats.sh.
-# Each bar's Nix module prepends this file to its script. The caller sets
-# `keep` (samples kept) and the THEME_ACCENT, THEME_WARNING and THEME_DANGER
-# colors in its own format.
+# lib/statusbar-script.nix prepends this file to each script. The caller sets
+# the THEME_ACCENT, THEME_WARNING and THEME_DANGER colors in its own format.
 # shellcheck shell=bash
+
+interval=2 # seconds between samples
+keep=60    # samples kept, for the hover graph
+shown=8    # samples on the bar, one bar each
+window="last $((keep * interval / 60)) min"
 
 # Block heights, from blank to full.
 bars=(' ' ▁ ▂ ▃ ▄ ▅ ▆ ▇ █)
@@ -41,6 +45,10 @@ graph() {
   printf '%s' "$out"
 }
 
+# spark ARRAY: the graph on the bar. history_graph ARRAY ROWS: the one on hover.
+spark() { graph "$1" 1 "$shown" "$shown"; }
+history_graph() { graph "$1" "$2" "$keep" $((keep / 2)); }
+
 push() { # ARRAY VALUE
   local -n into=$1
   into+=("$2")
@@ -56,6 +64,13 @@ stats() { # ARRAY: "avg peak" of the values
     ((v > peak)) && peak=$v
   done
   echo "$((sum / ${#values[@]})) $peak"
+}
+
+# summary NAME VALUE ARRAY: the hover heading for a 0-100 metric.
+summary() {
+  local avg peak
+  read -r avg peak < <(stats "$3")
+  echo "$1  $2%    avg $avg%  peak $peak%"
 }
 
 state() {
