@@ -7,27 +7,17 @@
 # blank cells of a graph would count for nothing and the label would
 # grow as history fills in, with its end clipped.
 
+source "$HELPER_DIR/components.sh"
+
 # stats_item NAME ICON ROWS: a bar item with ROWS popup rows, NAME.0 on.
 stats_item() {
 	local name="stats.$1" row
 
-	sketchybar --add item "$name" right \
-		--set "$name" \
+	status_item "$name" \
 		icon="$2" \
 		icon.color="$THEME_MUTED" \
-		icon.padding_left=0 \
-		icon.padding_right=6 \
-		label.font="$FONT:Medium:13.0" \
 		label.font.typographical_width=on \
-		label.padding_left=0 \
-		label.padding_right=0 \
-		padding_left=7 \
-		padding_right=7 \
 		script="$PLUGIN_DIR/stats_hover.sh" \
-		popup.background.color="$THEME_MANTLE" \
-		popup.background.border_color="$THEME_SURFACE" \
-		popup.background.border_width=1 \
-		popup.background.corner_radius=8 \
 		popup.align=right \
 		popup.height=16 \
 		--subscribe "$name" mouse.entered mouse.exited mouse.exited.global

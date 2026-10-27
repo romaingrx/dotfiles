@@ -30,11 +30,7 @@ aerospace_workspaces | while IFS= read -r sid; do
 		background.corner_radius=5 \
 		background.height=22 \
 		background.drawing=off \
-		popup.background.color="$POPUP_BG" \
-		popup.blur_radius=50 \
-		popup.background.corner_radius=5 \
 		popup.align=left \
-		popup.height=26 \
 		click_script="$PLUGIN_DIR/space_click.sh $sid"
 
 	sketchybar --add item "$item.summary" "popup.$item" \

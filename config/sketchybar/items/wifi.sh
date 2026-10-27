@@ -1,39 +1,16 @@
 #!/usr/bin/env bash
 
-# The Tailscale logo from sketchybar-app-font, lit while connected.
-sketchybar --add item tailscale right \
-	--set tailscale \
-	icon=":tailscale:" \
-	icon.font="$APP_FONT:Regular:14.0" \
-	icon.color="$THEME_MUTED" \
-	icon.padding_left=0 \
-	icon.padding_right=0 \
-	label.drawing=off \
-	padding_left=8 \
-	padding_right=7 \
-	script="$PLUGIN_DIR/tailscale.sh" \
-	update_freq=10 \
-	--subscribe tailscale system_woke wifi_change
+source "$HELPER_DIR/components.sh"
 
-sketchybar --add item wifi.control right \
-	--set wifi.control \
+# The VPN, Tailscale included, is listed in the popup.
+status_item wifi.control \
 	icon="$WIFI_ICN" \
-	icon.padding_left=0 \
 	icon.padding_right=0 \
-	label.font="$APP_FONT:Regular:12.0" \
-	label.padding_left=6 \
-	label.padding_right=0 \
 	label.drawing=off \
 	script="$PLUGIN_DIR/wifi.sh" \
 	update_freq=30 \
 	click_script="$PLUGIN_DIR/wifi_click.sh" \
-	padding_left=7 \
-	padding_right=0 \
-	popup.background.color="$POPUP_BG" \
-	popup.blur_radius=50 \
-	popup.background.corner_radius=5 \
 	popup.align=right \
-	popup.height=26 \
 	--subscribe wifi.control system_woke wifi_change
 
 sketchybar --add item wifi.ssid popup.wifi.control \

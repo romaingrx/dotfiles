@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 
+# status_item NAME [ARG...]: a right-side item with the bar's spacing and type,
+# then ARGs (more properties, or --subscribe and the like).
+status_item() {
+	local name="$1"
+	shift
+
+	sketchybar --add item "$name" right \
+		--set "$name" \
+		padding_left="$STATUS_GAP" \
+		padding_right="$STATUS_GAP" \
+		icon.padding_left=0 \
+		icon.padding_right=6 \
+		label.font="$FONT:Medium:13.0" \
+		label.padding_left=0 \
+		label.padding_right=0 \
+		"$@"
+}
+
 status_pill() {
 	local name="$1"
 	local position="$2"

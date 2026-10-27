@@ -22,7 +22,8 @@ sketchybar_resolve_paths() {
 	: "${APP_FONT:=sketchybar-app-font}"
 	: "${STATUS_RADIUS:=6}"
 	: "${STATUS_HEIGHT:=22}"
+	: "${STATUS_GAP:=7}"
 
 	export CONFIG_DIR PLUGIN_DIR HELPER_DIR FONT NERD_FONT APP_FONT
-	export STATUS_BG STATUS_RADIUS STATUS_HEIGHT
+	export STATUS_BG STATUS_RADIUS STATUS_HEIGHT STATUS_GAP
 }
