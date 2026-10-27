@@ -9,9 +9,9 @@ sketchybar --add item tailscale right \
 	background.color="$TRANSPARENT" \
 	background.image="${SKETCHYBAR_TAILSCALE_OFF:-}" \
 	background.image.scale=0.3 \
-	width=15 \
-	padding_left=6 \
-	padding_right=17 \
+	width=16 \
+	padding_left=8 \
+	padding_right=7 \
 	script="$PLUGIN_DIR/tailscale.sh" \
 	update_freq=10 \
 	--subscribe tailscale system_woke wifi_change
@@ -28,7 +28,7 @@ sketchybar --add item wifi.control right \
 	script="$PLUGIN_DIR/wifi.sh" \
 	update_freq=30 \
 	click_script="$PLUGIN_DIR/wifi_click.sh" \
-	padding_left=0 \
+	padding_left=7 \
 	padding_right=0 \
 	popup.background.color="$POPUP_BG" \
 	popup.blur_radius=50 \

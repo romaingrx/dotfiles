@@ -7,8 +7,8 @@ sketchybar --add item battery right \
 	label.font="$FONT:Medium:13.0" \
 	label.padding_left=0 \
 	label.padding_right=0 \
-	padding_left=17 \
-	padding_right=17 \
+	padding_left=7 \
+	padding_right=7 \
 	script="$PLUGIN_DIR/battery.sh" \
 	update_freq=30 \
 	click_script="$PLUGIN_DIR/battery_click.sh" \
