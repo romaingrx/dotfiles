@@ -95,22 +95,30 @@
         };
       });
 
-      # Home-manager activation for dev containers; built impurely by
-      # devcontainer.sh for whichever user the container runs as.
-      legacyPackages = forAllSystems (pkgs: {
-        devcontainer =
+      # Standalone home-manager activations for Linux machines without
+      # nix-darwin/NixOS, built impurely by devcontainer.sh for whichever user
+      # runs it: `devcontainer` for throwaway containers, `devbox` for the
+      # Trajectory Labs dev box (devcontainer plus work tooling).
+      legacyPackages = forAllSystems (
+        pkgs:
+        lib.genAttrs [ "devcontainer" "devbox" ] (
+          profile:
           (inputs.home-manager.lib.homeManagerConfiguration {
             inherit pkgs;
-            extraSpecialArgs.dotfilesPath = builtins.getEnv "DOTFILES";
+            extraSpecialArgs = {
+              inherit inputs;
+              dotfilesPath = builtins.getEnv "DOTFILES";
+            };
             modules = [
-              ./hosts/devcontainer/home.nix
+              ./hosts/${profile}/home.nix
               {
                 home.username = builtins.getEnv "USER";
                 home.homeDirectory = builtins.getEnv "HOME";
               }
             ];
-          }).activationPackage;
-      });
+          }).activationPackage
+        )
+      );
 
       nixosConfigurations.carl = mkSystem "carl" {
         system = "x86_64-linux";

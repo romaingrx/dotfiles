@@ -47,6 +47,9 @@ done with the laptop, revoke the subkey on goddard (`gpg --edit-key`, `key N`,
    from the SSO session, so the SSH config survives a rebuild. Add
    `~/.ssh/tl-devbox.pub` to the box's `authorized_keys` first; after a rebuild,
    add it again and run `ssh-keygen -R tl-devbox` (new host key).
+   On the box, apply the `devbox` home-manager profile (no keys):
+   `git clone https://github.com/romaingrx/dotfiles ~/.dotfiles && ~/.dotfiles/devcontainer.sh devbox`,
+   then put your work email in `~/.config/git/work.gitconfig` (`[user] email = ...`).
 3. Tailscale: sign in with the work account and turn on Tailscale DNS.
 4. Open OrbStack once so it links `docker` (see `modules/darwin/orbstack.nix`).
 5. Install the `tl` CLIs by hand and sign in.
