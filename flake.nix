@@ -117,21 +117,12 @@
         user = "romaingrx";
       };
 
-      darwinConfigurations =
-        lib.genAttrs [ "goddard" "brobot" ] (
-          name:
-          mkSystem name {
-            system = "aarch64-darwin";
-            user = "romaingrx";
-          }
-        )
-        // {
-          # Work laptop: company-managed, no personal secrets.
-          strato = mkSystem "strato" {
-            system = "aarch64-darwin";
-            user = "romaingrx";
-            identity = "work";
-          };
-        };
+      darwinConfigurations = lib.genAttrs [ "goddard" "brobot" "strato" ] (
+        name:
+        mkSystem name {
+          system = "aarch64-darwin";
+          user = "romaingrx";
+        }
+      );
     };
 }

@@ -9,14 +9,14 @@
 
   system.defaults.loginwindow.LoginwindowText = "Rocket-built, ready for liftoff";
 
-  # Work-only GUI apps; list-merges with the shared casks.
+  # strato-only GUI apps; list-merges with the shared casks.
   homebrew.casks = [
-    # Docker; modules/darwin/orbstack.nix links its CLI.
+    # Docker for local `tl run`; modules/darwin/orbstack.nix links its CLI.
     "orbstack"
-    # Work Google account (passkey sign-in) in its own browser.
+    # Google Workspace (passkey sign-in) in its own browser.
     "google-chrome"
   ];
 
-  # The laptop is company-managed (MDM): nothing here should fight its
-  # profiles (FileVault, firewall, updates).
+  # The laptop is enrolled in the company MDM: nothing here should
+  # fight its profiles (FileVault, firewall, updates).
 }

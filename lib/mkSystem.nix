@@ -1,18 +1,11 @@
 # Builds a NixOS or nix-darwin system for one host and its single user.
-# `identity` is "personal" (default) or "work": a work host gets no personal
-# secrets (sops age key, GPG key, personal GitHub SSH key) and a work git
-# identity; see users/<user>/home-manager.nix.
 {
   inputs,
   lib,
   dotfilesPath,
 }:
 name:
-{
-  system,
-  user,
-  identity ? "personal",
-}:
+{ system, user }:
 let
   darwin = lib.hasSuffix "darwin" system;
   systemType = if darwin then "darwin" else "nixos";
@@ -24,7 +17,7 @@ let
   homeDirectory = "${if darwin then "/Users" else "/home"}/${user}";
 in
 systemFunc {
-  specialArgs = { inherit inputs homeDirectory identity; };
+  specialArgs = { inherit inputs homeDirectory; };
   modules = [
     hostDir
     ../users/${user}/${systemType}.nix
@@ -46,7 +39,7 @@ systemFunc {
         backupFileExtension = "bckp";
         sharedModules = [ inputs.sops-nix.homeManagerModules.sops ];
         extraSpecialArgs = {
-          inherit inputs identity;
+          inherit inputs;
           dotfilesPath = "${homeDirectory}/${dotfilesPath}";
         };
         users.${user}.imports = [
