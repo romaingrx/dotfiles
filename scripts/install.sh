@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Override REPO_URL / DOTFILES_PATH / HOST to customize.
+# Override REPO_URL / DOTFILES_PATH / HOST to customize. NO_SECRETS=1 skips the
+# age key check, for a host built with dotfiles.secrets.enable = false (strato).
 set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://github.com/romaingrx/dotfiles.git}"
@@ -12,7 +13,7 @@ err() { printf '\033[0;31m[install]\033[0m %s\n' "$*" >&2; }
 # sops needs the age key present to decrypt secrets during the switch; fail early
 # with a clear message instead of a cryptic mid-activation error.
 AGE_KEY="$HOME/.config/sops/age/keys.txt"
-if [ ! -f "$AGE_KEY" ]; then
+if [ "${NO_SECRETS:-0}" != 1 ] && [ ! -f "$AGE_KEY" ]; then
   err "Missing sops age key at $AGE_KEY."
   err "Copy it from another host (chmod 600) before bootstrapping — see docs/new-host-setup.md."
   exit 1

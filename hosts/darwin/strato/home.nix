@@ -26,6 +26,10 @@ let
   '';
 in
 {
+  # Company-managed laptop: no sops age key here. Its GitHub SSH key (~/.ssh/github)
+  # and GPG signing subkey are made per device; see ./README.md.
+  dotfiles.secrets.enable = false;
+
   home = {
     packages = with pkgs; [
       ssm-session-manager-plugin # `aws ssm start-session`, behind ssh tl-devbox
@@ -37,6 +41,7 @@ in
 
   programs.ssh.settings."tl-devbox" = {
     User = "ubuntu";
+    IdentityFile = "~/.ssh/tl-devbox";
     ProxyCommand = "${devboxProxy} %p";
     ServerAliveInterval = "30";
     ServerAliveCountMax = "3";
