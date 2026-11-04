@@ -8,7 +8,7 @@
 curl -fsSL https://romaingrx.com/dotfiles/install.sh | bash
 ```
 
-Installs Nix, clones to `~/.dotfiles`, and activates the host (`HOST=<name>` to pick a config; defaults to the hostname). The only secret you carry over is the sops age key — see [docs/new-host-setup.md](docs/new-host-setup.md).
+Installs Nix, clones to `~/.dotfiles`, and activates the host (`HOST=<name>` to pick a config; defaults to the hostname). The only secret you carry over is the sops age key (a host with `dotfiles.secrets.enable = false`, like `strato`, carries none) — see [docs/new-host-setup.md](docs/new-host-setup.md).
 
 ## Features
 

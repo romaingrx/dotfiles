@@ -31,7 +31,11 @@ cd "$DOTFILES_PATH"
 
 case "$(uname -s)" in
   Darwin) configs=darwinConfigurations ;;
-  *) configs=nixosConfigurations ;;
+  Linux) configs=nixosConfigurations ;;
+  *)
+    err "Unsupported OS: $(uname -s)"
+    exit 1
+    ;;
 esac
 
 # sops needs the age key present to decrypt secrets during the switch; fail
@@ -39,10 +43,10 @@ esac
 # error. The host's own config says whether it uses secrets
 # (dotfiles.secrets.enable, users/romaingrx/secrets.nix): strato does not.
 AGE_KEY="$HOME/.config/sops/age/keys.txt"
-needs_age_key=$(nix --extra-experimental-features "nix-command flakes" eval --raw \
-  "path:.#$configs.$HOST.config.home-manager.users.$(id -un).dotfiles.secrets.enable" \
-  --apply 'enabled: if enabled then "yes" else "no"')
-if [ "$needs_age_key" = yes ] && [ ! -f "$AGE_KEY" ]; then
+needs_age_key=$(nix --extra-experimental-features "nix-command flakes" eval --json \
+  "path:.#$configs.$HOST.config.home-manager.users" \
+  --apply 'users: builtins.any (u: u.dotfiles.secrets.enable) (builtins.attrValues users)')
+if [ "$needs_age_key" = true ] && [ ! -f "$AGE_KEY" ]; then
   err "Missing sops age key at $AGE_KEY."
   err "Copy it from another host (chmod 600), then re-run — see docs/new-host-setup.md."
   exit 1
@@ -83,10 +87,6 @@ case "$(uname -s)" in
   Linux)
     log "Activating nixosConfigurations.$HOST..."
     sudo nixos-rebuild switch --flake "path:.#$HOST"
-    ;;
-  *)
-    err "Unsupported OS: $(uname -s)"
-    exit 1
     ;;
 esac
 

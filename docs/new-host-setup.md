@@ -7,6 +7,7 @@ Homebrew, the SSH and GPG keys (via sops), and everything else come from the swi
 
 Copy the sops age key from another host to `~/.config/sops/age/keys.txt` (mode `0600`).
 It's the only secret you carry over — the GPG and SSH keys decrypt from it on switch.
+A host that sets `dotfiles.secrets.enable = false` (`strato`) skips this; see its README.
 
 ## Bootstrap
 

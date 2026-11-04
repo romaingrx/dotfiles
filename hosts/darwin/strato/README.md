@@ -14,13 +14,12 @@ company-managed machine.
 
 ## Keys (once)
 
-SSH, one key per purpose, each with a passphrase kept in 1Password and the macOS
-Keychain (`UseKeychain` is already set):
+SSH, one key per purpose, each with a passphrase kept in 1Password. The agent
+(gpg-agent, `enableSshSupport`) caches it after first use (`AddKeysToAgent`):
 
 ```sh
 ssh-keygen -t ed25519 -f ~/.ssh/github -C strato
 ssh-keygen -t ed25519 -f ~/.ssh/tl-devbox -C strato
-ssh-add --apple-use-keychain ~/.ssh/github ~/.ssh/tl-devbox
 gh auth login
 gh ssh-key add ~/.ssh/github.pub --title strato
 ```
@@ -30,7 +29,8 @@ GPG signing subkey, created on a host that holds the full key (goddard):
 ```sh
 gpg --quick-add-key 383E2222E1BEFDAD ed25519 sign 2y
 gpg --list-keys --with-subkey-fingerprints 383E2222E1BEFDAD
-gpg --armor --export-secret-subkeys <SUBKEY_FPR>! > strato.asc
+gpg --armor --export-secret-subkeys '<SUBKEY_FPR>!' > strato.asc
+gpg --delete-secret-keys '<SUBKEY_FPR>!'   # else goddard signs with it too
 gpg --armor --export 383E2222E1BEFDAD   # re-upload on GitHub
 ```
 
@@ -44,8 +44,9 @@ done with the laptop, revoke the subkey on goddard (`gpg --edit-key`, `key N`,
 1. AWS: `aws configure sso` with profile name `tl` (it is the default via
    `AWS_PROFILE`), then `aws sso login`.
 2. Dev box: `ssh tl-devbox` finds the running box by its `owner-email` tag, read
-   from the SSO session, so a rebuilt box needs no config change. Add
-   `~/.ssh/tl-devbox.pub` to the box once first.
+   from the SSO session, so the SSH config survives a rebuild. Add
+   `~/.ssh/tl-devbox.pub` to the box's `authorized_keys` first; after a rebuild,
+   add it again and run `ssh-keygen -R tl-devbox` (new host key).
 3. Tailscale: sign in with the work account and turn on Tailscale DNS.
 4. Open OrbStack once so it links `docker` (see `modules/darwin/orbstack.nix`).
 5. Install the `tl` CLIs by hand and sign in.

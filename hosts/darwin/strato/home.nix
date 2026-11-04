@@ -10,6 +10,9 @@ let
   # the `tl` profile signs in as: the session name at the end of the role ARN.
   devboxProxy = pkgs.writeShellScript "tl-devbox-proxy" ''
     set -euo pipefail
+    # ssh may be launched outside a login shell (VS Code Remote-SSH from the Dock),
+    # so do not rely on PATH for the plugin `aws ssm start-session` execs.
+    export PATH="${pkgs.ssm-session-manager-plugin}/bin:$PATH"
     port="$1"
     arn=$(${aws} sts get-caller-identity --query Arn --output text)
     email="''${arn##*/}"
@@ -32,7 +35,7 @@ in
 
   home = {
     packages = with pkgs; [
-      ssm-session-manager-plugin # `aws ssm start-session`, behind ssh tl-devbox
+      ssm-session-manager-plugin # interactive `aws ssm start-session` (break-glass)
       jujutsu # `tl task` composes tasks with jj
     ];
     # The `tl` profile itself comes from `aws configure sso` on the machine.
