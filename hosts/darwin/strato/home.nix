@@ -1,17 +1,13 @@
-# strato-only home config (auto-imported by mkSystem): Trajectory Labs tooling.
 { pkgs, ... }:
 let
   awsProfile = "tl";
   awsRegion = "us-west-2";
   aws = "${pkgs.awscli2}/bin/aws --profile ${awsProfile} --region ${awsRegion}";
 
-  # Dev box instance IDs change when the box is rebuilt, so resolve the running
-  # one on every connection by its owner-email tag. That email is the SSO user
-  # the `tl` profile signs in as: the session name at the end of the role ARN.
+  # Resolve the running dev box by its owner-email tag (the SSO session name),
+  # since a rebuild changes its instance ID.
   devboxProxy = pkgs.writeShellScript "tl-devbox-proxy" ''
     set -euo pipefail
-    # ssh may be launched outside a login shell (VS Code Remote-SSH from the Dock),
-    # so do not rely on PATH for the plugin `aws ssm start-session` execs.
     export PATH="${pkgs.ssm-session-manager-plugin}/bin:$PATH"
     port="$1"
     arn=$(${aws} sts get-caller-identity --query Arn --output text)
@@ -29,16 +25,14 @@ let
   '';
 in
 {
-  # Company-managed laptop: no sops age key here. Its GitHub SSH key (~/.ssh/github)
-  # and GPG signing subkey are made per device; see ./README.md.
+  # Company-managed: per-device keys instead of the age key (see README.md).
   dotfiles.secrets.enable = false;
 
   home = {
     packages = with pkgs; [
-      ssm-session-manager-plugin # interactive `aws ssm start-session` (break-glass)
-      jujutsu # `tl task` composes tasks with jj
+      ssm-session-manager-plugin
+      jujutsu
     ];
-    # The `tl` profile itself comes from `aws configure sso` on the machine.
     sessionVariables.AWS_PROFILE = awsProfile;
   };
 

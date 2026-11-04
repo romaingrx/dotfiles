@@ -38,10 +38,7 @@ case "$(uname -s)" in
     ;;
 esac
 
-# sops needs the age key present to decrypt secrets during the switch; fail
-# before activation with a clear message instead of a cryptic mid-activation
-# error. The host's own config says whether it uses secrets
-# (dotfiles.secrets.enable, users/romaingrx/secrets.nix): strato does not.
+# Fail before activation if the host uses sops secrets but the age key is missing.
 AGE_KEY="$HOME/.config/sops/age/keys.txt"
 needs_age_key=$(nix --extra-experimental-features "nix-command flakes" eval --json \
   "path:.#$configs.$HOST.config.home-manager.users" \

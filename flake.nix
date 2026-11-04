@@ -95,10 +95,7 @@
         };
       });
 
-      # Standalone home-manager activations for Linux machines without
-      # nix-darwin/NixOS, built impurely by devcontainer.sh for whichever user
-      # runs it: `devcontainer` for throwaway containers, `devbox` for the
-      # Trajectory Labs dev box (devcontainer plus work tooling).
+      # Standalone home-manager profiles, built impurely by devcontainer.sh.
       legacyPackages = forAllSystems (
         pkgs:
         lib.genAttrs [ "devcontainer" "devbox" ] (

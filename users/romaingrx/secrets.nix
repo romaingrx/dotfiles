@@ -1,6 +1,3 @@
-# Personal secrets, all decrypted from the one sops age key. A host that must not
-# carry that key (a company-managed laptop) sets `dotfiles.secrets.enable = false`
-# and provides its own per-device SSH key and GPG signing subkey instead.
 {
   config,
   lib,

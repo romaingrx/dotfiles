@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Linux bootstrap: installs single-user Nix, then applies a standalone
-# home-manager profile from this checkout: `devcontainer` (default) or `devbox`.
-#   ./devcontainer.sh [devcontainer|devbox]
+# Installs single-user Nix, then applies a standalone home-manager profile.
+# Usage: ./devcontainer.sh [devcontainer|devbox]
 set -euo pipefail
 
 profile="${1:-devcontainer}"
