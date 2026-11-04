@@ -1,4 +1,4 @@
-# strato-only home config (auto-imported by mkSystem): tl work tooling.
+# strato-only home config (auto-imported by mkSystem): Trajectory Labs tooling.
 { pkgs, ... }:
 let
   awsProfile = "tl";

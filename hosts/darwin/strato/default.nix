@@ -7,7 +7,7 @@
   networking.hostName = "strato";
   networking.computerName = "strato";
 
-  system.defaults.loginwindow.LoginwindowText = "Rocket-built, ready for liftoff";
+  system.defaults.loginwindow.LoginwindowText = "Rocket-built, always on trajectory";
 
   # strato-only GUI apps; list-merges with the shared casks.
   homebrew.casks = [
