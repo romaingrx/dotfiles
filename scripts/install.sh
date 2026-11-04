@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Override REPO_URL / DOTFILES_PATH / HOST to customize. NO_SECRETS=1 skips the
-# age key check, for a host built with dotfiles.secrets.enable = false (strato).
+# Override REPO_URL / DOTFILES_PATH / HOST to customize.
 set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://github.com/romaingrx/dotfiles.git}"
@@ -9,15 +8,6 @@ HOST="${HOST:-$(hostname -s)}"
 
 log() { printf '\033[0;32m[install]\033[0m %s\n' "$*"; }
 err() { printf '\033[0;31m[install]\033[0m %s\n' "$*" >&2; }
-
-# sops needs the age key present to decrypt secrets during the switch; fail early
-# with a clear message instead of a cryptic mid-activation error.
-AGE_KEY="$HOME/.config/sops/age/keys.txt"
-if [ "${NO_SECRETS:-0}" != 1 ] && [ ! -f "$AGE_KEY" ]; then
-  err "Missing sops age key at $AGE_KEY."
-  err "Copy it from another host (chmod 600) before bootstrapping — see docs/new-host-setup.md."
-  exit 1
-fi
 
 if ! command -v nix >/dev/null 2>&1; then
   # Install upstream (vanilla) Nix so nix-darwin can manage the Nix installation
@@ -38,6 +28,25 @@ if [ ! -d "$DOTFILES_PATH/.git" ]; then
 fi
 
 cd "$DOTFILES_PATH"
+
+case "$(uname -s)" in
+  Darwin) configs=darwinConfigurations ;;
+  *) configs=nixosConfigurations ;;
+esac
+
+# sops needs the age key present to decrypt secrets during the switch; fail
+# before activation with a clear message instead of a cryptic mid-activation
+# error. The host's own config says whether it uses secrets
+# (dotfiles.secrets.enable, users/romaingrx/secrets.nix): strato does not.
+AGE_KEY="$HOME/.config/sops/age/keys.txt"
+needs_age_key=$(nix --extra-experimental-features "nix-command flakes" eval --raw \
+  "path:.#$configs.$HOST.config.home-manager.users.$(id -un).dotfiles.secrets.enable" \
+  --apply 'enabled: if enabled then "yes" else "no"')
+if [ "$needs_age_key" = yes ] && [ ! -f "$AGE_KEY" ]; then
+  err "Missing sops age key at $AGE_KEY."
+  err "Copy it from another host (chmod 600), then re-run — see docs/new-host-setup.md."
+  exit 1
+fi
 
 case "$(uname -s)" in
   Darwin)
