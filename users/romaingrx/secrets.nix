@@ -38,8 +38,16 @@ in
     # (macOS defaults to ~/Library/Application Support, not ~/.config).
     home.sessionVariables.SOPS_AGE_KEY_FILE = config.sops.age.keyFile;
 
-    # Updated activation script for GPG key import
     home.activation = {
+      # Fail with a clear message before sops-nix tries to decrypt without a key.
+      checkAgeKey = lib.hm.dag.entryBefore [ "writeBoundary" ] ''
+        if [ ! -f "${config.sops.age.keyFile}" ]; then
+          echo "Missing sops age key at ${config.sops.age.keyFile}: copy it from another host (chmod 600) and switch again." >&2
+          exit 1
+        fi
+      '';
+
+      # Updated activation script for GPG key import
       importGpgKey =
         let
           gpg = "${pkgs.gnupg}/bin/gpg";
