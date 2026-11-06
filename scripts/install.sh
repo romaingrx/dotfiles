@@ -9,15 +9,6 @@ HOST="${HOST:-$(hostname -s)}"
 log() { printf '\033[0;32m[install]\033[0m %s\n' "$*"; }
 err() { printf '\033[0;31m[install]\033[0m %s\n' "$*" >&2; }
 
-# sops needs the age key present to decrypt secrets during the switch; fail early
-# with a clear message instead of a cryptic mid-activation error.
-AGE_KEY="$HOME/.config/sops/age/keys.txt"
-if [ ! -f "$AGE_KEY" ]; then
-  err "Missing sops age key at $AGE_KEY."
-  err "Copy it from another host (chmod 600) before bootstrapping — see docs/new-host-setup.md."
-  exit 1
-fi
-
 if ! command -v nix >/dev/null 2>&1; then
   # Install upstream (vanilla) Nix so nix-darwin can manage the Nix installation
   # itself. Do NOT use the Determinate installer here: its daemon makes

@@ -8,11 +8,11 @@
 curl -fsSL https://romaingrx.com/dotfiles/install.sh | bash
 ```
 
-Installs Nix, clones to `~/.dotfiles`, and activates the host (`HOST=<name>` to pick a config; defaults to the hostname). The only secret you carry over is the sops age key — see [docs/new-host-setup.md](docs/new-host-setup.md).
+Installs Nix, clones to `~/.dotfiles`, and activates the host (`HOST=<name>` to pick a config; defaults to the hostname). The only secret you carry over is the sops age key (a host with `dotfiles.secrets.enable = false`, like `strato`, carries none) — see [docs/new-host-setup.md](docs/new-host-setup.md).
 
 ## Features
 
-- **One flake, many hosts.** A shared base with thin per-host overrides drives macOS (`goddard`, `brobot`, via nix-darwin) and NixOS (`carl`) alike — a new host is one flake entry plus an optional override file.
+- **One flake, many hosts.** A shared base with thin per-host overrides drives macOS (`goddard`, `brobot`, and the `strato` work laptop, via nix-darwin) and NixOS (`carl`) alike — a new host is one flake entry plus an optional override file.
 - **Declarative end to end.** Packages, macOS defaults, fonts, and the handful of Homebrew casks Nix can't own all come from the flake — no manual install steps.
 - **One key for every secret.** A single sops age key decrypts the GPG and SSH keys at activation; nothing else is copied onto a new machine.
 - **One theme, one line.** Every app takes its Catppuccin colors and font from `lib/theme`; change the flavor there and rebuild to re-theme everything.

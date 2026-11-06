@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Dev container bootstrap: installs single-user Nix, then applies the
-# `devcontainer` home-manager profile from this checkout.
+# Installs single-user Nix, then applies a standalone home-manager profile.
+# Usage: ./devcontainer.sh [devcontainer|devbox]
 set -euo pipefail
+
+profile="${1:-devcontainer}"
 
 export DOTFILES="$(cd "$(dirname "$0")" && pwd)"
 export NIX_CONFIG="experimental-features = nix-command flakes"
@@ -14,6 +16,6 @@ nix_profile="$HOME/.nix-profile/etc/profile.d/nix.sh"
 [ -e "$nix_profile" ] && . "$nix_profile"
 
 # --impure: the profile reads $USER, $HOME and $DOTFILES.
-HOME_MANAGER_BACKUP_EXT=bckp "$(nix build --impure --no-link --print-out-paths "$DOTFILES#devcontainer")/activate"
+HOME_MANAGER_BACKUP_EXT=bckp "$(nix build --impure --no-link --print-out-paths "$DOTFILES#$profile")/activate"
 
 sudo chsh -s "$HOME/.nix-profile/bin/zsh" "$USER" 2>/dev/null || true
