@@ -8,8 +8,7 @@ company-managed machine.
 ## Setup
 
 1. Let the company MDM finish enrolling the laptop.
-2. Bootstrap without the age key (the installer reads `dotfiles.secrets.enable`
-   from strato's config and skips the check):
+2. Bootstrap without the age key (strato skips the age key check):
    `curl -fsSL https://romaingrx.com/dotfiles/install.sh | HOST=strato bash`
 
 ## Keys (once)

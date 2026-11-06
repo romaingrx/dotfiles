@@ -9,6 +9,11 @@ HOST="${HOST:-$(hostname -s)}"
 log() { printf '\033[0;32m[install]\033[0m %s\n' "$*"; }
 err() { printf '\033[0;31m[install]\033[0m %s\n' "$*" >&2; }
 
+# A previous run may have installed Nix without this shell having it on PATH.
+NIX_DAEMON_SH=/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+# shellcheck disable=SC1090
+[ -e "$NIX_DAEMON_SH" ] && . "$NIX_DAEMON_SH"
+
 if ! command -v nix >/dev/null 2>&1; then
   # Install upstream (vanilla) Nix so nix-darwin can manage the Nix installation
   # itself. Do NOT use the Determinate installer here: its daemon makes
@@ -18,13 +23,16 @@ if ! command -v nix >/dev/null 2>&1; then
   log "Nix not found; installing upstream Nix (multi-user)..."
   curl --proto '=https' --tlsv1.2 -sSf -L https://nixos.org/nix/install \
     | sh -s -- --daemon --no-channel-add
-  . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+  # shellcheck disable=SC1090
+  . "$NIX_DAEMON_SH"
 fi
 
 if [ ! -d "$DOTFILES_PATH/.git" ]; then
   log "Cloning $REPO_URL into $DOTFILES_PATH..."
   # Use nix-provided git so a fresh Mac needs no Xcode Command Line Tools.
-  nix run nixpkgs#git -- clone "$REPO_URL" "$DOTFILES_PATH"
+  # Upstream Nix ships with nix-command and flakes off.
+  nix --extra-experimental-features "nix-command flakes" \
+    run nixpkgs#git -- clone "$REPO_URL" "$DOTFILES_PATH"
 fi
 
 cd "$DOTFILES_PATH"
