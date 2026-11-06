@@ -1,4 +1,11 @@
-{ homeDirectory, ... }:
+{
+  config,
+  homeDirectory,
+  ...
+}:
+let
+  screenshots = "${homeDirectory}/Pictures/screenshots";
+in
 {
   imports = [
     ./homebrew.nix
@@ -16,6 +23,12 @@
   system = {
     # Used for backwards compatibility
     stateVersion = 5;
+    # screencapture.location and the Dock stack below point here. Create it
+    # before the defaults apply, or a fresh host shows a "?" stack and saves
+    # screenshots to ~/Desktop.
+    activationScripts.extraActivation.text = ''
+      sudo -u ${config.system.primaryUser} mkdir -p "${screenshots}"
+    '';
     defaults = {
       trackpad = {
         Clicking = true;
@@ -56,7 +69,7 @@
           })
           [
             "${homeDirectory}/Downloads"
-            "${homeDirectory}/Pictures/screenshots"
+            screenshots
           ];
       dock = {
         autohide = true;
@@ -87,7 +100,7 @@
         GuestEnabled = false;
       };
       screencapture = {
-        location = "${homeDirectory}/Pictures/screenshots";
+        location = screenshots;
       };
       screensaver = {
         askForPasswordDelay = 0;
