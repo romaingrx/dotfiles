@@ -111,6 +111,10 @@
               {
                 home.username = builtins.getEnv "USER";
                 home.homeDirectory = builtins.getEnv "HOME";
+                targets.genericLinux = {
+                  enable = lib.mkDefault pkgs.stdenv.hostPlatform.isLinux;
+                  gpu.enable = lib.mkDefault false;
+                };
               }
             ];
           }).activationPackage

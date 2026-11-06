@@ -18,10 +18,5 @@
     };
   };
 
-  targets.genericLinux = {
-    enable = true;
-    gpu.enable = false;
-  };
-
   programs.home-manager.enable = true;
 }
