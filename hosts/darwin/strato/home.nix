@@ -1,5 +1,10 @@
-{ pkgs, ... }:
+{ pkgs, inputs, ... }:
 let
+  # claude-code is unfree, so legacyPackages (no config) would refuse it.
+  master = import inputs.nixpkgs-master {
+    inherit (pkgs.stdenv.hostPlatform) system;
+    inherit (pkgs) config;
+  };
   awsProfile = "tl";
   awsRegion = "us-west-2";
   aws = "${pkgs.awscli2}/bin/aws --profile ${awsProfile} --region ${awsRegion}";
@@ -32,6 +37,7 @@ in
     packages = with pkgs; [
       ssm-session-manager-plugin
       jujutsu
+      master.claude-code # the model gateway needs >= 2.1.307
     ];
     sessionVariables.AWS_PROFILE = awsProfile;
   };
