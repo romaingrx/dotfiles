@@ -27,7 +27,7 @@ gh ssh-key add ~/.ssh/github.pub --title strato
 GPG signing subkey, created on a host that holds the full key (goddard):
 
 ```sh
-gpg --quick-add-key 383E2222E1BEFDAD ed25519 sign 2y
+gpg --quick-add-key "$(gpg --with-colons --list-keys 383E2222E1BEFDAD | awk -F: '/^fpr/ {print $10; exit}')" ed25519 sign 2y
 gpg --list-keys --with-subkey-fingerprints 383E2222E1BEFDAD
 gpg --armor --export-secret-subkeys '<SUBKEY_FPR>!' > strato.asc
 gpg --delete-secret-keys '<SUBKEY_FPR>!'   # else goddard signs with it too
