@@ -12,5 +12,6 @@
   homebrew.casks = [
     "orbstack" # docker, linked by modules/darwin/orbstack.nix
     "google-chrome"
+    "granola"
   ];
 }
