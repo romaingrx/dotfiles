@@ -3,6 +3,10 @@
 let
   master = inputs.nixpkgs-master.legacyPackages.${pkgs.stdenv.hostPlatform.system};
 
+  sre = pkgs.writeShellScriptBin "sre" ''
+    exec sudo -iu sre tmux new-session -A -s sre
+  '';
+
   unlockKeyring = pkgs.writeShellScriptBin "unlock-keyring" ''
     set -euo pipefail
     export PATH="${
@@ -32,6 +36,7 @@ in
   imports = [
     ../devcontainer/home.nix
     ../../modules/home/tl.nix
+    ../../modules/home/programs/tmux-ctrl-a.nix
   ];
 
   home.packages = [
@@ -39,13 +44,8 @@ in
     pkgs.gnome-keyring
     pkgs.libsecret
     unlockKeyring
+    sre
   ];
 
   programs.git.settings.user.name = "Romain Graux";
-
-  xdg.configFile."tmux-nix/plugins.conf".text = pkgs.lib.mkAfter ''
-    unbind C-b
-    set -g prefix C-a
-    bind C-a send-prefix
-  '';
 }
