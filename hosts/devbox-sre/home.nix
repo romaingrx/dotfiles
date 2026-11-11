@@ -19,7 +19,7 @@ in
     };
   };
 
-  programs.zsh.initContent = ''
+  programs.zsh.envExtra = ''
     [[ -r ~/.config/sre/env ]] && source ~/.config/sre/env
   '';
 
