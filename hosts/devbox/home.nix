@@ -42,4 +42,10 @@ in
   ];
 
   programs.git.settings.user.name = "Romain Graux";
+
+  xdg.configFile."tmux-nix/plugins.conf".text = pkgs.lib.mkAfter ''
+    unbind C-b
+    set -g prefix C-a
+    bind C-a send-prefix
+  '';
 }
