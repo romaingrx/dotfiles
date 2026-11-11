@@ -24,4 +24,8 @@ in
   '';
 
   programs.git.settings.user.name = "Romain Graux";
+
+  xdg.configFile."tmux-nix/plugins.conf".text = pkgs.lib.mkAfter ''
+    set -g allow-set-title off
+  '';
 }
