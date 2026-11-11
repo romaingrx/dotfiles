@@ -13,6 +13,7 @@ in
 {
   home.packages = [
     pkgs.awscli2
+    pkgs.bun
     pkgs.jujutsu
     pkgs.sentry-cli
     (pkgs.callPackage ../../pkgs/datadog-pup.nix { })
