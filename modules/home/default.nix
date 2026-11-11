@@ -2,7 +2,6 @@
   imports = [
     ./packages.nix
     ./programs.nix
-    ./tl.nix
   ];
 
   home = {

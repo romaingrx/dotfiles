@@ -1,5 +1,4 @@
 {
-  config,
   lib,
   pkgs,
   inputs,
@@ -12,15 +11,11 @@ let
   };
 in
 {
-  options.dotfiles.tl.enable = lib.mkEnableOption "Trajectory Labs work tooling";
+  home.packages = [
+    pkgs.awscli2
+    pkgs.jujutsu
+    master.claude-code
+  ];
 
-  config = lib.mkIf config.dotfiles.tl.enable {
-    home.packages = [
-      pkgs.awscli2
-      pkgs.jujutsu
-      master.claude-code
-    ];
-
-    programs.git.includes = [ { path = "~/.config/git/work.gitconfig"; } ];
-  };
+  programs.git.includes = [ { path = "~/.config/git/work.gitconfig"; } ];
 }

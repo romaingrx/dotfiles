@@ -25,9 +25,10 @@ let
   '';
 in
 {
+  imports = [ ../../../modules/home/tl.nix ];
+
   # Company-managed: per-device keys instead of the age key (see README.md).
   dotfiles.secrets.enable = false;
-  dotfiles.tl.enable = true;
 
   home = {
     packages = [ pkgs.ssm-session-manager-plugin ];

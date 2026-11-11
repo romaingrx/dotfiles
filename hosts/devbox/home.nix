@@ -9,8 +9,6 @@ in
     ../../modules/home/tl.nix
   ];
 
-  dotfiles.tl.enable = true;
-
   home.packages = [
     master.uv
     master.gh
