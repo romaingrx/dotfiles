@@ -20,5 +20,11 @@ in
     master.claude-code
   ];
 
+  programs.gh = {
+    enable = true;
+    package = master.gh;
+    gitCredentialHelper.enable = true;
+  };
+
   programs.git.includes = [ { path = "~/.config/git/work.gitconfig"; } ];
 }
