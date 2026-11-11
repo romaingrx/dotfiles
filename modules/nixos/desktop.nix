@@ -32,6 +32,9 @@
     ];
   };
 
+  # Draws the per-app icons on waybar's workspaces (modules/home/programs/waybar.nix).
+  fonts.packages = [ pkgs.sketchybar-app-font ];
+
   environment.systemPackages = with pkgs; [
     wl-clipboard
     wf-recorder

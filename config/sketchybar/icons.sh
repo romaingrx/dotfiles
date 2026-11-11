@@ -2,7 +2,6 @@
 
 # Uses SF Symbols.
 
-APPLE_ICN=􀣺
 SUN_ICN=􀆮
 MOON_ICN=􀆺
 CLOCK_ICN=􀐫
