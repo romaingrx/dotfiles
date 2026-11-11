@@ -12,7 +12,11 @@ in
 
   home = {
     packages = [ master.uv ];
-    sessionVariables.DD_SITE = "us5.datadoghq.com";
+    sessionVariables = {
+      DD_SITE = "us5.datadoghq.com";
+      DD_TOKEN_STORAGE = "file";
+      PUP_OAUTH_CALLBACK_PORT = "8000";
+    };
   };
 
   programs.zsh.initContent = ''
