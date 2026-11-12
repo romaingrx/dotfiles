@@ -16,9 +16,8 @@ in
       config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/ghostty";
   };
 
-  # Sourced by config/ghostty/config. Ghostty on macOS only lists the Nerd
-  # Font's Mono family, so use that name on every host.
+  # Sourced by config/ghostty/config.
   xdg.configFile."theme/ghostty".text = ''
-    font-family = ${theme.font.family} Mono
+    font-family = ${theme.font.family}
   '';
 }
