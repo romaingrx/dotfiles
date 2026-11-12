@@ -12,7 +12,7 @@ in
       configuration {
         modi: "drun,run,window";
         show-icons: true;
-        terminal: "alacritty";
+        terminal: "ghostty";
         drun-display-format: "{icon} {name}";
         location: 0;
         disable-history: false;

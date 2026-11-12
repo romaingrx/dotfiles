@@ -1,8 +1,8 @@
 {
   imports = [
     ./programs/agent-skills.nix
-    ./programs/alacritty.nix
     ./programs/claude-code.nix
+    ./programs/ghostty.nix
     ./programs/git.nix
     ./programs/hunk.nix
     ./programs/hypr.nix
