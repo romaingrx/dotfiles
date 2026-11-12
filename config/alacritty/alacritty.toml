@@ -1,6 +1,6 @@
 [general]
 # The lib/theme flavor, then (macOS only) the flavor matching the system
-# appearance, kept in sync by SketchyBar's appearance.sync item.
+# appearance, kept in sync by the alacritty-appearance launchd agent.
 import = [
     "~/.config/theme/alacritty.toml",
     "~/.config/theme/alacritty-appearance.toml",
