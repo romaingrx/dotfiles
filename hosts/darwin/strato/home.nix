@@ -31,7 +31,10 @@ in
   dotfiles.secrets.enable = false;
 
   home = {
-    packages = [ pkgs.ssm-session-manager-plugin ];
+    packages = [
+      pkgs.mosh
+      pkgs.ssm-session-manager-plugin
+    ];
     sessionVariables.AWS_PROFILE = awsProfile;
   };
 
@@ -41,5 +44,12 @@ in
     ProxyCommand = "${devboxProxy} %p";
     ServerAliveInterval = "30";
     ServerAliveCountMax = "3";
+  };
+
+  # Same box over Tailscale, for mosh: its UDP can't ride the SSM tunnel above.
+  programs.ssh.settings."tl-devbox-ts" = {
+    HostName = "devbox-romain-graux";
+    User = "ubuntu";
+    IdentityFile = "~/.ssh/tl-devbox";
   };
 }
