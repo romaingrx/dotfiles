@@ -50,5 +50,8 @@ done with the laptop, revoke the subkey on goddard (`gpg --edit-key`, `key N`,
    `git clone https://github.com/romaingrx/dotfiles ~/.dotfiles && ~/.dotfiles/devcontainer.sh devbox`,
    then put your work email in `~/.config/git/work.gitconfig` (`[user] email = ...`).
 3. Tailscale: sign in with the work account and turn on Tailscale DNS.
+   `mosh tl-devbox-ts` reaches the box over Tailscale (`devbox-romain-graux`);
+   after a rebuild, run `ssh-keygen -R devbox-romain-graux`, and if the box
+   rejoined as `devbox-romain-graux-1`, remove the old machine in the Tailscale admin.
 4. Open OrbStack once so it links `docker` (see `modules/darwin/orbstack.nix`).
 5. Install the `tl` CLIs by hand and sign in.
