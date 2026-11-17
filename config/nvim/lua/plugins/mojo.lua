@@ -1,17 +1,6 @@
 return {
   {
     "neovim/nvim-lspconfig",
-    opts = {
-      servers = {
-        -- Mojo LSP configuration
-        mojo = {},
-      },
-    },
-  },
-
-  -- Setup filetype detection for .mojo and .🔥 files
-  {
-    "neovim/nvim-lspconfig",
     init = function()
       vim.filetype.add({
         extension = {
@@ -20,9 +9,12 @@ return {
         },
       })
     end,
+    opts = {
+      servers = {
+        mojo = {},
+      },
+    },
   },
-
-  -- Configure formatter
   {
     "stevearc/conform.nvim",
     opts = {

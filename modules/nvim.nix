@@ -36,6 +36,9 @@ in
       oxlint
       oxfmt
       shfmt
+      nil
+      nixfmt
+      statix
     ];
   };
 
