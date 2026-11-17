@@ -1,0 +1,29 @@
+# Follows the OS light/dark appearance (macOS, and the desktop color scheme on
+# Linux). The font comes from lib/theme via ~/.config/theme/ghostty.
+theme = light:Catppuccin Latte,dark:Catppuccin Mocha
+config-file = ?~/.config/theme/ghostty
+font-size = 13
+adjust-cell-height = 2
+
+background-opacity = 0.95
+background-blur = 20
+window-padding-x = 6
+window-padding-y = 4
+window-padding-balance = true
+confirm-close-surface = false
+quit-after-last-window-closed = true
+
+cursor-style = block
+cursor-style-blink = true
+mouse-hide-while-typing = true
+copy-on-select = clipboard
+scrollback-limit = 10000000
+
+# ssh-env and ssh-terminfo make remote hosts understand TERM=xterm-ghostty.
+shell-integration-features = no-cursor,sudo,title,ssh-env,ssh-terminfo
+
+# macOS only; ignored on Linux.
+macos-titlebar-style = hidden
+macos-option-as-alt = left
+keybind = global:cmd+grave_accent=toggle_quick_terminal
+quick-terminal-position = top

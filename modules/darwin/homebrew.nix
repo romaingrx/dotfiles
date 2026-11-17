@@ -32,6 +32,7 @@
       "1password"
       "arc"
       "claude"
+      "ghostty"
       "linear"
       "obsidian"
       "raycast"

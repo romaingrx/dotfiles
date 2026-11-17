@@ -81,7 +81,7 @@ cmd-alt-shift-right = 'move-node-to-monitor next --focus-follows-window'
 
 # TODO romaingrx: Find better ways to link to the apps (from pkgs, ...)
 alt-shift-d = 'exec-and-forget open -a /Applications/DuckDuckGo.app'
-alt-shift-t = 'exec-and-forget open -a /Applications/Alacritty.app'
+alt-shift-t = 'exec-and-forget open -a /Applications/Ghostty.app'
 
 alt-tab = 'workspace-back-and-forth'
 alt-shift-tab = [
@@ -122,7 +122,7 @@ if.app-id = 'com.apple.Terminal'
 run = 'move-node-to-workspace C'
 
 [[on-window-detected]]
-if.app-id = 'org.alacritty'
+if.app-id = 'com.mitchellh.ghostty'
 run = 'move-node-to-workspace C'
 
 [[on-window-detected]]

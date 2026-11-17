@@ -23,7 +23,7 @@ lib.mkIf pkgs.stdenv.isLinux {
       SDL_VIDEODRIVER = "wayland";
       CLUTTER_BACKEND = "wayland";
       # Preferences
-      TERMINAL = "alacritty";
+      TERMINAL = "ghostty";
       BROWSER = "firefox";
       XDG_PICTURES_DIR = "${config.home.homeDirectory}/Pictures";
     };
