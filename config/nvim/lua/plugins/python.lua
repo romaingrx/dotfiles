@@ -1,14 +1,5 @@
 return {
   {
-    "neovim/nvim-lspconfig",
-    opts = {
-      servers = {
-        ruff_lsp = {},
-        basedpyright = {},
-      },
-    },
-  },
-  {
     "stevearc/conform.nvim",
     opts = {
       formatters_by_ft = {
