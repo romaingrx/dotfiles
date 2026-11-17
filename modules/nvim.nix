@@ -6,6 +6,9 @@
 }:
 let
   theme = import ../lib/theme;
+  tree-sitter = pkgs.writeShellScriptBin "tree-sitter" ''
+    CC="''${CC:-${pkgs.stdenv.cc}/bin/cc}" exec ${pkgs.tree-sitter}/bin/tree-sitter "$@"
+  '';
 in
 {
 
@@ -14,23 +17,29 @@ in
     withPython3 = true;
     withRuby = false;
     sideloadInitLua = true;
-    extraPackages = [ pkgs.tree-sitter ];
-    extraWrapperArgs = [
-      "--set-default"
-      "CC"
-      "${pkgs.stdenv.cc}/bin/cc"
+    extraPackages = with pkgs; [
+      tree-sitter
+      stdenv.cc
+      curl
+      gnutar
+      fd
+      lua-language-server
+      stylua
+      ty
+      basedpyright
+      ruff
+      rust-analyzer
+      vtsls
+      vscode-langservers-extracted
+      yaml-language-server
+      biome
+      oxlint
+      oxfmt
+      shfmt
     ];
   };
 
-  home.packages = with pkgs; [
-    lua-language-server
-    yaml-language-server
-    vscode-langservers-extracted
-    biome
-    shfmt
-    ripgrep
-    typescript-language-server
-  ];
+  home.packages = [ pkgs.ripgrep ];
 
   home.file.".config/nvim".source = config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/nvim";
 
