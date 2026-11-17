@@ -9,8 +9,20 @@ let
 in
 {
 
+  programs.neovim = {
+    enable = true;
+    withPython3 = true;
+    withRuby = false;
+    sideloadInitLua = true;
+    extraPackages = [ pkgs.tree-sitter ];
+    extraWrapperArgs = [
+      "--set-default"
+      "CC"
+      "${pkgs.stdenv.cc}/bin/cc"
+    ];
+  };
+
   home.packages = with pkgs; [
-    neovim
     lua-language-server
     yaml-language-server
     vscode-langservers-extracted
