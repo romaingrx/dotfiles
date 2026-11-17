@@ -25,7 +25,10 @@ let
   '';
 in
 {
-  imports = [ ../../../modules/home/tl.nix ];
+  imports = [
+    ../../../modules/home/tl.nix
+    ../../../modules/home/claude-gateway.nix
+  ];
 
   # Company-managed: per-device keys instead of the age key (see README.md).
   dotfiles.secrets.enable = false;

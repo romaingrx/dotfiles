@@ -36,6 +36,7 @@ in
   imports = [
     ../devcontainer/home.nix
     ../../modules/home/tl.nix
+    ../../modules/home/claude-gateway.nix
     ../../modules/home/programs/tmux-ctrl-a.nix
   ];
 
