@@ -14,6 +14,7 @@ let
     social = "S";
     utility = "U";
     music = "M";
+    agent = "A";
   };
 
   open = app: "exec-and-forget open -b ${app.bundleId}";

@@ -13,5 +13,6 @@
     "orbstack" # docker, linked by modules/darwin/orbstack.nix
     "google-chrome"
     "granola"
+    "wispr-flow" # floats in AeroSpace (aerospace.toml)
   ];
 }
