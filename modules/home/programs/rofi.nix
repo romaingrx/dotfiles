@@ -1,6 +1,7 @@
 { lib, pkgs, ... }:
 let
   inherit (import ../../../lib/theme) palette;
+  apps = import ../../../lib/apps;
   background = "#${palette.base}";
   accent = "#${palette.mauve}";
 in
@@ -12,7 +13,7 @@ in
       configuration {
         modi: "drun,run,window";
         show-icons: true;
-        terminal: "ghostty";
+        terminal: "${apps.terminal.bin}";
         drun-display-format: "{icon} {name}";
         location: 0;
         disable-history: false;

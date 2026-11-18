@@ -7,6 +7,8 @@
 }:
 let
   configPath = "${dotfilesPath}/config";
+  apps = import ../../lib/apps;
+  browser = apps.browser.linux;
 in
 lib.mkIf pkgs.stdenv.isLinux {
   home = {
@@ -23,8 +25,8 @@ lib.mkIf pkgs.stdenv.isLinux {
       SDL_VIDEODRIVER = "wayland";
       CLUTTER_BACKEND = "wayland";
       # Preferences
-      TERMINAL = "ghostty";
-      BROWSER = "firefox";
+      TERMINAL = apps.terminal.bin;
+      BROWSER = browser.bin;
       XDG_PICTURES_DIR = "${config.home.homeDirectory}/Pictures";
     };
     sessionPath = [ "${config.home.homeDirectory}/.local/romaingrx-bin" ];
@@ -67,6 +69,15 @@ lib.mkIf pkgs.stdenv.isLinux {
       exec uwsm start default
     fi
   '';
+
+  xdg.mimeApps = {
+    enable = true;
+    defaultApplications = lib.genAttrs [
+      "text/html"
+      "x-scheme-handler/http"
+      "x-scheme-handler/https"
+    ] (_: browser.desktop);
+  };
 
   # Link wallpaper from dotfiles to the home directory
   home.file.".wallpapers/nixos.png".source = ../../assets/wallpapers/nixos.png;
