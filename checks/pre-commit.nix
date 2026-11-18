@@ -9,7 +9,7 @@
   pre-commit-check = pre-commit-hooks.lib.${system}.run {
     src = repoRoot;
     hooks = {
-      nixfmt-rfc-style = {
+      nixfmt = {
         enable = true;
         package = pkgs.nixfmt;
         excludes = [ "third-party/" ];

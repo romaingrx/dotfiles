@@ -10,7 +10,7 @@ let
     /usr/bin/osascript -e 'Tell application "System Events" to display dialog "'"$1"'" default answer "" with hidden answer' -e 'text returned of result'
   '';
 in
-lib.mkIf pkgs.stdenv.isDarwin {
+lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
   home = {
     packages = [ askpass ];
     sessionVariables = {

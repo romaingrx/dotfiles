@@ -8,7 +8,7 @@
 let
   configPath = "${dotfilesPath}/config";
 in
-lib.mkIf pkgs.stdenv.isLinux {
+lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
   home = {
     sessionVariables = {
       # Wayland specific

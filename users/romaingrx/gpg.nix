@@ -1,6 +1,7 @@
 { pkgs, ... }:
 let
-  pinentryPackage = if pkgs.stdenv.isDarwin then pkgs.pinentry_mac else pkgs.pinentry-curses;
+  pinentryPackage =
+    if pkgs.stdenv.hostPlatform.isDarwin then pkgs.pinentry_mac else pkgs.pinentry-curses;
 in
 {
   programs.gpg = {

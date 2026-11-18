@@ -32,7 +32,7 @@ in
       kubectl
       k9s
     ]
-    ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+    ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
       mactop
       watch
       mas

@@ -10,6 +10,7 @@
   ];
 
   programs.nix-ld.enable = true;
+  programs.solaar.enable = true;
   virtualisation.docker.enable = true;
 
   nix.settings = {
@@ -85,10 +86,7 @@
       enable = true;
     };
     logitech = {
-      wireless = {
-        enable = true;
-        enableGraphical = true;
-      };
+      wireless.enable = true;
     };
   };
 
