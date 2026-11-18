@@ -1,15 +1,27 @@
-# Static settings live in aerospace.toml. App workspace rules and launch keys
-# come from lib/apps, so swapping an app never touches this config.
+# Static settings live in aerospace.toml. Workspace rules and launch keys are
+# built from lib/apps, so swapping an app never touches this config.
 { pkgs }:
 let
   inherit (pkgs) lib;
   apps = import ../../../../lib/apps;
   toml = lib.importTOML ./aerospace.toml;
+
+  # Where each app category goes.
+  workspaces = {
+    terminal = "C";
+    editor = "C";
+    browser = "B";
+    social = "S";
+    utility = "U";
+    music = "M";
+  };
+
   open = app: "exec-and-forget open -b ${app.bundleId}";
   toWorkspace = app: {
     "if".app-id = app.bundleId;
-    run = "move-node-to-workspace ${apps.workspaces.${app.role}}";
+    run = "move-node-to-workspace ${workspaces.${app.category}}";
   };
+  placed = lib.filterAttrs (_: app: app ? bundleId && workspaces ? ${app.category}) apps.catalog;
 in
 {
   enable = true;
@@ -19,6 +31,6 @@ in
       alt-shift-t = open apps.terminal;
       alt-shift-d = open apps.browser.darwin;
     };
-    on-window-detected = map toWorkspace (lib.attrValues apps.catalog) ++ toml.on-window-detected;
+    on-window-detected = map toWorkspace (lib.attrValues placed) ++ toml.on-window-detected;
   };
 }
