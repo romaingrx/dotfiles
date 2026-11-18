@@ -8,6 +8,7 @@ let
 
   # Where each app category goes.
   workspaces = {
+    agent = "1";
     terminal = "C";
     editor = "C";
     browser = "B";

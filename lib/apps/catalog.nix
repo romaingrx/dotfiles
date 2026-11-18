@@ -65,8 +65,12 @@
     bundleId = "notion.id";
   };
   claude = {
-    category = "utility";
+    category = "agent";
     bundleId = "com.anthropic.claudefordesktop";
+  };
+  herdr = {
+    category = "agent";
+    bundleId = "dev.herdr.app";
   };
   finder = {
     category = "utility";
