@@ -1,5 +1,6 @@
-{ pkgs, ... }:
+{ pkgs, inputs, ... }:
 let
+  master = inputs.nixpkgs-master.legacyPackages.${pkgs.stdenv.hostPlatform.system};
   awsProfile = "tl";
   awsRegion = "us-west-2";
   aws = "${pkgs.awscli2}/bin/aws --profile ${awsProfile} --region ${awsRegion}";
@@ -35,6 +36,7 @@ in
 
   home = {
     packages = [
+      master.herdr
       pkgs.mosh
       pkgs.ssm-session-manager-plugin
     ];
@@ -44,6 +46,9 @@ in
   programs.ssh.settings."tl-devbox" = {
     User = "ubuntu";
     IdentityFile = "~/.ssh/tl-devbox";
+    # The key has a passphrase and lives in gpg-agent. Name the agent here so that
+    # background services without SSH_AUTH_SOCK (herdr-core) can reconnect too.
+    IdentityAgent = "~/.gnupg/S.gpg-agent.ssh";
     ProxyCommand = "${devboxProxy} %p";
     ServerAliveInterval = "30";
     ServerAliveCountMax = "3";
@@ -54,5 +59,6 @@ in
     HostName = "devbox-romain-graux";
     User = "ubuntu";
     IdentityFile = "~/.ssh/tl-devbox";
+    IdentityAgent = "~/.gnupg/S.gpg-agent.ssh";
   };
 }
