@@ -42,6 +42,7 @@ in
 
   home.packages = [
     master.uv
+    master.herdr
     pkgs.mosh # mosh-server for `mosh tl-devbox-ts` from strato
     pkgs.gnome-keyring
     pkgs.libsecret

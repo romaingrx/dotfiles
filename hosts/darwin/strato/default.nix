@@ -13,5 +13,6 @@
     "orbstack" # docker, linked by modules/darwin/orbstack.nix
     "google-chrome"
     "granola"
+    "herdr-app" # GUI for the herdr CLI from nixpkgs master (home.nix)
   ];
 }

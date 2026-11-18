@@ -1,5 +1,6 @@
-{ pkgs, ... }:
+{ pkgs, inputs, ... }:
 let
+  master = inputs.nixpkgs-master.legacyPackages.${pkgs.stdenv.hostPlatform.system};
   awsProfile = "tl";
   awsRegion = "us-west-2";
   aws = "${pkgs.awscli2}/bin/aws --profile ${awsProfile} --region ${awsRegion}";
@@ -35,6 +36,7 @@ in
 
   home = {
     packages = [
+      master.herdr
       pkgs.mosh
       pkgs.ssm-session-manager-plugin
     ];
