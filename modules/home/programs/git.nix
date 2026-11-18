@@ -14,7 +14,6 @@ _: {
       gpg.openpgp.program = "gpg";
 
       core.preloadindex = true;
-      gc.auto = 256;
     };
   };
 }
