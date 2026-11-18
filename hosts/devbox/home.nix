@@ -44,11 +44,18 @@ in
     master.uv
     master.herdr
     pkgs.mosh # mosh-server for `mosh tl-devbox-ts` from strato
-    pkgs.gnome-keyring
     pkgs.libsecret
     unlockKeyring
     sre
   ];
+
+  # Python tools (keyring library) store credentials in a plain file. gnome-keyring from
+  # nixpkgs registers a D-Bus service whose Exec path exists only on NixOS, so a session bus
+  # that reads the Nix profile picks a keyring that cannot start, and every lookup fails.
+  xdg.configFile."python_keyring/keyringrc.cfg".text = ''
+    [backend]
+    default-keyring=keyrings.alt.file.PlaintextKeyring
+  '';
 
   programs.git.settings.user.name = "Romain Graux";
 }
