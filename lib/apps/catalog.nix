@@ -72,6 +72,10 @@
     category = "agent";
     bundleId = "dev.herdr.app";
   };
+  codex = {
+    category = "agent";
+    bundleId = "com.openai.codex";
+  };
   finder = {
     category = "utility";
     bundleId = "com.apple.finder";
