@@ -6,7 +6,7 @@ let
 in
 {
   # Sourced by config/sketchybar/colors.sh.
-  xdg.configFile."theme/sketchybar.sh" = lib.mkIf pkgs.stdenv.isDarwin {
+  xdg.configFile."theme/sketchybar.sh" = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
     text = lib.toShellVars {
       BLACK = argb "ff" p.mantle;
       WHITE = argb "ff" p.text;

@@ -11,7 +11,7 @@ in
 {
   # On macOS the app comes from the Homebrew cask (modules/darwin/homebrew.nix).
   home = {
-    packages = lib.optionals pkgs.stdenv.isLinux [ pkgs.ghostty ];
+    packages = lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.ghostty ];
     file.".config/ghostty".source =
       config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/ghostty";
   };

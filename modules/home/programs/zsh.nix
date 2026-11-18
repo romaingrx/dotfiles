@@ -71,7 +71,7 @@
       "--layout=reverse"
       "--border"
     ];
-    historyWidgetOptions = [
+    historyWidget.options = [
       "--sort"
       "--exact"
     ];

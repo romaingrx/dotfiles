@@ -10,7 +10,7 @@ let
   p = theme.palette;
 in
 {
-  config = lib.mkIf pkgs.stdenv.isLinux {
+  config = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     home.file =
       lib.genAttrs'
         (lib.filter (lib.hasSuffix ".conf") (lib.attrNames (builtins.readDir ../../../config/hypr)))

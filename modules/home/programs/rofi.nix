@@ -5,7 +5,7 @@ let
   accent = "#${palette.mauve}";
 in
 {
-  xdg.configFile."rofi/config.rasi" = lib.mkIf pkgs.stdenv.isLinux {
+  xdg.configFile."rofi/config.rasi" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     # Replaces the symlink left by the old runtime theme switcher.
     force = true;
     text = ''

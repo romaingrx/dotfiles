@@ -12,7 +12,7 @@ let
   span = color: "<span color='#${color}'><b>{}</b></span>";
 in
 {
-  config = lib.mkIf pkgs.stdenv.isLinux {
+  config = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     xdg.configFile = {
       "waybar/config-base.jsonc".source = link "config.jsonc";
       "waybar/style.css".source = link "style.css";
