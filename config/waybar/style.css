@@ -30,24 +30,29 @@
   opacity: 0.5;
 }
 
-#tray,
-#cpu,
-#battery,
-#network,
-#bluetooth,
-#pulseaudio {
-  min-width: 12px;
-  margin: 0 7.5px;
+#workspaces button.active label {
+  color: @theme_accent;
+}
+
+/* The graphs color themselves from lib/theme (config/waybar/scripts/stats.sh). */
+#custom-network,
+#image.tailscale,
+#custom-memory,
+#custom-cpu {
+  margin: 0 7px;
 }
 
 tooltip {
-  padding: 2px;
+  background-color: @theme_mantle;
+  border: 1px solid @theme_surface;
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+
+tooltip * {
+  background-color: transparent;
 }
 
 #clock {
   margin-left: 8.75px;
-}
-
-.hidden {
-  opacity: 0;
 }

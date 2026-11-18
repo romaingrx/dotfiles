@@ -7,9 +7,49 @@
 }:
 let
   theme = import ../../../lib/theme;
-  p = theme.palette;
   link = name: config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/waybar/${name}";
   span = color: "<span color='#${color}'><b>{}</b></span>";
+
+  # Defined once for the CSS (as @theme_<role>) and the scripts (as $THEME_<ROLE>).
+  inherit (theme) roles;
+
+  # Right-side modules, built here so they read the palette.
+  stats = import ../../../lib/statusbar-script.nix pkgs {
+    name = "waybar-stats";
+    script = ../../../config/waybar/scripts/stats.sh;
+    runtimeInputs = with pkgs; [
+      coreutils
+      gawk
+      iproute2
+    ];
+    runtimeEnv = theme.roleVars (hex: hex);
+  };
+
+  tailscaleLogo = import ../../../lib/tailscale-logo.nix pkgs;
+
+  # Window-rewrite rules for the workspace app icons, generated from the app map
+  # that ships with the font, so a new app needs no edit here.
+  appIconRules = pkgs.writeShellApplication {
+    name = "waybar-app-icons";
+    runtimeInputs = [ pkgs.jq ];
+    text = builtins.readFile ../../../config/waybar/scripts/app-icons.sh;
+  };
+  appIcons = pkgs.runCommand "waybar-app-icons.json" { } ''
+    ${lib.getExe appIconRules} ${pkgs.sketchybar-app-font}/bin/icon_map.sh sketchybar-app-font > $out
+  '';
+
+  tailscaleStatus = pkgs.writeShellApplication {
+    name = "waybar-tailscale";
+    runtimeInputs = [
+      pkgs.jq
+      pkgs.tailscale
+    ];
+    runtimeEnv = {
+      TAILSCALE_ON = "${tailscaleLogo.on}";
+      TAILSCALE_OFF = "${tailscaleLogo.off}";
+    };
+    text = builtins.readFile ../../../config/waybar/scripts/tailscale.sh;
+  };
 in
 {
   config = lib.mkIf pkgs.stdenv.isLinux {
@@ -22,12 +62,19 @@ in
         # Replaces the symlink left by the old runtime theme switcher.
         force = true;
         text = builtins.toJSON {
-          include = [ "${config.xdg.configHome}/waybar/config-base.jsonc" ];
+          include = [
+            "${config.xdg.configHome}/waybar/config-base.jsonc"
+            "${appIcons}"
+          ];
           clock.calendar.format = {
-            months = span p.rosewater;
-            weekdays = span p.yellow;
-            today = span p.red;
+            months = span roles.accent;
+            weekdays = span roles.fg;
+            today = span roles.danger;
           };
+          "custom/cpu".exec = "${lib.getExe stats} cpu";
+          "custom/memory".exec = "${lib.getExe stats} mem";
+          "custom/network".exec = "${lib.getExe stats} net";
+          "image#tailscale".exec = lib.getExe tailscaleStatus;
         };
       };
 
@@ -35,12 +82,7 @@ in
       "waybar/theme.css" = {
         force = true;
         text = ''
-          @define-color theme_bg #${p.base};
-          @define-color theme_fg #${p.text};
-          @define-color theme_muted #${p.subtext0};
-          @define-color theme_accent #${p.mauve};
-          @define-color theme_warning #${p.yellow};
-          @define-color theme_danger #${p.red};
+          ${lib.concatLines (lib.mapAttrsToList (role: hex: "@define-color theme_${role} #${hex};") roles)}
 
           * {
             font-family: "${theme.font.family}";

@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
 # Slow path: drives wifi.control and its popup rows (update_freq=30).
-# The net.activity graph now has its own fast plugin (plugins/net_activity.sh);
-# this script no longer touches it.
+# The network graph is items/stats.sh.
 #
 # SSID and link rate are deliberately absent — see helpers/network.sh. They were
 # read via the private `airport -I`, which macOS 26 removed, so both rows had
@@ -23,8 +22,6 @@ ip="$(network_local_ip "$iface" || true)"
 vpn="$(network_vpn_name || true)"
 
 wifi_icon_color="$WHITE"
-wifi_label=""
-wifi_label_drawing=off
 ssid_label="Disconnected"
 ip_label="No IP"
 vpn_label="VPN off"
@@ -46,8 +43,6 @@ if [ -n "$vpn" ]; then
 	else
 		vpn_icon_font="$APP_FONT:Regular:12.0"
 	fi
-	wifi_label="$vpn_icon"
-	wifi_label_drawing=on
 	vpn_label="$(text_truncate "$vpn" 32)"
 	vpn_color="$GREEN"
 fi
@@ -55,10 +50,6 @@ fi
 sketchybar --set wifi.control \
 	icon="$WIFI_ICN" \
 	icon.color="$wifi_icon_color" \
-	label="$wifi_label" \
-	label.font="$vpn_icon_font" \
-	label.color="$vpn_color" \
-	label.drawing="$wifi_label_drawing" \
 	--set wifi.ssid \
 	icon="$NETWORK_ICN" \
 	label="$ssid_label" \

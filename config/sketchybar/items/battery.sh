@@ -1,24 +1,12 @@
 #!/usr/bin/env bash
 
-sketchybar --add item battery right \
-	--set battery \
-	icon.padding_left=5 \
-	icon.padding_right=3 \
-	label.font="$FONT:Medium:12.0" \
-	label.padding_left=0 \
-	label.padding_right=6 \
+source "$HELPER_DIR/components.sh"
+
+status_item battery \
 	script="$PLUGIN_DIR/battery.sh" \
 	update_freq=30 \
 	click_script="$PLUGIN_DIR/battery_click.sh" \
-	background.drawing=on \
-	background.color="$STATUS_BG" \
-	background.corner_radius="$STATUS_RADIUS" \
-	background.height="$STATUS_HEIGHT" \
-	popup.background.color="$POPUP_BG" \
-	popup.blur_radius=50 \
-	popup.background.corner_radius=5 \
 	popup.align=right \
-	popup.height=26 \
 	--subscribe battery system_woke power_source_change
 
 sketchybar --add item battery.source popup.battery \

@@ -7,7 +7,7 @@
 # indicators, and AeroSpace already hands us FOCUSED_WORKSPACE and
 # PREV_WORKSPACE. So repaint just those two with ZERO queries (instant), then
 # kick a full reconcile in the background to fix what we can't know without
-# querying (multi-monitor PREV visibility, empty-vs-occupied shade, and labels
+# querying (multi-monitor PREV visibility, hiding PREV if it is now empty, and labels
 # after move-node-to-workspace). Any wrong optimistic guess for PREV -- one that
 # is still visible on another monitor -- corrects within a frame, and that flash
 # is on the monitor you just left, not the one you moved to.
@@ -32,6 +32,7 @@ if [ "$SENDER" = "aerospace_workspace_change" ] && [ -n "${FOCUSED_WORKSPACE:-}"
 	if [ -n "$sb" ]; then
 		# Focused workspace -> highlighted.
 		args=(--set "space.$focused"
+			drawing=on
 			background.color="$SPACE_FOCUSED_BG"
 			background.drawing=on
 			icon.color="$WHITE"
