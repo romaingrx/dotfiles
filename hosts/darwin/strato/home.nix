@@ -49,6 +49,13 @@ let
     ServerAliveInterval = "30";
     ServerAliveCountMax = "3";
   };
+
+  tailscaleHost = hostName: {
+    HostName = hostName;
+    User = "ubuntu";
+    IdentityFile = "~/.ssh/tl-devbox";
+    IdentityAgent = "~/.gnupg/S.gpg-agent.ssh";
+  };
 in
 {
   imports = [
@@ -68,20 +75,12 @@ in
     sessionVariables.AWS_PROFILE = awsProfile;
   };
 
-  programs.ssh.settings."tl-devbox" = devboxHost "regular";
-  programs.ssh.settings."tl-admin-devbox" = devboxHost "admin";
+  programs.ssh.settings = {
+    "tl-devbox" = devboxHost "regular";
+    "tl-admin-devbox" = devboxHost "admin";
 
-  # Same box over Tailscale, for mosh: its UDP can't ride the SSM tunnel above.
-  programs.ssh.settings."tl-devbox-ts" = {
-    HostName = "devbox-romain-graux";
-    User = "ubuntu";
-    IdentityFile = "~/.ssh/tl-devbox";
-    IdentityAgent = "~/.gnupg/S.gpg-agent.ssh";
-  };
-  programs.ssh.settings."tl-admin-devbox-ts" = {
-    HostName = "devbox-romain";
-    User = "ubuntu";
-    IdentityFile = "~/.ssh/tl-devbox";
-    IdentityAgent = "~/.gnupg/S.gpg-agent.ssh";
+    # The same boxes over Tailscale, for mosh: its UDP can't ride the SSM tunnel.
+    "tl-devbox-ts" = tailscaleHost "devbox-romain-graux";
+    "tl-admin-devbox-ts" = tailscaleHost "devbox-romain";
   };
 }
