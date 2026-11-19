@@ -98,7 +98,7 @@
       # Standalone home-manager profiles, built impurely by devcontainer.sh.
       legacyPackages = forAllSystems (
         pkgs:
-        lib.genAttrs [ "devcontainer" "devbox" "devbox-sre" ] (
+        lib.genAttrs [ "devcontainer" "devbox" "devbox-admin" "devbox-sre" ] (
           profile:
           (inputs.home-manager.lib.homeManagerConfiguration {
             inherit pkgs;

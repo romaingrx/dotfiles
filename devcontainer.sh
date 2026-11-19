@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Installs single-user Nix unless a Nix is already there, then applies a standalone home-manager profile.
-# Usage: ./devcontainer.sh [devcontainer|devbox|devbox-sre]
+# Usage: ./devcontainer.sh [devcontainer|devbox|devbox-admin|devbox-sre]
 set -euo pipefail
 
 profile="${1:-devcontainer}"
