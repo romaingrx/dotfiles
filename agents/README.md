@@ -81,6 +81,7 @@ commit and read the diff before committing.
 | ---------------------------------------- | ----------------------------------------------- | ------------- |
 | `skills/simple-english/`                 | [AminBlg/SimpleEnglish](https://github.com/AminBlg/SimpleEnglish) (MIT) | `63f5d57`     |
 | `claude/output-styles/simple-english.md` | same                                            | `63f5d57`     |
+| `skills/socratic-tutor/`                 | [janestreet/agent_skills](https://github.com/janestreet/agent_skills) (MIT, [license](third-party/janestreet-agent-skills.LICENSE)) | `469868f`     |
 
 ```sh
 # refresh both from a chosen commit
@@ -90,6 +91,12 @@ curl -sfL "$B/skills/simple-english/SKILL.md"                -o agents/skills/si
 curl -sfL "$B/skills/simple-english/references/checklist.md" -o agents/skills/simple-english/references/checklist.md
 curl -sfL "$B/skills/simple-english/references/use-cases.md" -o agents/skills/simple-english/references/use-cases.md
 curl -sfL "$B/output-styles/simple-english.md"               -o agents/claude/output-styles/simple-english.md
+```
+
+```sh
+# refresh socratic-tutor from a chosen commit
+SHA=<commit>
+curl -sfL "https://raw.githubusercontent.com/janestreet/agent_skills/$SHA/socratic-tutor/SKILL.md" -o agents/skills/socratic-tutor/SKILL.md
 ```
 
 ### Adapted from pstack
