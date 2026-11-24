@@ -16,6 +16,7 @@ Installs Nix, clones to `~/.dotfiles`, and activates the host (`HOST=<name>` to 
 - **Declarative end to end.** Packages, macOS defaults, fonts, and the handful of Homebrew casks Nix can't own all come from the flake — no manual install steps.
 - **One key for every secret.** A single sops age key decrypts the GPG and SSH keys at activation; nothing else is copied onto a new machine.
 - **One theme, one line.** Every app takes its Catppuccin colors and font from `lib/theme`; change the flavor there and rebuild to re-theme everything. Ghostty follows the system light/dark appearance on its own.
+- **One line to swap an app.** `lib/apps` says what each app is and which terminal and browser you prefer; launch keys, AeroSpace workspaces, `$TERMINAL`/`$BROWSER` and the Linux default browser all follow it.
 - **Reproducible and self-maintaining.** Inputs are pinned in `flake.lock` and refreshed in lockstep by Renovate; CI evaluates and builds every host on each PR.
 
 ## Develop

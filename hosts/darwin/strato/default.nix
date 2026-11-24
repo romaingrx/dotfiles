@@ -14,5 +14,6 @@
     "google-chrome"
     "granola"
     "herdr-app" # GUI for the herdr CLI from nixpkgs master (home.nix)
+    "wispr-flow" # floats in AeroSpace (aerospace.toml)
   ];
 }
