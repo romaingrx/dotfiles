@@ -69,6 +69,7 @@ in
   home = {
     packages = [
       master.herdr
+      pkgs.google-cloud-sdk
       pkgs.mosh
       pkgs.ssm-session-manager-plugin
     ];
