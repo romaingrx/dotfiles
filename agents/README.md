@@ -109,8 +109,8 @@ hand. License: [`third-party/pstack.LICENSE`](third-party/pstack.LICENSE).
 
 | Content                                                              | Upstream                                                                 | Pinned commit |
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------- |
-| `skills/bob-stack/` (router, `playbooks/`, `principles/`)            | [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan (MIT) | `00b52d9`     |
-| `skills/{why,how,blast-radius,benchmark-checklist,tdd}/` | same                                                        | `00b52d9`     |
+| `skills/bob-stack/` (router, `playbooks/`, `principles/`)            | [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan (MIT) | `ca782ed`     |
+| `skills/{why,how,blast-radius,benchmark-checklist,tdd,bro,correct,reflect}/` | same                                    | `ca782ed`     |
 | `skills/adversarial-review/references/lead-judgment.md`             | same (`interrogate/references/lead-judgment.md`)                         | `00b52d9`     |
 
 The skills the repository writes itself carry no row above. They have no

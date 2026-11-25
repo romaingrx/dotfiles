@@ -66,6 +66,8 @@ subagents, do delegated work yourself in sequence with the same brief.
 - Committing → **creating-commits**. Opening a PR → **opening-pull-requests**.
   Stacked PRs → **stacking-pull-requests**.
 - Shell scripts → **bash-safety**. Docs, READMEs, PR bodies → **simple-english**.
+- The user corrects the same mistake twice → **correct**. End of a session with
+  lessons worth keeping → **reflect**.
 
 ## Principles
 
