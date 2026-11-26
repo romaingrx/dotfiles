@@ -106,7 +106,7 @@ function comment(fields: Partial<Comment> & Pick<Comment, "path" | "line">): Com
 
 function discussion(fields: Partial<Discussion> & Pick<Discussion, "path" | "line">): Discussion {
   const remarks = [{ author: "ana", body: "Rename this.", url: "https://example.test/pull/7#r1" }];
-  return { id: "D1", side: "new", outdated: false, remarks, ...fields };
+  return { id: "D1", side: "new", start: null, outdated: false, remarks, ...fields };
 }
 
 function texts(rows: readonly Row[]): string[] {
@@ -368,6 +368,7 @@ describe("the discussions of a pull request on GitHub", () => {
         path: "src/app.ts",
         side: "new",
         line: 3,
+        start: null,
         outdated: false,
         remarks: [{ author: "ana", body: "Rename this.\nIt reads badly.", url: "https://example.test/r1" }],
       },
@@ -376,12 +377,21 @@ describe("the discussions of a pull request on GitHub", () => {
         path: "src/app.ts",
         side: "old",
         line: 2,
+        start: null,
         outdated: true,
         remarks: [{ ...removed, author: "ghost" }],
       },
     ]);
     expect(parseDiscussions({ errors: [] })).toEqual([]);
     expect(parseDiscussions(null)).toEqual([]);
+  });
+
+  test("know the first line of a discussion on several lines, and its side", () => {
+    const starts = (fields: Record<string, unknown>) => parseDiscussions(answer([thread(fields)]))[0]?.start;
+    expect(starts({ startLine: 1 })).toEqual({ side: "new", line: 1 });
+    expect(starts({ startLine: 1, startDiffSide: "LEFT" })).toEqual({ side: "old", line: 1 });
+    expect(starts({ startLine: null, originalStartLine: 2, diffSide: "LEFT" })).toEqual({ side: "old", line: 2 });
+    expect(starts({ startLine: null, originalStartLine: null })).toBeNull();
   });
 
   test("are found by their line, and name what an answer is about", () => {
@@ -444,6 +454,24 @@ describe("the rows of a file", () => {
     expect(card("none")).toEqual(["> Good point."]);
     expect(card("due")).toEqual(["> A reply on GitHub too, when you send the review: / Good point."]);
     expect(card("done")).toEqual(["> Posted on GitHub: / Good point."]);
+  });
+
+  test("mark each line of a discussion on several lines, and say its lines on its card", () => {
+    const talk = discussion({ path: "src/app.ts", line: 4, start: { side: "old", line: 2 } });
+    const [entry] = reviewFiles([file], [comment({ path: "src/app.ts", line: 1 })], [talk]);
+    if (!entry) throw new Error("expected a file");
+    const rows = fileRows(entry, 60);
+    const marks = rows.flatMap((row) => (row.kind === "line" ? [`${row.text} ${row.commented} ${row.discussed}`] : []));
+    expect(marks.slice(0, 6)).toEqual([
+      "const a = 1; true false",
+      "const b = 2; false true",
+      "const b = 3; false true",
+      "const c = 4; false true",
+      "return a; false true",
+      "} false false",
+    ]);
+    const card = rows.find((row) => row.kind === "card" && row.from === "github");
+    expect(texts(card ? [card] : [])).toEqual(["> On lines 2-4: / @ana on GitHub / Rename this."]);
   });
 
   test("show a discussion on GitHub under its line, before the person's answer", () => {

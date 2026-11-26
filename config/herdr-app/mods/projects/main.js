@@ -1467,7 +1467,7 @@ var DISCUSSIONS_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
     pullRequest(number: $number) {
       reviewThreads(first: 100) {
         nodes {
-          id isResolved isOutdated path line originalLine diffSide
+          id isResolved isOutdated path line originalLine diffSide startLine originalStartLine startDiffSide
           comments(first: 50) { nodes { author { login } body url } }
         }
       }
@@ -1489,6 +1489,9 @@ function parseRemark(value) {
   const url = text(raw.url);
   return body && url ? { author: text(asRecord(raw.author).login) ?? "ghost", body, url } : null;
 }
+function sideOf(value) {
+  return value === "LEFT" ? "old" : "new";
+}
 function parseDiscussion(value) {
   const raw = asRecord(value);
   const id = text(raw.id);
@@ -1497,7 +1500,10 @@ function parseDiscussion(value) {
   const remarks = nodes(raw.comments).map(parseRemark).filter((remark) => remark !== null);
   if (raw.isResolved === true || !id || !path || typeof line !== "number" || remarks.length === 0)
     return null;
-  return { id, path, side: raw.diffSide === "LEFT" ? "old" : "new", line, outdated: raw.isOutdated === true, remarks };
+  const side = sideOf(raw.diffSide);
+  const first = raw.startLine ?? raw.originalStartLine;
+  const start = typeof first === "number" ? { side: raw.startDiffSide ? sideOf(raw.startDiffSide) : side, line: first } : null;
+  return { id, path, side, line, start, outdated: raw.isOutdated === true, remarks };
 }
 function parseDiscussions(answer) {
   const pull = asRecord(asRecord(asRecord(answer).data).repository).pullRequest;
@@ -1740,8 +1746,10 @@ function remarkLines(remark, columns) {
   return [{ text: `@${remark.author} on GitHub`, head: true }, ...lines.slice(0, MAX_REMARK_LINES), ...cut];
 }
 function discussionCard(discussion, index, columns, stale) {
+  const span = discussion.start && !stale ? [{ text: `On lines ${linesOf(discussion)}:`, head: true }] : [];
   const lines = [
     ...whereLine(discussion, stale),
+    ...span,
     ...discussion.remarks.flatMap((remark) => remarkLines(remark, columns))
   ];
   return { kind: "card", key: `discussion:${index}`, anchor: discussion, from: "github", lines, stale };
@@ -1782,16 +1790,18 @@ function fileRows(entry, columns) {
     for (const line of hunk.lines.slice(0, MAX_LINES - drawn)) {
       const anchor = anchorOf(file.path, line);
       const under = cards.get(anchorKey(anchor)) ?? [];
-      const commented = under.some((card) => card.from === "draft");
-      rows.push({ kind: "line", key: lineKey(anchor), anchor, line, text: untab(line.text), commented }, ...under);
+      const mark = { commented: false, discussed: false };
+      rows.push({ kind: "line", key: lineKey(anchor), anchor, line, text: untab(line.text), ...mark }, ...under);
     }
     drawn += hunk.lines.length;
   }
   if (lines.length > MAX_LINES) {
     rows.push({ kind: "note", key: "note:cut", text: `This diff is long: only its first ${MAX_LINES} lines show.` });
   }
-  const covered = new Set(entry.comments.flatMap((comment) => spanRows(rows, comment).map((row) => row.key)));
-  return rows.map((row) => row.kind === "line" && covered.has(row.key) ? { ...row, commented: true } : row);
+  const covered = (spans) => new Set(spans.flatMap((span) => spanRows(rows, span).map((row) => row.key)));
+  const commented = covered(entry.comments);
+  const discussed = covered(entry.discussions);
+  return rows.map((row) => row.kind === "line" ? { ...row, commented: commented.has(row.key), discussed: discussed.has(row.key) } : row);
 }
 function lineRows(rows) {
   return rows.filter((row) => row.kind === "line");
@@ -1923,8 +1933,8 @@ function lineNumber(colors, type, number) {
 }
 function lineRow(colors, type, row, active) {
   const { line } = row;
-  const marked = row.commented || active;
-  const face = h_flex6().w_full().h(type.row).flex_none().cursor_pointer().hover((style) => style.bg(colors.hover)).child(div6().w(MARK2).h_full().flex_none().when(marked, (el) => el.bg(colors.accent))).child(lineNumber(colors, type, line.old)).child(lineNumber(colors, type, line.now)).child(div6().w(Math.ceil(SIGN * type.char)).flex_none().text_center().text_color(colors.dim).child(line.sign)).child(div6().flex_1().min_w(0).whitespace_nowrap().child(row.text || " "));
+  const mark = row.commented || active ? colors.accent : row.discussed ? colors.muted : null;
+  const face = h_flex6().w_full().h(type.row).flex_none().cursor_pointer().hover((style) => style.bg(colors.hover)).child(optional(div6().w(MARK2).h_full().flex_none(), mark, (el, color) => el.bg(color))).child(lineNumber(colors, type, line.old)).child(lineNumber(colors, type, line.now)).child(div6().w(Math.ceil(SIGN * type.char)).flex_none().text_center().text_color(colors.dim).child(line.sign)).child(div6().flex_1().min_w(0).whitespace_nowrap().child(row.text || " "));
   if (active)
     return face.bg(colors.selected);
   return optional(face, tint(colors, line), (el, color) => el.bg(color));

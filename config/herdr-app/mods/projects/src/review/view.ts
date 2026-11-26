@@ -78,20 +78,15 @@ function lineNumber(colors: Theme, type: Type, number: number | null): Element {
 
 function lineRow(colors: Theme, type: Type, row: Extract<Row, { kind: "line" }>, active: boolean): Element {
   const { line } = row;
-  const marked = row.commented || active;
+  // The edge says what is on the line: the person's own comment stands out, a discussion on GitHub is quiet.
+  const mark = row.commented || active ? colors.accent : row.discussed ? colors.muted : null;
   const face = h_flex()
     .w_full()
     .h(type.row)
     .flex_none()
     .cursor_pointer()
     .hover((style) => style.bg(colors.hover))
-    .child(
-      div()
-        .w(MARK)
-        .h_full()
-        .flex_none()
-        .when(marked, (el) => el.bg(colors.accent)),
-    )
+    .child(optional(div().w(MARK).h_full().flex_none(), mark, (el, color) => el.bg(color)))
     .child(lineNumber(colors, type, line.old))
     .child(lineNumber(colors, type, line.now))
     .child(

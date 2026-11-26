@@ -1,5 +1,5 @@
 import { asRecord, text } from "../parse";
-import { anchorKey, type About, type Anchor } from "./draft";
+import { anchorKey, type About, type Anchor, type Side, type Span } from "./draft";
 
 /** One comment of a discussion on GitHub. */
 export interface Remark {
@@ -9,7 +9,7 @@ export interface Remark {
 }
 
 /** A discussion of the pull request on GitHub: the comments people left on one line of a file. */
-export interface Discussion extends Anchor {
+export interface Discussion extends Span {
   /** What GitHub calls it: a reply names it. */
   readonly id: string;
   /** Set when the line it was left on changed since: its line number is the one it had then. */
@@ -23,7 +23,7 @@ export const DISCUSSIONS_QUERY = `query($owner: String!, $name: String!, $number
     pullRequest(number: $number) {
       reviewThreads(first: 100) {
         nodes {
-          id isResolved isOutdated path line originalLine diffSide
+          id isResolved isOutdated path line originalLine diffSide startLine originalStartLine startDiffSide
           comments(first: 50) { nodes { author { login } body url } }
         }
       }
@@ -51,6 +51,11 @@ function parseRemark(value: unknown): Remark | null {
   return body && url ? { author: text(asRecord(raw.author).login) ?? "ghost", body, url } : null;
 }
 
+/** GitHub's `LEFT` is the base's file; anything else is the branch's. */
+function sideOf(value: unknown): Side {
+  return value === "LEFT" ? "old" : "new";
+}
+
 /** Null for a discussion that is settled, or that has no line or no comment to show. */
 function parseDiscussion(value: unknown): Discussion | null {
   const raw = asRecord(value);
@@ -61,7 +66,12 @@ function parseDiscussion(value: unknown): Discussion | null {
     .map(parseRemark)
     .filter((remark) => remark !== null);
   if (raw.isResolved === true || !id || !path || typeof line !== "number" || remarks.length === 0) return null;
-  return { id, path, side: raw.diffSide === "LEFT" ? "old" : "new", line, outdated: raw.isOutdated === true, remarks };
+  const side = sideOf(raw.diffSide);
+  const first = raw.startLine ?? raw.originalStartLine;
+  // A discussion on several lines names its first line too, and that line's side when it is another one.
+  const start =
+    typeof first === "number" ? { side: raw.startDiffSide ? sideOf(raw.startDiffSide) : side, line: first } : null;
+  return { id, path, side, line, start, outdated: raw.isOutdated === true, remarks };
 }
 
 /** Reads GitHub's answer to the query: the discussions that are still open. */

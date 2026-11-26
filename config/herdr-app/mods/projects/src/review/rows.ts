@@ -1,6 +1,6 @@
 import type { DiffFile, DiffLine } from "./diff";
 import type { Discussion, Remark } from "./discussions";
-import { anchorKey, anchorOf, type Anchor, type Comment, type Posting, type Span } from "./draft";
+import { anchorKey, anchorOf, linesOf, type Anchor, type Comment, type Posting, type Span } from "./draft";
 
 /** A file of the review: one the branch changed, with what is said about it. */
 export interface ReviewFile {
@@ -29,7 +29,10 @@ export type Row =
       readonly anchor: Anchor;
       readonly line: DiffLine;
       readonly text: string;
+      /** Set for a line that a comment of the person is on. */
       readonly commented: boolean;
+      /** Set for a line that a discussion on GitHub is on. */
+      readonly discussed: boolean;
     }
   | {
       /** A card under a line: the person's comment, or a discussion on GitHub. */
@@ -148,8 +151,11 @@ function remarkLines(remark: Remark, columns: number): CardLine[] {
 }
 
 function discussionCard(discussion: Discussion, index: number, columns: number, stale: boolean): Card {
+  // One on several lines says which: the card is under the last one only.
+  const span: CardLine[] = discussion.start && !stale ? [{ text: `On lines ${linesOf(discussion)}:`, head: true }] : [];
   const lines = [
     ...whereLine(discussion, stale),
+    ...span,
     ...discussion.remarks.flatMap((remark) => remarkLines(remark, columns)),
   ];
   return { kind: "card", key: `discussion:${index}`, anchor: discussion, from: "github", lines, stale };
@@ -199,17 +205,22 @@ export function fileRows(entry: ReviewFile, columns: number): Row[] {
     for (const line of hunk.lines.slice(0, MAX_LINES - drawn)) {
       const anchor = anchorOf(file.path, line);
       const under = cards.get(anchorKey(anchor)) ?? [];
-      const commented = under.some((card) => card.from === "draft");
-      rows.push({ kind: "line", key: lineKey(anchor), anchor, line, text: untab(line.text), commented }, ...under);
+      const mark = { commented: false, discussed: false };
+      rows.push({ kind: "line", key: lineKey(anchor), anchor, line, text: untab(line.text), ...mark }, ...under);
     }
     drawn += hunk.lines.length;
   }
   if (lines.length > MAX_LINES) {
     rows.push({ kind: "note", key: "note:cut", text: `This diff is long: only its first ${MAX_LINES} lines show.` });
   }
-  // A comment on several lines marks each of them, not only the last one.
-  const covered = new Set(entry.comments.flatMap((comment) => spanRows(rows, comment).map((row) => row.key)));
-  return rows.map((row) => (row.kind === "line" && covered.has(row.key) ? { ...row, commented: true } : row));
+  // What is said about several lines marks each of them, not only the last one.
+  const covered = (spans: readonly Span[]) =>
+    new Set(spans.flatMap((span) => spanRows(rows, span).map((row) => row.key)));
+  const commented = covered(entry.comments);
+  const discussed = covered(entry.discussions);
+  return rows.map((row) =>
+    row.kind === "line" ? { ...row, commented: commented.has(row.key), discussed: discussed.has(row.key) } : row,
+  );
 }
 
 export type LineRow = Extract<Row, { kind: "line" }>;
