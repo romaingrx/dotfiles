@@ -337,6 +337,9 @@ describe("the rows of a file", () => {
     expect(untab("\tx")).toBe("    x");
     expect(untab("ab\tc")).toBe("ab  c");
     expect(untab("abcd\te")).toBe("abcd    e");
+    expect(untab("a\t\tb\tc\t")).toBe("a       b   c   ");
+    expect(untab("no tab here")).toBe("no tab here");
+    expect(untab("")).toBe("");
   });
 });
 

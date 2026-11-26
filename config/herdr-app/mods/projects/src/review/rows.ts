@@ -35,12 +35,22 @@ export type Row =
 export const MAX_LINES = 5000;
 const TAB = 4;
 
-/** Text draws a tab as nothing: each one is padded to the next tab stop. */
+/**
+ * Text draws a tab as nothing: each one is padded to the next tab stop. This
+ * runs for every line of a diff, so it reads a line once and does not use a
+ * regular expression: one that looks for a tab from each place of a line
+ * without one is slow enough on long lines for the app to stop the render.
+ */
 export function untab(text: string): string {
-  return text.replace(/[^\t]*\t/g, (run) => {
-    const width = run.length - 1;
-    return run.slice(0, -1).padEnd(width - (width % TAB) + TAB);
-  });
+  if (!text.includes("\t")) return text;
+  const parts = text.split("\t");
+  const last = parts.pop() ?? "";
+  let padded = "";
+  for (const part of parts) {
+    padded += part;
+    padded += " ".repeat(TAB - (padded.length % TAB));
+  }
+  return padded + last;
 }
 
 /** Cuts one line of text into lines of `columns` characters at most, between words where it can. */

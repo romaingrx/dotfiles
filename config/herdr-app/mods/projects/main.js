@@ -1560,10 +1560,16 @@ async function readBranchDiff(thread) {
 var MAX_LINES = 5000;
 var TAB = 4;
 function untab(text) {
-  return text.replace(/[^\t]*\t/g, (run) => {
-    const width = run.length - 1;
-    return run.slice(0, -1).padEnd(width - width % TAB + TAB);
-  });
+  if (!text.includes("\t"))
+    return text;
+  const parts = text.split("\t");
+  const last = parts.pop() ?? "";
+  let padded = "";
+  for (const part of parts) {
+    padded += part;
+    padded += " ".repeat(TAB - padded.length % TAB);
+  }
+  return padded + last;
 }
 function wrapLine(line, columns) {
   const lines = [];
