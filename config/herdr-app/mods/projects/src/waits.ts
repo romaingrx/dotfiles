@@ -10,8 +10,6 @@ export interface Wait {
   /** The thread's title, or null for the project's orchestrator. */
   readonly title: string | null;
   readonly since: number | null;
-  /** True when the session asked with a report: Herdr itself only knows that its turn ended. */
-  readonly asked: boolean;
 }
 
 function isWaiting(member: Terminal): boolean {
@@ -30,7 +28,6 @@ export function waits(snapshot: Snapshot, projects: readonly Project[]): Wait[] 
         project: project.name,
         title: titles.get(member.address) ?? null,
         since: member.since,
-        asked: member.reported === "needs-you",
       }));
     })
     .sort(longestFirst);
@@ -43,11 +40,3 @@ export function nextWait(all: readonly Wait[], focused: string | null): Wait | u
 }
 
 
-/**
- * The waits to tell the person about: those that began since the last look
- * with a report, which Herdr does not announce, and not the one of the
- * session the person is in.
- */
-export function waitsToAnnounce(before: ReadonlySet<string>, all: readonly Wait[], focused: string | null): Wait[] {
-  return all.filter((wait) => wait.asked && !before.has(wait.terminal) && wait.terminal !== focused);
-}

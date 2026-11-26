@@ -29,7 +29,7 @@ import {
 } from "./threads";
 import { age } from "./time";
 import { parseViews, rememberedThread, withView } from "./views";
-import { nextWait, waits, waitsToAnnounce } from "./waits";
+import { nextWait, waits } from "./waits";
 
 const CLAUDE: Program = {
   key: "claude",
@@ -566,11 +566,4 @@ describe("the sessions that wait on the person", () => {
     expect(nextWait([], "t1")).toBeUndefined();
   });
 
-  test("only a new wait that asked with a report is announced, and not where the person is", () => {
-    const names = (before: string[], focused: string | null) =>
-      waitsToAnnounce(new Set(before), all, focused).map((wait) => wait.terminal);
-    expect(names([], null)).toEqual(["t2"]);
-    expect(names(["t2"], null)).toEqual([]);
-    expect(names([], "t2")).toEqual([]);
-  });
 });

@@ -1,9 +1,9 @@
 import type { AsyncContext } from "gpui-kit";
-import { checking, nextCommand, notify, setBadge } from "herdr";
+import { checking, nextCommand, setBadge } from "herdr";
 import { openNewProjectDialog, reportFailure } from "./actions";
 import { openNextWait, selectProject, showThreadList, stepProject } from "./navigation";
 import { readScene } from "./snapshot";
-import { waits, waitsToAnnounce, type Wait } from "./waits";
+import { waits } from "./waits";
 
 const MOD = "projects";
 /** How often the waits are looked at. */
@@ -35,31 +35,15 @@ async function runCommands(): Promise<void> {
   }
 }
 
-function announce(wait: Wait): void {
-  notify({
-    title: `${wait.title ?? "The orchestrator"} needs you`,
-    body: wait.project,
-    level: "warning",
-    action: { name: `${MOD}.next-waiting` },
-  });
-}
-
-/**
- * Tells the person about the sessions that wait on them: their count on the
- * app's icon, and a notice for each new wait that Herdr does not announce.
- */
+/** Keeps the number of sessions that wait on the person on the app's icon. */
 function watchWaits(cx: AsyncContext): void {
   let badge: string | null | undefined;
-  let known: ReadonlySet<string> | null = null;
   const look = (): void => {
     const { snapshot, projects } = readScene();
-    const all = waits(snapshot, projects);
-    const count = all.length > 0 ? String(all.length) : null;
+    const amount = waits(snapshot, projects).length;
+    const count = amount > 0 ? String(amount) : null;
     if (count !== badge) setBadge(count);
     badge = count;
-    // What waited before the mod started is no news.
-    if (known) waitsToAnnounce(known, all, snapshot.focused).forEach(announce);
-    known = new Set(all.map((wait) => wait.terminal));
   };
   look();
   cx.timer.every(LOOK_EVERY, look);

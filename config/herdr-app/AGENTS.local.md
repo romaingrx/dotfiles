@@ -68,8 +68,8 @@ one machine, so it runs while this computer is off.
   Changes of that thread's folder.
 - **Waits:** a session waits on the person when its agent is blocked, or when
   its thread reported `needs-you`. The mod puts the number of waits on the
-  app's icon and posts a notice for a `needs-you` report, which Herdr does not
-  announce itself. The project row says who waits and who works.
+  app's icon, and the project row says who waits and who works. It posts no
+  notice.
 - **Reports:** a thread reports with `report.sh`. The report is a file, the
   thread's terminal carries `state` and `report` labels, and a short `hc send`
   wakes the orchestrator. `threads.sh` lists every thread with its report.

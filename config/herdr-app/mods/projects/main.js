@@ -3,7 +3,7 @@ import { View, div as div8 } from "gpui-kit";
 import { props } from "herdr";
 
 // src/background.ts
-import { checking, nextCommand, notify as notify3, setBadge } from "herdr";
+import { checking, nextCommand, setBadge } from "herdr";
 
 // src/actions.ts
 import { appHome, exec, hc, notify, openOverlay, run } from "herdr";
@@ -533,17 +533,13 @@ function waits(snapshot, projects) {
       terminal: member.address,
       project: project.name,
       title: titles.get(member.address) ?? null,
-      since: member.since,
-      asked: member.reported === "needs-you"
+      since: member.since
     }));
   }).sort(longestFirst);
 }
 function nextWait(all, focused) {
   const at = all.findIndex((wait) => wait.terminal === focused);
   return all[(at + 1) % all.length];
-}
-function waitsToAnnounce(before, all, focused) {
-  return all.filter((wait) => wait.asked && !before.has(wait.terminal) && wait.terminal !== focused);
 }
 
 // src/navigation.ts
@@ -650,27 +646,15 @@ async function runCommands() {
     }
   }
 }
-function announce(wait) {
-  notify3({
-    title: `${wait.title ?? "The orchestrator"} needs you`,
-    body: wait.project,
-    level: "warning",
-    action: { name: `${MOD2}.next-waiting` }
-  });
-}
 function watchWaits(cx) {
   let badge;
-  let known = null;
   const look = () => {
     const { snapshot, projects } = readScene();
-    const all = waits(snapshot, projects);
-    const count = all.length > 0 ? String(all.length) : null;
+    const amount = waits(snapshot, projects).length;
+    const count = amount > 0 ? String(amount) : null;
     if (count !== badge)
       setBadge(count);
     badge = count;
-    if (known)
-      waitsToAnnounce(known, all, snapshot.focused).forEach(announce);
-    known = new Set(all.map((wait) => wait.terminal));
   };
   look();
   cx.timer.every(LOOK_EVERY, look);
