@@ -1858,7 +1858,14 @@ function discussionCard(discussion, index, columns, stale) {
     ...span,
     ...discussion.remarks.flatMap((remark) => remarkLines(remark, columns))
   ];
-  return { kind: "card", key: `discussion:${index}`, anchor: discussion, from: "github", lines, stale };
+  return {
+    kind: "card",
+    key: `discussion:${discussion.path}:${index}`,
+    anchor: discussion,
+    from: "github",
+    lines,
+    stale
+  };
 }
 var NEW_SIDE = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))?/;
 function unchangedBefore(hunks) {
@@ -1898,7 +1905,7 @@ function fileRows(entry, columns) {
   const rows = stale.flatMap(([, rowsOfLine]) => rowsOfLine);
   const empty = emptyText(entry);
   if (empty)
-    return [...rows, { kind: "note", key: "note:empty", text: empty }];
+    return [...rows, { kind: "note", key: `note:empty:${file.path}`, text: empty }];
   const gaps = unchangedBefore(file.hunks);
   let drawn = 0;
   for (const [index, hunk] of file.hunks.entries()) {
@@ -1906,7 +1913,11 @@ function fileRows(entry, columns) {
       break;
     const gap = gaps[index] ?? 0;
     if (gap > 0)
-      rows.push({ kind: "hunk", key: `hunk:${index}`, text: `${gap} unchanged line${gap === 1 ? "" : "s"}` });
+      rows.push({
+        kind: "hunk",
+        key: `hunk:${file.path}:${index}`,
+        text: `${gap} unchanged line${gap === 1 ? "" : "s"}`
+      });
     for (const line of hunk.lines.slice(0, MAX_LINES - drawn)) {
       const anchor = anchorOf(file.path, line);
       const under = cards.get(anchorKey(anchor)) ?? [];
@@ -1916,7 +1927,11 @@ function fileRows(entry, columns) {
     drawn += hunk.lines.length;
   }
   if (lines.length > MAX_LINES) {
-    rows.push({ kind: "note", key: "note:cut", text: `This diff is long: only its first ${MAX_LINES} lines show.` });
+    rows.push({
+      kind: "note",
+      key: `note:cut:${file.path}`,
+      text: `This diff is long: only its first ${MAX_LINES} lines show.`
+    });
   }
   const covered = (spans) => new Set(spans.flatMap((span) => spanRows(rows, span).map((row) => row.key)));
   const commented = covered(entry.comments);
@@ -1949,7 +1964,44 @@ function quoteOf(lines) {
 `);
 }
 function widest(rows) {
-  return Math.max(0, ...rows.map((row) => row.kind === "line" ? row.text.length : 0));
+  return rows.reduce((longest, row) => row.kind === "line" ? Math.max(longest, row.text.length) : longest, 0);
+}
+function fileKey(path) {
+  return `file:${path}`;
+}
+
+// src/review/layout.ts
+function builtFrom(entry, columns, round) {
+  const said = entry.comments.map((comment) => `${anchorKey(comment)} ${comment.start?.line} ${comment.about?.post} ${comment.body}`);
+  const cards = said.length + entry.discussions.length > 0;
+  return JSON.stringify([round, cards ? columns : null, said, entry.discussions.length]);
+}
+function staleFiles(files, built, columns, round) {
+  return files.filter((entry) => built.get(entry.file.path)?.signature !== builtFrom(entry, columns, round));
+}
+function assemble(files, built) {
+  return files.flatMap((entry) => [
+    { kind: "file", key: fileKey(entry.file.path), entry },
+    ...built.get(entry.file.path)?.rows ?? []
+  ]);
+}
+function offsets(heights) {
+  let top = 0;
+  return heights.map((height) => {
+    const start = top;
+    top += height;
+    return start;
+  });
+}
+function fileStarts(rows, tops) {
+  return rows.flatMap((row, index) => row.kind === "file" ? [{ path: row.entry.file.path, top: tops[index] ?? 0 }] : []);
+}
+function fileAt(starts, scrolled) {
+  const [first] = starts;
+  if (!first)
+    return null;
+  const over = starts.filter((start) => start.top <= scrolled);
+  return (over[over.length - 1] ?? first).path;
 }
 
 // src/review/tree.ts
@@ -1994,9 +2046,8 @@ function filterFiles(files, typed) {
   const word = typed.trim().toLowerCase();
   return files.filter((entry) => entry.file.path.toLowerCase().includes(word));
 }
-function firstFile(files) {
-  const first = fileTree(files, new Set).find((row) => row.kind === "file");
-  return first?.kind === "file" ? first.entry : undefined;
+function inTreeOrder(files) {
+  return fileTree(files, new Set).flatMap((row) => row.kind === "file" ? [row.entry] : []);
 }
 
 // src/review/store.ts
@@ -2046,8 +2097,15 @@ function commentColumns(width, type) {
   const room = width - gutter(type) - 2 * COMMENT_PAD.x - DIFF_END;
   return Math.max(24, Math.floor(room / type.char));
 }
+var FILE_GAP = 10;
+var FILE_HEAD = 32;
 function rowHeight(row, type) {
+  if (row.kind === "file")
+    return FILE_GAP + FILE_HEAD;
   return row.kind === "card" ? row.lines.length * type.row + 2 * (COMMENT_GAP + COMMENT_PAD.y) : type.row;
+}
+function rowHeights(rows, type) {
+  return rows.map((row) => rowHeight(row, type));
 }
 function tint(colors, line) {
   if (line.sign === "+")
@@ -2094,10 +2152,12 @@ function diffPane(colors, props) {
       return lineRow(colors, type, row, props.active.has(row.key));
     if (row.kind === "card")
       return cardRow(colors, type, row, props.columns);
+    if (row.kind === "file")
+      return cardHead(colors, type, row.entry.file);
     return row.kind === "hunk" ? foldRow(colors, type, row.text) : plainRow(colors, type, row.text);
   };
-  const list = v_virtual_list("review-diff", rows.length, rows.map((row) => rowHeight(row, type)), (index) => rows[index]?.key ?? String(index), (range) => rows.slice(range.start, range.end).map(draw)).track_scroll(props.scroll).on_item_click(props.onPick).size_full();
-  return div6().id("review-diff-box").flex_1().min_h(0).relative().font_family(type.family).text_size(type.size).on_size_change((size, cx) => props.onWidth(size.width / readZoom(), cx)).on_mouse_down("left", (event) => props.onPress(event.modifiers.shift)).child(div6().id("review-diff-x").size_full().overflow_x_scrollbar().child(div6().w_full().min_w(Math.ceil(props.widest * type.char) + gutter(type) + DIFF_END).h_full().child(list))).child(Scrollbar.vertical("review-diff").viewport_from_layout().absolute().inset_0());
+  const list = v_virtual_list("review-diff", rows.length, props.heights, (index) => rows[index]?.key ?? String(index), (range) => rows.slice(range.start, range.end).map(draw)).track_scroll(props.scroll).on_item_click(props.onPick).size_full();
+  return div6().id("review-diff-box").flex_1().min_h(0).relative().font_family(type.family).text_size(type.size).on_size_change((size, cx) => props.onWidth(size.width / readZoom(), cx)).on_mouse_down("left", (event) => props.onPress(event.modifiers.shift)).on_scroll_wheel((_event, cx) => props.onScroll(cx)).child(div6().id("review-diff-x").size_full().overflow_x_scrollbar().child(div6().w_full().min_w(Math.ceil(props.widest * type.char) + gutter(type) + DIFF_END).h_full().child(list))).child(Scrollbar.vertical("review-diff").viewport_from_layout().absolute().inset_0());
 }
 function counts(colors, added, removed) {
   const count = (amount, sign, color) => div6().flex_none().text_size(11).text_color(color).child(`${sign}${amount}`);
@@ -2159,10 +2219,11 @@ function reviewHead(colors, props) {
     onClick: props.onRefresh
   })).child(iconButton(colors, { id: "review-close", icon: chromeIcon("x"), tip: "Close", onClick: props.onClose }));
 }
-function fileHead(colors, type, file) {
+function cardHead(colors, type, file) {
   const cut = file.path.lastIndexOf("/");
-  const bar = h_flex6().h(32).flex_none().px(12).gap(8).items_center().border_b(1).border_color(colors.border).font_family(type.family).text_size(12).child(div6().flex_none().child(file.path.slice(cut + 1))).child(div6().min_w(0).truncate().text_color(colors.muted).child(file.path.slice(0, cut + 1)));
-  return optional(bar, file.from, (el, from) => el.child(div6().min_w(0).truncate().text_color(colors.dim).child(`from ${from}`))).child(div6().flex_1()).children(counts(colors, file.added, file.removed));
+  const bar = h_flex6().w_full().h(FILE_HEAD).px(12).gap(8).items_center().bg(colors.raised).border_t(1).border_b(1).border_color(colors.border).text_size(type.size - 1).text_color(colors.foreground).child(div6().flex_none().child(file.path.slice(cut + 1))).child(div6().min_w(0).truncate().text_color(colors.muted).child(file.path.slice(0, cut + 1)));
+  const head = optional(bar, file.from, (el, from) => el.child(div6().min_w(0).truncate().text_color(colors.dim).child(`from ${from}`))).children(counts(colors, file.added, file.removed));
+  return div6().w_full().h(FILE_GAP + FILE_HEAD).flex_none().pt(FILE_GAP).child(head);
 }
 function composer(colors, props) {
   return v_flex5().id("review-composer").flex_none().p(10).gap(8).border_t(1).border_color(colors.border).bg(colors.chrome).child(h_flex6().gap(8).items_center().text_size(11.5).child(div6().flex_none().text_color(colors.muted).child(props.where)).child(div6().flex_1().min_w(0).truncate().font_family(props.type.family).text_color(colors.dim).child(props.code.trim()))).child(Textarea.new(props.field).h(96).p(8).rounded(8).border_1().border_color(colors.input).bg(colors.background).text_size(12.8).text_color(colors.foreground)).child(h_flex6().gap(8).justify_end().children(props.buttons.map((button) => textButton(colors, button))));
@@ -2173,6 +2234,7 @@ function reviewFoot(colors, props) {
 }
 
 // src/parts/review.ts
+var SHOW_EVERY = 150;
 var FIRST_WIDTH = 900;
 var ADDRESS = "Address this comment.";
 function linesWord(span) {
@@ -2181,7 +2243,8 @@ function linesWord(span) {
   return span.side === "old" ? `Line ${span.line}, which the branch removes` : `Line ${span.line}`;
 }
 function whereOf(target) {
-  const lines = linesWord(target.anchor);
+  const { path } = target.anchor;
+  const lines = `${path.slice(path.lastIndexOf("/") + 1)} · ${linesWord(target.anchor)}`;
   return target.about ? `${lines} · in answer to @${target.about.author} on GitHub` : lines;
 }
 
@@ -2210,6 +2273,9 @@ class ReviewDialog {
   target = null;
   shift = false;
   width = FIRST_WIDTH;
+  built = new Map;
+  version = 0;
+  building = false;
   drawn = null;
   constructor(overlay, thread, cx) {
     this.overlay = overlay;
@@ -2232,7 +2298,11 @@ class ReviewDialog {
       this.load(cx);
     const draft = readDraft(this.key());
     const files = reviewFiles(this.diff?.files ?? [], draft.comments, this.discussions);
-    const shown = files.find((entry) => entry.file.path === this.open) ?? firstFile(files);
+    const ordered = inTreeOrder(files);
+    const columns = commentColumns(this.width, type);
+    this.build(ordered, columns, cx);
+    const drawn = this.drawnOf(ordered, columns, type);
+    const open = files.some((entry) => entry.file.path === this.open) ? this.open : fileAt(drawn.starts, 0);
     const branch = thread?.checkout?.branch;
     const tip = branch && (reviewRange(this.subject, branch).tip ?? branch);
     const range = tip && this.diff ? `${tip} → ${this.diff.base}` : null;
@@ -2251,10 +2321,10 @@ class ReviewDialog {
       rows: fileTree(filterFiles(files, this.filter.value()), this.folded),
       filter: this.filter,
       onFold: (path, cx) => this.fold(path, cx),
-      open: shown?.file.path ?? null,
+      open,
       empty: this.emptyText(),
-      onOpen: (path, cx) => this.show(path, cx)
-    })).child(this.file(colors, type, shown))).child(reviewFoot(colors, {
+      onOpen: (path, cx) => this.show(drawn.rows, path, cx)
+    })).child(this.diffSide(colors, type, drawn))).child(reviewFoot(colors, {
       note: this.note,
       error: this.diff ? this.error : null,
       send: this.sendButton(thread, draft)
@@ -2281,7 +2351,9 @@ class ReviewDialog {
     this.discussions = [];
     this.open = null;
     this.target = null;
-    this.drawn = null;
+    this.built.clear();
+    this.version++;
+    this.scroll.scroll_to_item(0);
     this.field.set_value("");
     this.note.set_value(readDraft(this.key()).note);
   }
@@ -2298,20 +2370,20 @@ class ReviewDialog {
       return this.loading ? "Reading the branch…" : "No branch to review.";
     return `Nothing changed against ${this.diff.base}.`;
   }
-  file(colors, type, shown) {
+  diffSide(colors, type, drawn) {
     const side = v_flex6().flex_1().min_w(0).h_full();
-    if (!shown)
+    if (drawn.rows.length === 0)
       return side;
-    const columns = commentColumns(this.width, type);
-    const drawn = this.rowsOf(shown, columns);
-    const target = this.target?.anchor.path === shown.file.path ? this.target : null;
-    const pane = side.child(fileHead(colors, type, shown.file)).child(diffPane(colors, {
+    const { target } = this;
+    const pane = side.child(diffPane(colors, {
       rows: drawn.rows,
+      heights: drawn.heights,
       widest: drawn.widest,
       type,
-      columns,
+      columns: drawn.columns,
       scroll: this.scroll,
-      active: new Set(target ? spanRows(drawn.rows, target.anchor).map((row) => row.key) : []),
+      onScroll: (cx) => this.follow(drawn, cx),
+      active: new Set(target ? spanRows(this.rowsIn(target.anchor.path), target.anchor).map((row) => row.key) : []),
       onPress: (shift) => {
         this.shift = shift;
       },
@@ -2375,14 +2447,54 @@ class ReviewDialog {
       onClick: (cx) => this.send(cx)
     };
   }
-  rowsOf(entry, columns) {
-    const words = entry.comments.map((comment) => `${anchorKey(comment)} ${comment.about?.post} ${comment.body}`);
-    const signature = JSON.stringify([entry.file.path, columns, words]);
+  rowsIn(path) {
+    return this.built.get(path)?.rows ?? [];
+  }
+  build(files, columns, cx) {
+    const { round } = this;
+    const stale = this.building ? [] : staleFiles(files, this.built, columns, round);
+    if (stale.length === 0)
+      return;
+    this.building = true;
+    cx.spawn(async (task) => {
+      let shown = Date.now();
+      try {
+        for (const entry of stale) {
+          if (round !== this.round)
+            break;
+          this.built.set(entry.file.path, {
+            signature: builtFrom(entry, columns, round),
+            rows: fileRows(entry, columns)
+          });
+          this.version++;
+          if (Date.now() - shown >= SHOW_EVERY) {
+            shown = Date.now();
+            task.notify();
+          }
+          await task.sleep(1);
+        }
+      } finally {
+        this.building = false;
+        task.notify();
+      }
+    });
+  }
+  drawnOf(files, columns, type) {
+    const signature = `${this.version} ${files.length} ${type.size} ${columns}`;
     if (this.drawn?.signature === signature)
       return this.drawn;
-    const rows = fileRows(entry, columns);
-    this.drawn = { signature, rows, widest: widest(rows) };
+    const rows = assemble(files, this.built);
+    const heights = rowHeights(rows, type);
+    const starts = fileStarts(rows, offsets(heights));
+    this.drawn = { signature, rows, columns, heights, starts, widest: widest(rows) };
     return this.drawn;
+  }
+  follow(drawn, cx) {
+    const path = fileAt(drawn.starts, this.scroll.offset().y);
+    if (path === this.open)
+      return;
+    this.open = path;
+    cx.notify();
   }
   load(cx) {
     const thread = this.find();
@@ -2398,10 +2510,7 @@ class ReviewDialog {
     this.loading = true;
     this.error = null;
     cx.spawn(async (task) => {
-      const show = () => {
-        this.drawn = null;
-        task.notify();
-      };
+      const show = () => task.notify();
       await Promise.all([
         this.read(readBranchDiff(thread, range), (diff) => this.diff = diff, latest).then(show),
         this.read(readDiscussions(thread, subject), (discussions) => this.discussions = discussions, latest).then(show)
@@ -2421,11 +2530,12 @@ class ReviewDialog {
         this.error = messageOf(error);
     }
   }
-  show(path, cx) {
-    this.keepTyped();
-    this.target = null;
+  show(rows, path, cx) {
+    const at = rows.findIndex((row) => row.key === fileKey(path));
+    if (at < 0)
+      return;
     this.open = path;
-    this.scroll.scroll_to_item(0);
+    this.scroll.scroll_to_item(at, "top");
     cx.notify();
   }
   resize(width, cx) {
@@ -2438,11 +2548,12 @@ class ReviewDialog {
     const row = rows.find((candidate) => candidate.key === key);
     if (row?.kind !== "line" && row?.kind !== "card")
       return;
-    if (this.shift && row.kind === "line" && this.extend(rows, row.anchor, cx))
+    const own = this.rowsIn(row.anchor.path);
+    if (this.shift && row.kind === "line" && this.extend(own, row.anchor, cx))
       return;
     this.keepTyped();
     const written = commentAt(readDraft(this.key()), row.anchor);
-    const line = rows.find((candidate) => candidate.key === lineKey(row.anchor));
+    const line = own.find((candidate) => candidate.key === lineKey(row.anchor));
     this.target = {
       anchor: written ?? { path: row.anchor.path, side: row.anchor.side, line: row.anchor.line, start: null },
       pivot: row.anchor,

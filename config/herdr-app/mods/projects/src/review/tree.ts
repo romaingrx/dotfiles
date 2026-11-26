@@ -73,8 +73,10 @@ export function filterFiles(files: readonly ReviewFile[], typed: string): Review
   return files.filter((entry) => entry.file.path.toLowerCase().includes(word));
 }
 
-/** The first file of the tree from the top, whatever is folded: the one a review opens on. */
-export function firstFile(files: readonly ReviewFile[]): ReviewFile | undefined {
-  const first = fileTree(files, new Set()).find((row) => row.kind === "file");
-  return first?.kind === "file" ? first.entry : undefined;
+/**
+ * The files in the order the tree lists them from the top, whatever is folded.
+ * The diff shows them in this order, so that the tree and the diff read alike.
+ */
+export function inTreeOrder(files: readonly ReviewFile[]): ReviewFile[] {
+  return fileTree(files, new Set()).flatMap((row) => (row.kind === "file" ? [row.entry] : []));
 }

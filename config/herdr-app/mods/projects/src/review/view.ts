@@ -63,8 +63,18 @@ export function commentColumns(width: number, type: Type): number {
   return Math.max(24, Math.floor(room / type.char));
 }
 
+/** The gap over a file's card, and the height of its head. */
+const FILE_GAP = 10;
+const FILE_HEAD = 32;
+
 function rowHeight(row: Row, type: Type): number {
+  if (row.kind === "file") return FILE_GAP + FILE_HEAD;
   return row.kind === "card" ? row.lines.length * type.row + 2 * (COMMENT_GAP + COMMENT_PAD.y) : type.row;
+}
+
+/** How high each row of a review is, for a type: the list places its rows by these. */
+export function rowHeights(rows: readonly Row[], type: Type): number[] {
+  return rows.map((row) => rowHeight(row, type));
 }
 
 function tint(colors: Theme, line: DiffLine): Color | null {
@@ -184,6 +194,8 @@ function plainRow(colors: Theme, type: Type, text: string): Element {
 
 export interface DiffPane {
   readonly rows: readonly Row[];
+  /** How high each row is, from `rowHeights`. */
+  readonly heights: readonly number[];
   /** The longest line of the rows, in characters. */
   readonly widest: number;
   readonly type: Type;
@@ -198,20 +210,23 @@ export interface DiffPane {
   readonly onPick: (key: string, cx: Context) => void;
   /** The width the diff has on screen, in px of the mod. */
   readonly onWidth: (width: number, cx: Context) => void;
+  /** A turn of the wheel over the diff: the file on show may be another one. */
+  readonly onScroll: Handler;
 }
 
-/** One file's diff: its lines with the comments under them. Only the rows on screen are drawn. */
+/** The diff of every file, one after the other, with the comments under their lines. Only the rows on screen are drawn. */
 export function diffPane(colors: Theme, props: DiffPane): Element {
   const { rows, type } = props;
   const draw = (row: Row): Element => {
     if (row.kind === "line") return lineRow(colors, type, row, props.active.has(row.key));
     if (row.kind === "card") return cardRow(colors, type, row, props.columns);
+    if (row.kind === "file") return cardHead(colors, type, row.entry.file);
     return row.kind === "hunk" ? foldRow(colors, type, row.text) : plainRow(colors, type, row.text);
   };
   const list = v_virtual_list(
     "review-diff",
     rows.length,
-    rows.map((row) => rowHeight(row, type)),
+    [...props.heights],
     (index) => rows[index]?.key ?? String(index),
     (range) => rows.slice(range.start, range.end).map(draw),
   )
@@ -229,6 +244,7 @@ export function diffPane(colors: Theme, props: DiffPane): Element {
       .on_size_change((size, cx) => props.onWidth(size.width / readZoom(), cx))
       // A click on a row of the list says which row, not which keys are held: the press before it does.
       .on_mouse_down("left", (event) => props.onPress(event.modifiers.shift))
+      .on_scroll_wheel((_event, cx) => props.onScroll(cx))
       .child(
         div()
           .id("review-diff-x")
@@ -472,19 +488,21 @@ export function reviewHead(colors: Theme, props: ReviewHead): Element {
     .child(iconButton(colors, { id: "review-close", icon: chromeIcon("x"), tip: "Close", onClick: props.onClose }));
 }
 
-/** The strip over a file's diff: its name, its folder, where it moved from, and how much of it changed. */
-export function fileHead(colors: Theme, type: Type, file: DiffFile): Element {
+/** The head of a file's card in the diff: its name, its folder, where it moved from, and how much of it changed. */
+function cardHead(colors: Theme, type: Type, file: DiffFile): Element {
   const cut = file.path.lastIndexOf("/");
   const bar = h_flex()
-    .h(32)
-    .flex_none()
+    .w_full()
+    .h(FILE_HEAD)
     .px(12)
     .gap(8)
     .items_center()
+    .bg(colors.raised)
+    .border_t(1)
     .border_b(1)
     .border_color(colors.border)
-    .font_family(type.family)
-    .text_size(12)
+    .text_size(type.size - 1)
+    .text_color(colors.foreground)
     .child(
       div()
         .flex_none()
@@ -497,11 +515,18 @@ export function fileHead(colors: Theme, type: Type, file: DiffFile): Element {
         .text_color(colors.muted)
         .child(file.path.slice(0, cut + 1)),
     );
-  return optional(bar, file.from, (el, from) =>
+  const head = optional(bar, file.from, (el, from) =>
     el.child(div().min_w(0).truncate().text_color(colors.dim).child(`from ${from}`)),
   )
     .child(div().flex_1())
     .children(counts(colors, file.added, file.removed));
+  // The gap over the head sets a file's card apart from the one over it.
+  return div()
+    .w_full()
+    .h(FILE_GAP + FILE_HEAD)
+    .flex_none()
+    .pt(FILE_GAP)
+    .child(head);
 }
 
 export interface Composer {

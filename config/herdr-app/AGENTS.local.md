@@ -81,8 +81,10 @@ one machine, so it runs while this computer is off.
   person's word in its terminal (`agent/thread.md`).
 - **Review:** the thread's header opens a review of its branch: the files it
   changed against its base, as a tree of folders under a filter, and the
-  diff of one of them, where a row stands for each stretch of lines that
-  did not change. A Shift-click on a second line puts a comment on all the lines from
+  diff of all of them in one scroll, each file under a head of its own, where
+  a row stands for each stretch of lines that did not change. A click on a
+  file in the tree goes to it, and the tree marks the file the diff is
+  scrolled to. A Shift-click on a second line puts a comment on all the lines from
   the first one to it. The base is the one
   of its pull request, else the repository's main branch. The diff is of the
   thread's folder, so it has what is not committed yet. A thread with a stack

@@ -26,28 +26,31 @@ import {
 } from "../review/draft";
 import { postReply, readBranchDiff, readDiscussions } from "../review/reader";
 import {
-  fileRows,
+  fileAt,
+  fileKey,
   lineKey,
+  offsets,
   quoteOf,
   reviewFiles,
+  reviewRows,
   spanBetween,
   spanRows,
   widest,
   type ReviewFile,
   type Row,
 } from "../review/rows";
-import { fileTree, filterFiles, firstFile } from "../review/tree";
+import { fileTree, filterFiles, inTreeOrder } from "../review/tree";
 import { readDraft, saveDraft } from "../review/store";
 import {
   commentColumns,
   composer,
   diffPane,
-  fileHead,
   fileList,
+  pullStrip,
   readType,
   reviewFoot,
-  pullStrip,
   reviewHead,
+  rowHeights,
   type Type,
 } from "../review/view";
 import { readScene } from "../snapshot";
@@ -68,10 +71,15 @@ interface Target {
   readonly about: About | null;
 }
 
-/** The rows of the file on show, kept until the file, its comments or the width change. */
+/** The rows of the whole review, kept until its files, its comments, the width or the type change. */
 interface Drawn {
   readonly signature: string;
   readonly rows: readonly Row[];
+  /** How many characters of a card fit on one line, as the rows were cut. */
+  readonly columns: number;
+  readonly heights: readonly number[];
+  /** Where each row starts in the list. */
+  readonly tops: readonly number[];
   readonly widest: number;
 }
 
@@ -87,7 +95,9 @@ function linesWord(span: Span): string {
 }
 
 function whereOf(target: Target): string {
-  const lines = linesWord(target.anchor);
+  // Several files are on show at once: the file's name says which one the lines are of.
+  const { path } = target.anchor;
+  const lines = `${path.slice(path.lastIndexOf("/") + 1)} · ${linesWord(target.anchor)}`;
   return target.about ? `${lines} · in answer to @${target.about.author} on GitHub` : lines;
 }
 
@@ -121,7 +131,7 @@ export class ReviewDialog implements Part {
   private sending = false;
   /** Set once the review went to the thread: nothing of it is kept then. */
   private sent = false;
-  /** The path of the file on show; the first file while null. */
+  /** The path of the file the diff is scrolled to; the first file while null. */
   private open: string | null = null;
   /** The folders of the file tree that the person folded. */
   private readonly folded = new Set<string>();
@@ -154,7 +164,9 @@ export class ReviewDialog implements Part {
     if (thread && !this.asked) this.load(cx);
     const draft = readDraft(this.key());
     const files = reviewFiles(this.diff?.files ?? [], draft.comments, this.discussions);
-    const shown = files.find((entry) => entry.file.path === this.open) ?? firstFile(files);
+    const drawn = this.rowsOf(inTreeOrder(files), commentColumns(this.width, type), type);
+    // The file on show is the one the diff is scrolled to: the first one before any scroll.
+    const open = files.some((entry) => entry.file.path === this.open) ? this.open : fileAt(drawn.rows, drawn.tops, 0);
     const branch = thread?.checkout?.branch;
     const tip = branch && (reviewRange(this.subject, branch).tip ?? branch);
     const range = tip && this.diff ? `${tip} → ${this.diff.base}` : null;
@@ -191,12 +203,12 @@ export class ReviewDialog implements Part {
               rows: fileTree(filterFiles(files, this.filter.value()), this.folded),
               filter: this.filter,
               onFold: (path, cx) => this.fold(path, cx),
-              open: shown?.file.path ?? null,
+              open,
               empty: this.emptyText(),
-              onOpen: (path, cx) => this.show(path, cx),
+              onOpen: (path, cx) => this.show(drawn.rows, path, cx),
             }),
           )
-          .child(this.file(colors, type, shown)),
+          .child(this.diffSide(colors, type, drawn)),
       )
       .child(
         reviewFoot(colors, {
@@ -235,6 +247,7 @@ export class ReviewDialog implements Part {
     this.open = null;
     this.target = null;
     this.drawn = null;
+    this.scroll.scroll_to_item(0);
     this.field.set_value("");
     this.note.set_value(readDraft(this.key()).note);
   }
@@ -252,20 +265,20 @@ export class ReviewDialog implements Part {
     return `Nothing changed against ${this.diff.base}.`;
   }
 
-  /** The right side: the diff of the file on show, and the comment being written under it. */
-  private file(colors: Theme, type: Type, shown: ReviewFile | undefined): Element {
+  /** The right side: the diff of every file in one scroll, and the comment being written under it. */
+  private diffSide(colors: Theme, type: Type, drawn: Drawn): Element {
     const side = v_flex().flex_1().min_w(0).h_full();
-    if (!shown) return side;
-    const columns = commentColumns(this.width, type);
-    const drawn = this.rowsOf(shown, columns);
-    const target = this.target?.anchor.path === shown.file.path ? this.target : null;
-    const pane = side.child(fileHead(colors, type, shown.file)).child(
+    if (drawn.rows.length === 0) return side;
+    const { target } = this;
+    const pane = side.child(
       diffPane(colors, {
         rows: drawn.rows,
+        heights: drawn.heights,
         widest: drawn.widest,
         type,
-        columns,
+        columns: drawn.columns,
         scroll: this.scroll,
+        onScroll: (cx) => this.follow(drawn, cx),
         active: new Set(target ? spanRows(drawn.rows, target.anchor).map((row) => row.key) : []),
         onPress: (shift) => {
           this.shift = shift;
@@ -335,13 +348,23 @@ export class ReviewDialog implements Part {
     };
   }
 
-  private rowsOf(entry: ReviewFile, columns: number): Drawn {
-    const words = entry.comments.map((comment) => `${anchorKey(comment)} ${comment.about?.post} ${comment.body}`);
-    const signature = JSON.stringify([entry.file.path, columns, words]);
+  private rowsOf(files: readonly ReviewFile[], columns: number, type: Type): Drawn {
+    const said = files.flatMap((entry) => entry.comments);
+    const words = said.map((comment) => `${anchorKey(comment)} ${comment.about?.post} ${comment.body}`);
+    const signature = JSON.stringify([files.length, columns, type.size, words]);
     if (this.drawn?.signature === signature) return this.drawn;
-    const rows = fileRows(entry, columns);
-    this.drawn = { signature, rows, widest: widest(rows) };
+    const rows = reviewRows(files, columns);
+    const heights = rowHeights(rows, type);
+    this.drawn = { signature, rows, columns, heights, tops: offsets(heights), widest: widest(rows) };
     return this.drawn;
+  }
+
+  /** After a turn of the wheel, the tree marks the file the diff is scrolled to. */
+  private follow(drawn: Drawn, cx: Context): void {
+    const path = fileAt(drawn.rows, drawn.tops, this.scroll.offset().y);
+    if (path === this.open) return;
+    this.open = path;
+    cx.notify();
   }
 
   private load(cx: Context): void {
@@ -386,11 +409,12 @@ export class ReviewDialog implements Part {
     }
   }
 
-  private show(path: string, cx: Context): void {
-    this.keepTyped();
-    this.target = null;
+  /** A click on a file in the tree: the diff goes to that file's card. */
+  private show(rows: readonly Row[], path: string, cx: Context): void {
+    const at = rows.findIndex((row) => row.key === fileKey(path));
+    if (at < 0) return;
     this.open = path;
-    this.scroll.scroll_to_item(0);
+    this.scroll.scroll_to_item(at, "top");
     cx.notify();
   }
 

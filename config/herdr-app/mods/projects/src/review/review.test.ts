@@ -28,6 +28,10 @@ import {
   lineKey,
   MAX_LINES,
   MAX_REMARK_LINES,
+  fileAt,
+  fileKey,
+  offsets,
+  reviewRows,
   unchangedBefore,
   quoteOf,
   reviewFiles,
@@ -39,7 +43,7 @@ import {
   type ReviewFile,
   type Row,
 } from "./rows";
-import { fileTree, filterFiles, firstFile } from "./tree";
+import { fileTree, filterFiles, inTreeOrder } from "./tree";
 
 const MODIFIED = `diff --git a/src/app.ts b/src/app.ts
 index 1111111..2222222 100644
@@ -711,9 +715,45 @@ describe("the tree of a review's files", () => {
     });
   });
 
-  test("opens on its first file from the top, whatever is folded", () => {
-    expect(firstFile(files)?.file.path).toBe("config/app/mods/src/b.ts");
-    expect(firstFile([])).toBeUndefined();
+  test("gives the files in the order it lists them, whatever is folded", () => {
+    expect(inTreeOrder(files).map((file) => file.file.path)).toEqual([
+      "config/app/mods/src/b.ts",
+      "config/app/mods/a.ts",
+      "config/app/x.ts",
+      "docs/guide/one.md",
+      "README.md",
+    ]);
+    expect(inTreeOrder([])).toEqual([]);
     expect(fileTree([], new Set())).toEqual([]);
+  });
+});
+
+describe("the review's files in one scroll", () => {
+  const entry = (path: string): ReviewFile => ({
+    file: { ...only(MODIFIED), path },
+    comments: [],
+    discussions: [],
+    gone: false,
+  });
+  const files = [entry("a.ts"), entry("b.ts"), { ...entry("gone.ts"), file: { ...only(BINARY), path: "gone.ts" } }];
+  const rows = reviewRows(files, 60);
+
+  test("are one list: each file's opening row, then its own rows, with a key of its own for every row", () => {
+    const opens = rows.flatMap((row, index) => (row.kind === "file" ? [`${index} ${row.entry.file.path}`] : []));
+    expect(opens).toEqual(["0 a.ts", "10 b.ts", "20 gone.ts"]);
+    expect(rows.map((row) => row.key)).toContain(fileKey("b.ts"));
+    expect(new Set(rows.map((row) => row.key)).size).toBe(rows.length);
+    expect(reviewRows([], 60)).toEqual([]);
+  });
+
+  test("say which file is on show for how far the list is scrolled", () => {
+    const tops = offsets(rows.map((row) => (row.kind === "file" ? 40 : 20)));
+    expect(tops.slice(0, 3)).toEqual([0, 40, 60]);
+    expect(tops[10]).toBe(40 + 9 * 20);
+    expect(fileAt(rows, tops, 0)).toBe("a.ts");
+    expect(fileAt(rows, tops, 219)).toBe("a.ts");
+    expect(fileAt(rows, tops, 220)).toBe("b.ts");
+    expect(fileAt(rows, tops, 100_000)).toBe("gone.ts");
+    expect(fileAt([], [], 0)).toBeNull();
   });
 });
