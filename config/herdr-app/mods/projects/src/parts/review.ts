@@ -7,6 +7,7 @@ import { aboutOf, discussionsAt, type Discussion } from "../review/discussions";
 import {
   anchorKey,
   commentAt,
+  duePosts,
   isEmpty,
   linesOf,
   NO_DRAFT,
@@ -14,11 +15,14 @@ import {
   withComment,
   withNote,
   withoutComment,
+  withPosted,
   type About,
   type Anchor,
+  type Draft,
+  type Posting,
   type Span,
 } from "../review/draft";
-import { readBranchDiff, readDiscussions } from "../review/reader";
+import { postReply, readBranchDiff, readDiscussions } from "../review/reader";
 import {
   fileRows,
   lineKey,
@@ -179,7 +183,7 @@ export class ReviewDialog implements Part {
           note: this.note,
           // Before the first diff, the file list says what went wrong.
           error: this.diff ? this.error : null,
-          send: this.sendButton(thread, draft.comments.length),
+          send: this.sendButton(thread, draft),
         }),
       );
   }
@@ -243,24 +247,42 @@ export class ReviewDialog implements Part {
       onClick: (cx) => this.removeComment(target.anchor, cx),
     };
     const address: TextButton = { id: "review-address", label: "Ask to address it", onClick: (cx) => this.address(cx) };
-    return [
-      ...(target.about && !target.written ? [address] : []),
-      ...(target.written ? [remove] : []),
-      { id: "review-cancel", label: "Cancel", onClick: (cx) => this.closeComposer(cx) },
-      {
-        id: "review-keep",
-        label: target.written ? "Save" : "Comment",
-        primary: true,
-        onClick: (cx) => this.keepComment(cx),
-      },
-    ];
+    const cancel: TextButton = { id: "review-cancel", label: "Cancel", onClick: (cx) => this.closeComposer(cx) };
+    const keep = (label: string, post: Posting, primary: boolean): TextButton => ({
+      id: `review-keep-${post}`,
+      label,
+      primary,
+      onClick: (cx) => this.keepComment(cx, post),
+    });
+    const first = target.written ? [remove] : [];
+    // On a line with a discussion, the person says where the answer goes: nothing is posted without that click.
+    if (target.about) {
+      const ask = target.written ? [] : [address];
+      return [
+        ...ask,
+        ...first,
+        cancel,
+        keep("To the thread only", "none", false),
+        keep("Reply on GitHub", "due", true),
+      ];
+    }
+    return [...first, cancel, keep(target.written ? "Save" : "Comment", "none", true)];
   }
 
-  private sendButton(thread: Thread | undefined, comments: number): TextButton {
-    const empty = comments === 0 && this.note.value().trim() === "";
+  /** What Send says it does: how many comments go to the thread, and how many of them to GitHub too. */
+  private sendLabel(draft: Draft): string {
+    const comments = draft.comments.length;
+    const replies = duePosts(draft).length;
+    if (this.sending) return "Sending…";
+    if (comments === 0) return "Send review";
+    return replies > 0 ? `Send review · ${comments} · ${replies} to GitHub` : `Send review · ${comments}`;
+  }
+
+  private sendButton(thread: Thread | undefined, draft: Draft): TextButton {
+    const empty = draft.comments.length === 0 && this.note.value().trim() === "";
     return {
       id: "review-send",
-      label: this.sending ? "Sending…" : comments > 0 ? `Send review · ${comments}` : "Send review",
+      label: this.sendLabel(draft),
       primary: true,
       disabled: empty || this.sending || !thread,
       onClick: (cx) => this.send(cx),
@@ -268,7 +290,7 @@ export class ReviewDialog implements Part {
   }
 
   private rowsOf(entry: ReviewFile, columns: number): Drawn {
-    const words = entry.comments.map((comment) => `${anchorKey(comment)} ${comment.body}`);
+    const words = entry.comments.map((comment) => `${anchorKey(comment)} ${comment.about?.post} ${comment.body}`);
     const signature = JSON.stringify([entry.file.path, columns, words]);
     if (this.drawn?.signature === signature) return this.drawn;
     const rows = fileRows(entry, columns);
@@ -374,11 +396,14 @@ export class ReviewDialog implements Part {
   }
 
   /** Puts what the person typed on the open line into the draft. */
-  private keepTyped(): void {
+  private keepTyped(chosen?: Posting): void {
     const { target } = this;
     if (!target || this.field.value().trim() === "") return;
-    const written = { code: target.code, body: this.field.value(), about: target.about };
-    saveDraft(this.thread, withComment(readDraft(this.thread), target.anchor, written));
+    const draft = readDraft(this.thread);
+    // Without a choice (another line is picked, the dialog closes), an answer goes where it went before: never to GitHub by itself.
+    const post = chosen ?? commentAt(draft, target.anchor)?.about?.post ?? "none";
+    const about = target.about && { ...target.about, post };
+    saveDraft(this.thread, withComment(draft, target.anchor, { code: target.code, body: this.field.value(), about }));
   }
 
   private keepNote(): void {
@@ -387,15 +412,27 @@ export class ReviewDialog implements Part {
     saveDraft(this.thread, withNote(draft, this.note.value()));
   }
 
-  private keepComment(cx: Context): void {
-    this.keepTyped();
+  private keepComment(cx: Context, post?: Posting): void {
+    this.keepTyped(post);
     this.closeComposer(cx);
   }
 
-  /** Answers the discussion on the open line with a request to act on it. */
+  /** Answers the discussion on the open line with a request to act on it. It is for the thread: it is not posted. */
   private address(cx: Context): void {
     this.field.set_value(ADDRESS);
-    this.keepComment(cx);
+    this.keepComment(cx, "none");
+  }
+
+  /**
+   * Posts the answers that are replies on GitHub, one by one. Each is marked
+   * once it is there, so a second try posts none twice.
+   */
+  private async postReplies(thread: Thread): Promise<void> {
+    for (const comment of duePosts(readDraft(this.thread))) {
+      if (!comment.about) continue;
+      await postReply(thread, comment.about, comment.body);
+      saveDraft(this.thread, withPosted(readDraft(this.thread), comment));
+    }
   }
 
   private removeComment(anchor: Anchor, cx: Context): void {
@@ -415,19 +452,29 @@ export class ReviewDialog implements Part {
     if (this.sending) return;
     this.keepTyped();
     this.keepNote();
-    const draft = readDraft(this.thread);
-    if (isEmpty(draft)) return;
+    const thread = this.find();
+    if (!thread || isEmpty(readDraft(this.thread))) return;
     const paths = (this.diff?.files ?? []).map((file) => file.path);
     this.sending = true;
     this.error = null;
     cx.spawn(async (task) => {
-      try {
-        await sendToThread(this.thread, reviewMessage(draft, paths));
-      } catch (error) {
-        this.error = messageOf(error);
+      const fail = (message: string): void => {
+        this.error = message;
         this.sending = false;
         task.notify();
-        return;
+      };
+      // GitHub first: when a reply fails, the thread has no message yet, and another Send goes on from there.
+      try {
+        await this.postReplies(thread);
+      } catch (error) {
+        return fail(
+          `${messageOf(error)}. Nothing went to the thread: send again, or keep that answer for the thread only.`,
+        );
+      }
+      try {
+        await sendToThread(this.thread, reviewMessage(readDraft(this.thread), paths));
+      } catch (error) {
+        return fail(messageOf(error));
       }
       this.sent = true;
       saveDraft(this.thread, NO_DRAFT);

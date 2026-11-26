@@ -1337,12 +1337,18 @@ function parseMark(value) {
     return null;
   return { side: value.side, line: value.line };
 }
+function parsePosting(value) {
+  return value === "due" || value === "done" ? value : "none";
+}
 function parseAbout(value) {
   if (!isRecord(value))
     return null;
   const author = text(value.author);
   const url = text(value.url);
-  return author && url && typeof value.quote === "string" ? { author, url, quote: value.quote } : null;
+  const discussion = text(value.discussion);
+  if (!author || !url || !discussion || typeof value.quote !== "string")
+    return null;
+  return { author, url, quote: value.quote, discussion, post: parsePosting(value.post) };
 }
 function parseComment(value) {
   if (!isRecord(value))
@@ -1394,6 +1400,14 @@ function withComment(draft, span, written) {
 function withNote(draft, note) {
   return { ...draft, note };
 }
+function duePosts(draft) {
+  return draft.comments.filter((comment) => comment.about?.post === "due");
+}
+function withPosted(draft, anchor) {
+  const key = anchorKey(anchor);
+  const posted = (comment) => anchorKey(comment) === key && comment.about ? { ...comment, about: { ...comment.about, post: "done" } } : comment;
+  return { ...draft, comments: draft.comments.map(posted) };
+}
 function inOrder(comments, paths) {
   const place = (comment) => {
     const index = paths.indexOf(comment.path);
@@ -1419,11 +1433,14 @@ function quoted(code) {
 `))
   ];
 }
+function answerText(about) {
+  const posted = about.post === "done" ? ", where this answer is posted too" : "";
+  return `In answer to @${about.author} on GitHub (${about.url})${posted}:
+> ${about.quote}`;
+}
 function commentText(comment, index) {
   const removed = comment.side === "old" ? " (a line the branch removes)" : "";
-  const { about } = comment;
-  const answers = about ? [indent(`In answer to @${about.author} on GitHub (${about.url}):
-> ${about.quote}`)] : [];
+  const answers = comment.about ? [indent(answerText(comment.about))] : [];
   return [
     `${index + 1}. ${comment.path}:${linesOf(comment)}${removed}`,
     ...quoted(comment.code),
@@ -1450,11 +1467,16 @@ var DISCUSSIONS_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
     pullRequest(number: $number) {
       reviewThreads(first: 100) {
         nodes {
-          isResolved isOutdated path line originalLine diffSide
+          id isResolved isOutdated path line originalLine diffSide
           comments(first: 50) { nodes { author { login } body url } }
         }
       }
     }
+  }
+}`;
+var REPLY_MUTATION = `mutation($discussion: ID!, $body: String!) {
+  addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId: $discussion, body: $body }) {
+    comment { url }
   }
 }`;
 function nodes(value) {
@@ -1469,12 +1491,13 @@ function parseRemark(value) {
 }
 function parseDiscussion(value) {
   const raw = asRecord(value);
+  const id = text(raw.id);
   const path = text(raw.path);
   const line = raw.line ?? raw.originalLine;
   const remarks = nodes(raw.comments).map(parseRemark).filter((remark) => remark !== null);
-  if (raw.isResolved === true || !path || typeof line !== "number" || remarks.length === 0)
+  if (raw.isResolved === true || !id || !path || typeof line !== "number" || remarks.length === 0)
     return null;
-  return { path, side: raw.diffSide === "LEFT" ? "old" : "new", line, outdated: raw.isOutdated === true, remarks };
+  return { id, path, side: raw.diffSide === "LEFT" ? "old" : "new", line, outdated: raw.isOutdated === true, remarks };
 }
 function parseDiscussions(answer) {
   const pull = asRecord(asRecord(asRecord(answer).data).repository).pullRequest;
@@ -1487,7 +1510,8 @@ function aboutOf(discussion) {
     return null;
   const start = first.body.trim().split(`
 `)[0] ?? "";
-  return { author: first.author, url: first.url, quote: start.length > QUOTE ? `${start.slice(0, QUOTE)}…` : start };
+  const quote = start.length > QUOTE ? `${start.slice(0, QUOTE)}…` : start;
+  return { author: first.author, url: first.url, quote, discussion: discussion.id, post: "none" };
 }
 function discussionsAt(discussions, anchor) {
   const key = anchorKey(anchor);
@@ -1619,6 +1643,18 @@ async function readDiscussions(thread) {
     throw new Error(`GitHub's comments: ${result.stderr.trim() || `gh ended with code ${result.code}`}`);
   return parseDiscussions(JSON.parse(result.stdout));
 }
+async function postReply(thread, about, body) {
+  if (!thread.checkout)
+    throw new Error("this thread has no folder of its own to post from");
+  const fields = [`query=${REPLY_MUTATION}`, `discussion=${about.discussion}`, `body=${body}`].flatMap((field) => [
+    "-f",
+    field
+  ]);
+  const options = { cwd: thread.checkout.folder, on: machineOf(thread.key), timeout: DISCUSSIONS_TIMEOUT };
+  const result = await exec3("gh", ["api", "graphql", ...fields], options);
+  if (result.code !== 0)
+    throw new Error(`GitHub did not take the reply to @${about.author}: ${result.stderr.trim() || `gh ended with code ${result.code}`}`);
+}
 async function readBranchDiff(thread) {
   if (!thread.checkout)
     throw new Error("this thread has no folder of its own to review");
@@ -1685,8 +1721,17 @@ function body(text, columns) {
 function whereLine(anchor, stale) {
   return stale ? [{ text: `Line ${anchor.line}, which is not in the diff:`, head: true }] : [];
 }
+var POSTING = {
+  none: null,
+  due: "A reply on GitHub too, when you send the review:",
+  done: "Posted on GitHub:"
+};
+function postingLine(comment) {
+  const text = POSTING[comment.about?.post ?? "none"];
+  return text ? [{ text, head: true }] : [];
+}
 function commentCard(comment, columns, stale) {
-  const lines = [...whereLine(comment, stale), ...body(comment.body, columns)];
+  const lines = [...whereLine(comment, stale), ...postingLine(comment), ...body(comment.body, columns)];
   return { kind: "card", key: `comment:${anchorKey(comment)}`, anchor: comment, from: "draft", lines, stale };
 }
 function remarkLines(remark, columns) {
@@ -1962,7 +2007,7 @@ function composer(colors, props) {
 }
 function reviewFoot(colors, props) {
   const bar = h_flex6().flex_none().p(10).gap(10).items_center().border_t(1).border_color(colors.border).child(Input2.new(props.note).flex_1().min_w(0).h(32).px(10).rounded(8).border_1().border_color(colors.input).bg(colors.background).text_size(12.5).text_color(colors.foreground));
-  return optional(bar, props.error, (el, error) => el.child(div6().max_w(360).truncate().text_size(11.5).text_color(colors.blocked).child(error))).child(textButton(colors, props.send));
+  return optional(bar, props.error, (el, error) => el.child(div6().max_w(520).text_size(11.5).text_color(colors.blocked).child(error))).child(textButton(colors, props.send));
 }
 
 // src/parts/review.ts
@@ -2039,7 +2084,7 @@ class ReviewDialog {
     })).child(this.file(colors, type, shown))).child(reviewFoot(colors, {
       note: this.note,
       error: this.diff ? this.error : null,
-      send: this.sendButton(thread, draft.comments.length)
+      send: this.sendButton(thread, draft)
     }));
   }
   close() {
@@ -2097,30 +2142,47 @@ class ReviewDialog {
       onClick: (cx) => this.removeComment(target.anchor, cx)
     };
     const address = { id: "review-address", label: "Ask to address it", onClick: (cx) => this.address(cx) };
-    return [
-      ...target.about && !target.written ? [address] : [],
-      ...target.written ? [remove] : [],
-      { id: "review-cancel", label: "Cancel", onClick: (cx) => this.closeComposer(cx) },
-      {
-        id: "review-keep",
-        label: target.written ? "Save" : "Comment",
-        primary: true,
-        onClick: (cx) => this.keepComment(cx)
-      }
-    ];
+    const cancel = { id: "review-cancel", label: "Cancel", onClick: (cx) => this.closeComposer(cx) };
+    const keep = (label, post, primary) => ({
+      id: `review-keep-${post}`,
+      label,
+      primary,
+      onClick: (cx) => this.keepComment(cx, post)
+    });
+    const first = target.written ? [remove] : [];
+    if (target.about) {
+      const ask = target.written ? [] : [address];
+      return [
+        ...ask,
+        ...first,
+        cancel,
+        keep("To the thread only", "none", false),
+        keep("Reply on GitHub", "due", true)
+      ];
+    }
+    return [...first, cancel, keep(target.written ? "Save" : "Comment", "none", true)];
   }
-  sendButton(thread, comments) {
-    const empty = comments === 0 && this.note.value().trim() === "";
+  sendLabel(draft) {
+    const comments = draft.comments.length;
+    const replies = duePosts(draft).length;
+    if (this.sending)
+      return "Sending…";
+    if (comments === 0)
+      return "Send review";
+    return replies > 0 ? `Send review · ${comments} · ${replies} to GitHub` : `Send review · ${comments}`;
+  }
+  sendButton(thread, draft) {
+    const empty = draft.comments.length === 0 && this.note.value().trim() === "";
     return {
       id: "review-send",
-      label: this.sending ? "Sending…" : comments > 0 ? `Send review · ${comments}` : "Send review",
+      label: this.sendLabel(draft),
       primary: true,
       disabled: empty || this.sending || !thread,
       onClick: (cx) => this.send(cx)
     };
   }
   rowsOf(entry, columns) {
-    const words = entry.comments.map((comment) => `${anchorKey(comment)} ${comment.body}`);
+    const words = entry.comments.map((comment) => `${anchorKey(comment)} ${comment.about?.post} ${comment.body}`);
     const signature = JSON.stringify([entry.file.path, columns, words]);
     if (this.drawn?.signature === signature)
       return this.drawn;
@@ -2214,12 +2276,14 @@ class ReviewDialog {
       this.folded.add(path);
     cx.notify();
   }
-  keepTyped() {
+  keepTyped(chosen) {
     const { target } = this;
     if (!target || this.field.value().trim() === "")
       return;
-    const written = { code: target.code, body: this.field.value(), about: target.about };
-    saveDraft(this.thread, withComment(readDraft(this.thread), target.anchor, written));
+    const draft = readDraft(this.thread);
+    const post = chosen ?? commentAt(draft, target.anchor)?.about?.post ?? "none";
+    const about = target.about && { ...target.about, post };
+    saveDraft(this.thread, withComment(draft, target.anchor, { code: target.code, body: this.field.value(), about }));
   }
   keepNote() {
     const draft = readDraft(this.thread);
@@ -2227,13 +2291,21 @@ class ReviewDialog {
       return;
     saveDraft(this.thread, withNote(draft, this.note.value()));
   }
-  keepComment(cx) {
-    this.keepTyped();
+  keepComment(cx, post) {
+    this.keepTyped(post);
     this.closeComposer(cx);
   }
   address(cx) {
     this.field.set_value(ADDRESS);
-    this.keepComment(cx);
+    this.keepComment(cx, "none");
+  }
+  async postReplies(thread) {
+    for (const comment of duePosts(readDraft(this.thread))) {
+      if (!comment.about)
+        continue;
+      await postReply(thread, comment.about, comment.body);
+      saveDraft(this.thread, withPosted(readDraft(this.thread), comment));
+    }
   }
   removeComment(anchor, cx) {
     saveDraft(this.thread, withoutComment(readDraft(this.thread), anchor));
@@ -2250,20 +2322,27 @@ class ReviewDialog {
       return;
     this.keepTyped();
     this.keepNote();
-    const draft = readDraft(this.thread);
-    if (isEmpty(draft))
+    const thread = this.find();
+    if (!thread || isEmpty(readDraft(this.thread)))
       return;
     const paths = (this.diff?.files ?? []).map((file) => file.path);
     this.sending = true;
     this.error = null;
     cx.spawn(async (task) => {
-      try {
-        await sendToThread(this.thread, reviewMessage(draft, paths));
-      } catch (error) {
-        this.error = messageOf(error);
+      const fail = (message) => {
+        this.error = message;
         this.sending = false;
         task.notify();
-        return;
+      };
+      try {
+        await this.postReplies(thread);
+      } catch (error) {
+        return fail(`${messageOf(error)}. Nothing went to the thread: send again, or keep that answer for the thread only.`);
+      }
+      try {
+        await sendToThread(this.thread, reviewMessage(readDraft(this.thread), paths));
+      } catch (error) {
+        return fail(messageOf(error));
       }
       this.sent = true;
       saveDraft(this.thread, NO_DRAFT);

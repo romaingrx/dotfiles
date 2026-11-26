@@ -1,6 +1,6 @@
 import type { DiffFile, DiffLine } from "./diff";
 import type { Discussion, Remark } from "./discussions";
-import { anchorKey, anchorOf, type Anchor, type Comment, type Span } from "./draft";
+import { anchorKey, anchorOf, type Anchor, type Comment, type Posting, type Span } from "./draft";
 
 /** A file of the review: one the branch changed, with what is said about it. */
 export interface ReviewFile {
@@ -123,8 +123,20 @@ function whereLine(anchor: Anchor, stale: boolean): CardLine[] {
   return stale ? [{ text: `Line ${anchor.line}, which is not in the diff:`, head: true }] : [];
 }
 
+/** What a card says over an answer that is a reply on GitHub too. */
+const POSTING: Readonly<Record<Posting, string | null>> = {
+  none: null,
+  due: "A reply on GitHub too, when you send the review:",
+  done: "Posted on GitHub:",
+};
+
+function postingLine(comment: Comment): CardLine[] {
+  const text = POSTING[comment.about?.post ?? "none"];
+  return text ? [{ text, head: true }] : [];
+}
+
 function commentCard(comment: Comment, columns: number, stale: boolean): Card {
-  const lines = [...whereLine(comment, stale), ...body(comment.body, columns)];
+  const lines = [...whereLine(comment, stale), ...postingLine(comment), ...body(comment.body, columns)];
   return { kind: "card", key: `comment:${anchorKey(comment)}`, anchor: comment, from: "draft", lines, stale };
 }
 

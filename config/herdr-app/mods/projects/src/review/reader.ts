@@ -2,7 +2,8 @@ import { exec } from "herdr";
 import { machineOf } from "../terminal";
 import type { Thread } from "../threads";
 import { baseRefs, parseBranchDiff, type BranchDiff } from "./diff";
-import { DISCUSSIONS_QUERY, parseDiscussions, type Discussion } from "./discussions";
+import { DISCUSSIONS_QUERY, parseDiscussions, REPLY_MUTATION, type Discussion } from "./discussions";
+import type { About } from "./draft";
 
 /** How long the read of a branch's diff may take. */
 const DIFF_TIMEOUT = 60_000;
@@ -41,6 +42,25 @@ export async function readDiscussions(thread: Thread): Promise<Discussion[]> {
   if (result.code !== 0)
     throw new Error(`GitHub's comments: ${result.stderr.trim() || `gh ended with code ${result.code}`}`);
   return parseDiscussions(JSON.parse(result.stdout));
+}
+
+/**
+ * Posts an answer on GitHub as a reply in its discussion, in the name of
+ * whoever `gh` is signed in as on the thread's machine. The body goes as it
+ * is: `-f` takes it as text.
+ */
+export async function postReply(thread: Thread, about: About, body: string): Promise<void> {
+  if (!thread.checkout) throw new Error("this thread has no folder of its own to post from");
+  const fields = [`query=${REPLY_MUTATION}`, `discussion=${about.discussion}`, `body=${body}`].flatMap((field) => [
+    "-f",
+    field,
+  ]);
+  const options = { cwd: thread.checkout.folder, on: machineOf(thread.key), timeout: DISCUSSIONS_TIMEOUT };
+  const result = await exec("gh", ["api", "graphql", ...fields], options);
+  if (result.code !== 0)
+    throw new Error(
+      `GitHub did not take the reply to @${about.author}: ${result.stderr.trim() || `gh ended with code ${result.code}`}`,
+    );
 }
 
 /** The whole branch of a thread against its base, read in the thread's folder on its machine. */

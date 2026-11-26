@@ -17,7 +17,17 @@ export interface About {
   readonly url: string;
   /** The start of what they wrote. */
   readonly quote: string;
+  /** The discussion they wrote it in, as GitHub calls it. */
+  readonly discussion: string;
+  readonly post: Posting;
 }
+
+/**
+ * Whether an answer is a reply on GitHub too, in the person's name: not at
+ * all, when the review is sent, or already. One that is posted is not posted
+ * again when a send is tried once more.
+ */
+export type Posting = "none" | "due" | "done";
 
 /** A line of a file's diff, without the file. */
 export type Mark = Pick<Anchor, "side" | "line">;
@@ -67,11 +77,17 @@ function parseMark(value: unknown): Mark | null {
   return { side: value.side, line: value.line };
 }
 
+function parsePosting(value: unknown): Posting {
+  return value === "due" || value === "done" ? value : "none";
+}
+
 function parseAbout(value: unknown): About | null {
   if (!isRecord(value)) return null;
   const author = text(value.author);
   const url = text(value.url);
-  return author && url && typeof value.quote === "string" ? { author, url, quote: value.quote } : null;
+  const discussion = text(value.discussion);
+  if (!author || !url || !discussion || typeof value.quote !== "string") return null;
+  return { author, url, quote: value.quote, discussion, post: parsePosting(value.post) };
 }
 
 function parseComment(value: unknown): Comment | null {
@@ -135,6 +151,19 @@ export function withNote(draft: Draft, note: string): Draft {
   return { ...draft, note };
 }
 
+/** The comments that are still to be posted on GitHub as replies. */
+export function duePosts(draft: Draft): Comment[] {
+  return draft.comments.filter((comment) => comment.about?.post === "due");
+}
+
+/** The draft with the answer on a line marked as posted on GitHub. */
+export function withPosted(draft: Draft, anchor: Anchor): Draft {
+  const key = anchorKey(anchor);
+  const posted = (comment: Comment): Comment =>
+    anchorKey(comment) === key && comment.about ? { ...comment, about: { ...comment.about, post: "done" } } : comment;
+  return { ...draft, comments: draft.comments.map(posted) };
+}
+
 /** The comments as a reader goes through the diff: file by file in the order of `paths`, then down each file. */
 export function inOrder(comments: readonly Comment[], paths: readonly string[]): Comment[] {
   const place = (comment: Comment): number => {
@@ -173,10 +202,15 @@ function quoted(code: string): string[] {
   ];
 }
 
+/** Says which comment on GitHub an answer is to, and that the answer is there too when it was posted. */
+function answerText(about: About): string {
+  const posted = about.post === "done" ? ", where this answer is posted too" : "";
+  return `In answer to @${about.author} on GitHub (${about.url})${posted}:\n> ${about.quote}`;
+}
+
 function commentText(comment: Comment, index: number): string {
   const removed = comment.side === "old" ? " (a line the branch removes)" : "";
-  const { about } = comment;
-  const answers = about ? [indent(`In answer to @${about.author} on GitHub (${about.url}):\n> ${about.quote}`)] : [];
+  const answers = comment.about ? [indent(answerText(comment.about))] : [];
   return [
     `${index + 1}. ${comment.path}:${linesOf(comment)}${removed}`,
     ...quoted(comment.code),

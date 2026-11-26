@@ -10,6 +10,8 @@ export interface Remark {
 
 /** A discussion of the pull request on GitHub: the comments people left on one line of a file. */
 export interface Discussion extends Anchor {
+  /** What GitHub calls it: a reply names it. */
+  readonly id: string;
   /** Set when the line it was left on changed since: its line number is the one it had then. */
   readonly outdated: boolean;
   readonly remarks: readonly Remark[];
@@ -21,11 +23,18 @@ export const DISCUSSIONS_QUERY = `query($owner: String!, $name: String!, $number
     pullRequest(number: $number) {
       reviewThreads(first: 100) {
         nodes {
-          isResolved isOutdated path line originalLine diffSide
+          id isResolved isOutdated path line originalLine diffSide
           comments(first: 50) { nodes { author { login } body url } }
         }
       }
     }
+  }
+}`;
+
+/** Adds a comment to a discussion, in the name of whoever `gh` is signed in as. */
+export const REPLY_MUTATION = `mutation($discussion: ID!, $body: String!) {
+  addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId: $discussion, body: $body }) {
+    comment { url }
   }
 }`;
 
@@ -45,13 +54,14 @@ function parseRemark(value: unknown): Remark | null {
 /** Null for a discussion that is settled, or that has no line or no comment to show. */
 function parseDiscussion(value: unknown): Discussion | null {
   const raw = asRecord(value);
+  const id = text(raw.id);
   const path = text(raw.path);
   const line = raw.line ?? raw.originalLine;
   const remarks = nodes(raw.comments)
     .map(parseRemark)
     .filter((remark) => remark !== null);
-  if (raw.isResolved === true || !path || typeof line !== "number" || remarks.length === 0) return null;
-  return { path, side: raw.diffSide === "LEFT" ? "old" : "new", line, outdated: raw.isOutdated === true, remarks };
+  if (raw.isResolved === true || !id || !path || typeof line !== "number" || remarks.length === 0) return null;
+  return { id, path, side: raw.diffSide === "LEFT" ? "old" : "new", line, outdated: raw.isOutdated === true, remarks };
 }
 
 /** Reads GitHub's answer to the query: the discussions that are still open. */
@@ -65,12 +75,17 @@ export function parseDiscussions(answer: unknown): Discussion[] {
 /** How much of a comment on GitHub a comment of the review quotes. */
 const QUOTE = 160;
 
-/** What a comment of the review answers when its line has a discussion: the comment that opened it. */
+/**
+ * What a comment of the review answers when its line has a discussion: the
+ * comment that opened it. The answer goes to the thread only, until the person
+ * says it is a reply on GitHub too.
+ */
 export function aboutOf(discussion: Discussion): About | null {
   const [first] = discussion.remarks;
   if (!first) return null;
   const start = first.body.trim().split("\n")[0] ?? "";
-  return { author: first.author, url: first.url, quote: start.length > QUOTE ? `${start.slice(0, QUOTE)}…` : start };
+  const quote = start.length > QUOTE ? `${start.slice(0, QUOTE)}…` : start;
+  return { author: first.author, url: first.url, quote, discussion: discussion.id, post: "none" };
 }
 
 /** The discussions on one line. People can start more than one there. */

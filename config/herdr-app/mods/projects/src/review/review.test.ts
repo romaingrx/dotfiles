@@ -3,6 +3,7 @@ import { baseRefs, parseBranchDiff, parseDiff, type DiffFile } from "./diff";
 import {
   anchorOf,
   commentAt,
+  duePosts,
   inOrder,
   isEmpty,
   NO_DRAFT,
@@ -12,6 +13,8 @@ import {
   withDraft,
   withNote,
   withoutComment,
+  withPosted,
+  type About,
   type Anchor,
   type Span,
   type Comment,
@@ -88,13 +91,22 @@ function only(text: string): DiffFile {
   return file;
 }
 
+/** What an answer to the first comment of the discussion `D1` is about. It is for the thread only. */
+const ABOUT: About = {
+  author: "ana",
+  url: "https://example.test/pull/7#r1",
+  quote: "Rename this.",
+  discussion: "D1",
+  post: "none",
+};
+
 function comment(fields: Partial<Comment> & Pick<Comment, "path" | "line">): Comment {
   return { side: "new", start: null, code: "", body: "Fix this.", about: null, ...fields };
 }
 
 function discussion(fields: Partial<Discussion> & Pick<Discussion, "path" | "line">): Discussion {
   const remarks = [{ author: "ana", body: "Rename this.", url: "https://example.test/pull/7#r1" }];
-  return { side: "new", outdated: false, remarks, ...fields };
+  return { id: "D1", side: "new", outdated: false, remarks, ...fields };
 }
 
 function texts(rows: readonly Row[]): string[] {
@@ -205,8 +217,7 @@ describe("a draft review", () => {
   });
 
   test("is stored by thread; an empty one is dropped", () => {
-    const about = { author: "ana", url: "https://example.test/pull/7#r1", quote: "Rename this." };
-    const draft = withComment(NO_DRAFT, line, { code: "code", body: "Fix this.", about });
+    const draft = withComment(NO_DRAFT, line, { code: "code", body: "Fix this.", about: { ...ABOUT, post: "due" } });
     const drafts = withDraft({}, "t2", draft);
     expect(parseDrafts(JSON.parse(JSON.stringify(drafts)))).toEqual({ t2: draft });
     expect(withDraft(drafts, "t1", withNote(NO_DRAFT, "Good."))).toEqual({
@@ -265,8 +276,13 @@ describe("a draft review", () => {
   });
 
   test("says which comment on GitHub a comment answers", () => {
-    const about = { author: "ana", url: "https://example.test/pull/7#r1", quote: "Rename this." };
-    const answer = comment({ path: "a.ts", line: 3, code: "const a = 1;", body: "Address this comment.", about });
+    const answer = comment({
+      path: "a.ts",
+      line: 3,
+      code: "const a = 1;",
+      body: "Address this comment.",
+      about: ABOUT,
+    });
     expect(reviewMessage({ note: "", comments: [answer] }, ["a.ts"])).toBe(
       [
         "Review of your branch: 1 comment.",
@@ -283,10 +299,37 @@ describe("a draft review", () => {
       "Review of your branch: 1 comment.\n\n1. a.ts:1\n",
     );
   });
+
+  test("knows which answers are still to be posted on GitHub, and posts none twice", () => {
+    const due = comment({ path: "a.ts", line: 3, body: "Good point.", about: { ...ABOUT, post: "due" } });
+    const forThread = comment({ path: "a.ts", line: 9, about: ABOUT });
+    const draft: Draft = { note: "", comments: [due, forThread, comment({ path: "b.ts", line: 1 })] };
+    expect(duePosts(draft)).toEqual([due]);
+    const posted = withPosted(draft, due);
+    expect(duePosts(posted)).toEqual([]);
+    expect(posted.comments.map((entry) => entry.about?.post ?? null)).toEqual(["done", "none", null]);
+    expect(withPosted(draft, { path: "b.ts", side: "new", line: 1 })).toEqual(draft);
+    expect(parseDrafts(JSON.parse(JSON.stringify({ t1: posted }))).t1).toEqual(posted);
+    expect(reviewMessage({ note: "", comments: [posted.comments[0] ?? due] }, ["a.ts"])).toContain(
+      "In answer to @ana on GitHub (https://example.test/pull/7#r1), where this answer is posted too:",
+    );
+  });
+
+  test("reads an answer of an unknown kind as one for the thread only", () => {
+    const stored = {
+      t1: { note: "", comments: [{ ...line, code: "", body: "ok", about: { ...ABOUT, post: "soon" } }] },
+    };
+    expect(parseDrafts(stored).t1?.comments[0]?.about?.post).toBe("none");
+    const old = {
+      t1: { note: "", comments: [{ ...line, code: "", body: "ok", about: { author: "ana", url: "u", quote: "" } }] },
+    };
+    expect(parseDrafts(old).t1?.comments[0]?.about).toBeNull();
+  });
 });
 
 describe("the discussions of a pull request on GitHub", () => {
   const thread = (fields: Record<string, unknown>) => ({
+    id: "D1",
     isResolved: false,
     isOutdated: false,
     path: "src/app.ts",
@@ -306,21 +349,36 @@ describe("the discussions of a pull request on GitHub", () => {
       answer([
         thread({}),
         thread({ isResolved: true }),
-        thread({ line: null, isOutdated: true, diffSide: "LEFT", comments: { nodes: [removed, { body: "" }] } }),
+        thread({
+          id: "D2",
+          line: null,
+          isOutdated: true,
+          diffSide: "LEFT",
+          comments: { nodes: [removed, { body: "" }] },
+        }),
         thread({ line: null, originalLine: null }),
+        thread({ id: null }),
         thread({ comments: { nodes: [] } }),
         "oops",
       ]),
     );
     expect(read).toEqual([
       {
+        id: "D1",
         path: "src/app.ts",
         side: "new",
         line: 3,
         outdated: false,
         remarks: [{ author: "ana", body: "Rename this.\nIt reads badly.", url: "https://example.test/r1" }],
       },
-      { path: "src/app.ts", side: "old", line: 2, outdated: true, remarks: [{ ...removed, author: "ghost" }] },
+      {
+        id: "D2",
+        path: "src/app.ts",
+        side: "old",
+        line: 2,
+        outdated: true,
+        remarks: [{ ...removed, author: "ghost" }],
+      },
     ]);
     expect(parseDiscussions({ errors: [] })).toEqual([]);
     expect(parseDiscussions(null)).toEqual([]);
@@ -335,11 +393,7 @@ describe("the discussions of a pull request on GitHub", () => {
       line: 1,
       remarks: [{ author: "ana", body: `${"x".repeat(200)}\nmore`, url: "u" }],
     });
-    expect(aboutOf(talks[0] as Discussion)).toEqual({
-      author: "ana",
-      url: "https://example.test/pull/7#r1",
-      quote: "Rename this.",
-    });
+    expect(aboutOf(talks[0] as Discussion)).toEqual(ABOUT);
     expect(aboutOf(long)?.quote).toBe(`${"x".repeat(160)}…`);
     expect(aboutOf(discussion({ path: "a.ts", line: 1, remarks: [] }))).toBeNull();
   });
@@ -378,6 +432,18 @@ describe("the rows of a file", () => {
     const [first] = fileRows(entry, 60);
     expect(first).toMatchObject({ kind: "card", from: "draft", stale: true });
     expect(texts([first as Row])).toEqual(["> Line 99, which is not in the diff: / Old."]);
+  });
+
+  test("say over an answer that it is a reply on GitHub too", () => {
+    const card = (post: About["post"]) => {
+      const answer = comment({ path: "src/app.ts", line: 3, body: "Good point.", about: { ...ABOUT, post } });
+      const [entry] = reviewFiles([file], [answer], []);
+      if (!entry) throw new Error("expected a file");
+      return texts(fileRows(entry, 60).filter((row) => row.kind === "card"));
+    };
+    expect(card("none")).toEqual(["> Good point."]);
+    expect(card("due")).toEqual(["> A reply on GitHub too, when you send the review: / Good point."]);
+    expect(card("done")).toEqual(["> Posted on GitHub: / Good point."]);
   });
 
   test("show a discussion on GitHub under its line, before the person's answer", () => {

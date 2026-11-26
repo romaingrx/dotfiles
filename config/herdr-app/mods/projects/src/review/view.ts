@@ -501,6 +501,7 @@ export function reviewFoot(colors: Theme, props: ReviewFoot): Element {
         .text_color(colors.foreground),
     );
   return optional(bar, props.error, (el, error) =>
-    el.child(div().max_w(360).truncate().text_size(11.5).text_color(colors.blocked).child(error)),
+    // An error can be a few lines, such as what GitHub answers: it is shown whole.
+    el.child(div().max_w(520).text_size(11.5).text_color(colors.blocked).child(error)),
   ).child(textButton(colors, props.send));
 }
