@@ -7,8 +7,9 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-usage: report.sh <done|needs-you> <report-file>
+usage: report.sh <done|review|needs-you> <report-file>
   done       the work the person asked for has ended.
+  review     the work waits for the person's review, such as a pull request. The thread can go on after it.
   needs-you  the thread cannot continue without the person, or without an answer from the orchestrator.
 Run it in the thread's own terminal.
 EOF
@@ -23,7 +24,7 @@ fail() {
 [[ $# -eq 2 ]] || usage
 state=$1
 report=$2
-[[ $state == "done" || $state == "needs-you" ]] || usage
+[[ $state == "done" || $state == "review" || $state == "needs-you" ]] || usage
 [[ -s $report ]] || fail "the report is missing or empty: $report"
 [[ -n ${HC_TERMINAL_ID:-} ]] || fail "this is not a Herdr terminal"
 

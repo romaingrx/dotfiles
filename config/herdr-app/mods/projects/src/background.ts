@@ -24,9 +24,14 @@ const COMMANDS: Readonly<Record<string, () => void>> = {
   threads: showThreadList,
 };
 
-async function runCommands(): Promise<void> {
+/**
+ * Runs the commands as they come. A build of the mod that was replaced still
+ * waits here: the use of `cx` ends its loop before it runs a command twice.
+ */
+async function runCommands(cx: AsyncContext): Promise<void> {
   for (;;) {
     const name = await nextCommand();
+    cx.notify();
     try {
       COMMANDS[name]?.();
     } catch (error) {

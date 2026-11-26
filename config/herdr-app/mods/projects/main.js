@@ -26,7 +26,7 @@ function parseStatus(word) {
   return isStatus(word) ? word : null;
 }
 function parseReported(word) {
-  return word === "done" || word === "needs-you" ? word : null;
+  return word === "done" || word === "review" || word === "needs-you" ? word : null;
 }
 function withReport(status, reported) {
   return reported === "needs-you" && status !== "working" ? "blocked" : status;
@@ -494,13 +494,14 @@ function projectHome(snapshot, project) {
   return project.members.find((member) => seated.has(member.address))?.address ?? null;
 }
 function projectFootprint(snapshot, project) {
-  const seated = seats(snapshot);
-  const lead = leadOf(project);
-  const home = lead ? seated.get(lead.address)?.home?.space : null;
-  const owned = new Set(project.members.map((member) => seated.get(member.address)?.home?.tab.id));
-  const space = home?.tabs.every((tab) => owned.has(tab.id)) ? home.id : null;
-  const inside = (address) => space !== null && seated.get(address)?.home?.space.id === space;
-  const outside = project.members.map((member) => member.address).filter((address) => !inside(address));
+  const members = new Set(project.members.map((member) => member.address));
+  const spaceOfTab = new Map(snapshot.spaces.flatMap((space) => space.tabs.map((tab) => [tab.id, space])));
+  const sessions = snapshot.panes.filter((pane) => pane.terminal !== null);
+  const spaceOf = (address) => spaceOfTab.get(sessions.find((pane) => pane.terminal === address)?.tab ?? "");
+  const home = spaceOf(leadOf(project)?.address);
+  const foreign = sessions.some((pane) => spaceOfTab.get(pane.tab) === home && !members.has(pane.terminal ?? ""));
+  const space = home && !foreign ? home.id : null;
+  const outside = [...members].filter((address) => space === null || spaceOf(address)?.id !== space);
   return { space, outside };
 }
 function longestFirst(a, b) {
@@ -528,13 +529,16 @@ function waits(snapshot, projects) {
     const waiting = project.members.filter(isWaiting);
     if (waiting.length === 0)
       return [];
-    const titles = new Map(projectThreads(snapshot, project).map((thread) => [thread.key, thread.title]));
-    return waiting.map((member) => ({
-      terminal: member.address,
-      project: project.name,
-      title: titles.get(member.address) ?? null,
-      since: member.since
-    }));
+    const threads = new Map(projectThreads(snapshot, project).map((thread) => [thread.key, thread]));
+    return waiting.map((member) => {
+      const thread = threads.get(member.address);
+      return {
+        terminal: member.address,
+        project: project.name,
+        title: thread?.title ?? null,
+        since: thread ? thread.since : member.since
+      };
+    });
   }).sort(longestFirst);
 }
 function nextWait(all, focused) {
@@ -636,9 +640,10 @@ var COMMANDS = {
   "next-waiting": openNextWait,
   threads: showThreadList
 };
-async function runCommands() {
+async function runCommands(cx) {
   for (;; ) {
     const name = await nextCommand();
+    cx.notify();
     try {
       COMMANDS[name]?.();
     } catch (error) {
@@ -1095,23 +1100,25 @@ class ProjectMenu {
   render() {
     const colors = readTheme();
     const project = readScene().projects.find((candidate) => candidate.name === this.name);
-    return v_flex4().id("project-menu").w_full().p(5).bg(colors.popover).text_size(12.8).child(menuItem(colors, {
-      id: "rename-project",
-      icon: chromeIcon("square-pen"),
-      label: "Rename",
-      onClick: () => this.rename()
-    })).children(project ? endings(project).map((ending) => this.item(colors, ending)) : []);
+    const all = project ? endings(project) : [];
+    const asked = all.find((ending) => ending.id === this.asked);
+    const items = asked ? this.confirmation(asked) : this.choices(all);
+    return v_flex4().id("project-menu").w_full().p(5).bg(colors.popover).text_size(12.8).children(items.map((item) => menuItem(colors, item)));
   }
-  item(colors, ending) {
-    if (this.asked !== ending.id) {
-      return menuItem(colors, { ...ending, onClick: (cx) => this.ask(ending.id, cx) });
-    }
-    return menuItem(colors, {
-      id: `confirm-${ending.id}`,
-      icon: chromeIcon("check"),
-      label: ending.consequence,
-      onClick: () => this.end(ending)
-    });
+  choices(all) {
+    const rename = { id: "rename-project", icon: chromeIcon("square-pen"), label: "Rename", onClick: () => this.rename() };
+    return [rename, ...all.map((ending) => ({ ...ending, onClick: (cx) => this.ask(ending.id, cx) }))];
+  }
+  confirmation(ending) {
+    return [
+      {
+        id: `confirm-${ending.id}`,
+        icon: chromeIcon("check"),
+        label: ending.consequence,
+        onClick: () => this.end(ending)
+      },
+      { id: "cancel", icon: chromeIcon("chevron-left"), label: "Cancel", onClick: (cx) => this.ask(null, cx) }
+    ];
   }
   rename() {
     closeOverlay2(this.overlay);

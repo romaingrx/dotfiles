@@ -5,7 +5,7 @@ import { closeProject, openRenameProjectDialog, reportFailure, ungroupProject } 
 import type { Project } from "../projects";
 import { readScene } from "../snapshot";
 import { projectFootprint } from "../threads";
-import { chromeIcon, menuItem, readTheme, type Theme } from "../ui";
+import { chromeIcon, menuItem, readTheme, type MenuItem } from "../ui";
 import type { Part } from "./part";
 
 /** A way to end a project. The menu asks once more, in words that say what the step does. */
@@ -43,7 +43,10 @@ function endings(project: Project): Ending[] {
   ];
 }
 
-/** The right-click menu of a project: rename it, close it with its sessions, or take it apart and keep them. */
+/**
+ * The right-click menu of a project: rename it, close it with its sessions, or
+ * take it apart and keep them. An ending asks once more before it runs.
+ */
 export class ProjectMenu implements Part {
   /** The id of the ending that waits for its second click. */
   private asked: string | null = null;
@@ -56,33 +59,37 @@ export class ProjectMenu implements Part {
   render(): Element {
     const colors = readTheme();
     const project = readScene().projects.find((candidate) => candidate.name === this.name);
+    const all = project ? endings(project) : [];
+    const asked = all.find((ending) => ending.id === this.asked);
+    const items = asked ? this.confirmation(asked) : this.choices(all);
     return v_flex()
       .id("project-menu")
       .w_full()
       .p(5)
       .bg(colors.popover)
       .text_size(12.8)
-      .child(
-        menuItem(colors, {
-          id: "rename-project",
-          icon: chromeIcon("square-pen"),
-          label: "Rename",
-          onClick: () => this.rename(),
-        }),
-      )
-      .children(project ? endings(project).map((ending) => this.item(colors, ending)) : []);
+      .children(items.map((item) => menuItem(colors, item)));
   }
 
-  private item(colors: Theme, ending: Ending): Element {
-    if (this.asked !== ending.id) {
-      return menuItem(colors, { ...ending, onClick: (cx) => this.ask(ending.id, cx) });
-    }
-    return menuItem(colors, {
-      id: `confirm-${ending.id}`,
-      icon: chromeIcon("check"),
-      label: ending.consequence,
-      onClick: () => this.end(ending),
-    });
+  private choices(all: readonly Ending[]): MenuItem[] {
+    const rename = { id: "rename-project", icon: chromeIcon("square-pen"), label: "Rename", onClick: () => this.rename() };
+    return [rename, ...all.map((ending) => ({ ...ending, onClick: (cx: Context) => this.ask(ending.id, cx) }))];
+  }
+
+  /**
+   * The step that confirms an ending. It is the first row, where no ending
+   * was: the second click of a double click lands on Cancel or on nothing.
+   */
+  private confirmation(ending: Ending): MenuItem[] {
+    return [
+      {
+        id: `confirm-${ending.id}`,
+        icon: chromeIcon("check"),
+        label: ending.consequence,
+        onClick: () => this.end(ending),
+      },
+      { id: "cancel", icon: chromeIcon("chevron-left"), label: "Cancel", onClick: (cx) => this.ask(null, cx) },
+    ];
   }
 
   private rename(): void {
@@ -90,7 +97,7 @@ export class ProjectMenu implements Part {
     openRenameProjectDialog(this.name);
   }
 
-  private ask(id: string, cx: Context): void {
+  private ask(id: string | null, cx: Context): void {
     this.asked = id;
     cx.notify();
   }

@@ -139,9 +139,9 @@ export function projectHome(snapshot: Snapshot, project: Project): string | null
 /** Where a project's sessions are, for ending it. */
 export interface Footprint {
   /**
-   * The space that is the project's own: its orchestrator leads a tab there, and
-   * every tab there is led by one of the project's sessions. Closing it ends
-   * those sessions and nothing else.
+   * The space that is the project's own: its orchestrator sits there, and every
+   * session there is one of the project's. Closing it ends those sessions and
+   * nothing else.
    */
   readonly space: string | null;
   /** The addresses of its sessions that are not in that space. */
@@ -149,13 +149,15 @@ export interface Footprint {
 }
 
 export function projectFootprint(snapshot: Snapshot, project: Project): Footprint {
-  const seated = seats(snapshot);
-  const lead = leadOf(project);
-  const home = lead ? seated.get(lead.address)?.home?.space : null;
-  const owned = new Set(project.members.map((member) => seated.get(member.address)?.home?.tab.id));
-  const space = home?.tabs.every((tab) => owned.has(tab.id)) ? home.id : null;
-  const inside = (address: string) => space !== null && seated.get(address)?.home?.space.id === space;
-  const outside = project.members.map((member) => member.address).filter((address) => !inside(address));
+  const members = new Set(project.members.map((member) => member.address));
+  const spaceOfTab = new Map(snapshot.spaces.flatMap((space) => space.tabs.map((tab) => [tab.id, space] as const)));
+  const sessions = snapshot.panes.filter((pane) => pane.terminal !== null);
+  const spaceOf = (address: string | undefined) =>
+    spaceOfTab.get(sessions.find((pane) => pane.terminal === address)?.tab ?? "");
+  const home = spaceOf(leadOf(project)?.address);
+  const foreign = sessions.some((pane) => spaceOfTab.get(pane.tab) === home && !members.has(pane.terminal ?? ""));
+  const space = home && !foreign ? home.id : null;
+  const outside = [...members].filter((address) => space === null || spaceOf(address)?.id !== space);
   return { space, outside };
 }
 

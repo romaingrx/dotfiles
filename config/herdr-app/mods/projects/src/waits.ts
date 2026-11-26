@@ -22,13 +22,17 @@ export function waits(snapshot: Snapshot, projects: readonly Project[]): Wait[] 
     .flatMap((project) => {
       const waiting = project.members.filter(isWaiting);
       if (waiting.length === 0) return [];
-      const titles = new Map(projectThreads(snapshot, project).map((thread) => [thread.key, thread.title]));
-      return waiting.map((member) => ({
-        terminal: member.address,
-        project: project.name,
-        title: titles.get(member.address) ?? null,
-        since: member.since,
-      }));
+      const threads = new Map(projectThreads(snapshot, project).map((thread) => [thread.key, thread]));
+      return waiting.map((member) => {
+        const thread = threads.get(member.address);
+        return {
+          terminal: member.address,
+          project: project.name,
+          title: thread?.title ?? null,
+          // The time the thread list sorts by, so that both give the same order.
+          since: thread ? thread.since : member.since,
+        };
+      });
     })
     .sort(longestFirst);
 }

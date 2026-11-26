@@ -67,9 +67,11 @@ when you cannot continue without the person. Do not report progress.
      would have to ask the person again: a decision, a requirement, a pitfall.
 2. Run the script. It saves where the report is and tells the orchestrator.
    ```bash
-   ~/.local/share/herdr-projects/report.sh <done|needs-you> <report-file>
+   ~/.local/share/herdr-projects/report.sh <done|review|needs-you> <report-file>
    ```
    - `done`: the work the person asked for has ended.
+   - `review`: your work waits for the person's review, such as a pull request
+     that is ready. Give its link.
    - `needs-you`: you cannot continue without the person, or without an answer
      from the orchestrator.
 
@@ -81,9 +83,9 @@ in the same turn.
 To wait for a check, a review or an answer, end your turn. A message from the
 orchestrator or the person wakes you. Do not sleep or poll inside a turn.
 
-When you opened a pull request, report once with its link, and once more when
-it needs the person. Push a fix for a failed check or a review comment without
-a report.
+When your pull request is ready for the person's review, report `review`
+once, with its link. Report `needs-you` when you cannot continue without them.
+Push a fix for a failed check or a review comment without a report.
 
 ## Memory
 

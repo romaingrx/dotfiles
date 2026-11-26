@@ -346,10 +346,22 @@ describe("a project started by the launcher", () => {
     expect(byTitle(projectThreads(settled, project), "Fix the export").resolved).toBe(false);
   });
 
-  test("its space is its own while every tab there is the project's", () => {
+  test("its space is its own while every session there is the project's", () => {
     expect(projectFootprint(scene, project)).toEqual({ space: "sp-p", outside: ["box/t4"] });
-    const shared = snapshot({ ...scene, spaces: [{ ...own, tabs: [...own.tabs, tab({ id: "someone-else" })] }] });
-    expect(projectFootprint(shared, project)).toEqual({ space: null, outside: ["t1", "t2", "t3", "box/t4"] });
+    const everyone = { space: null, outside: ["t1", "t2", "t3", "box/t4"] };
+    const visitor = pane({ pane: "p9", tab: "someone-else", terminal: "t9" });
+    const withTab = { ...own, tabs: [...own.tabs, tab({ id: "someone-else" })] };
+    expect(projectFootprint(snapshot({ ...scene, spaces: [withTab], panes: [...scene.panes, visitor] }), project)).toEqual(everyone);
+    const beside = pane({ pane: "p9", tab: "lead", terminal: "t9" });
+    expect(projectFootprint(snapshot({ ...scene, panes: [...scene.panes, beside] }), project)).toEqual(everyone);
+  });
+
+  test("a session of the project in a split of its space is inside it", () => {
+    const split = pane({ pane: "p4", tab: "lead", terminal: "box/t4" });
+    expect(projectFootprint(snapshot({ ...scene, panes: [...scene.panes, split] }), project)).toEqual({
+      space: "sp-p",
+      outside: [],
+    });
   });
 });
 
@@ -369,7 +381,7 @@ describe("sessions that were only grouped", () => {
     expect(projectHome(snapshot({}), project)).toBeNull();
   });
 
-  test("it has no space of its own, so ending it only ungroups its sessions", () => {
+  test("it has no space of its own, so closing it ends its sessions one by one", () => {
     expect(projectFootprint(scene, project)).toEqual({ space: null, outside: ["t1", "t2"] });
   });
 });

@@ -3,7 +3,7 @@ import type { Status } from "herdr";
 export type Group = "waiting" | "finished" | "working" | "idle" | "resolved";
 
 /** What a thread last told its orchestrator with `report.sh`. */
-export type Reported = "done" | "needs-you";
+export type Reported = "done" | "review" | "needs-you";
 
 export const GROUPS: readonly { readonly id: Group; readonly label: string }[] = [
   { id: "waiting", label: "Waiting on you" },
@@ -26,7 +26,7 @@ export function parseStatus(word: unknown): Status | null {
 }
 
 export function parseReported(word: unknown): Reported | null {
-  return word === "done" || word === "needs-you" ? word : null;
+  return word === "done" || word === "review" || word === "needs-you" ? word : null;
 }
 
 /**
