@@ -9,6 +9,7 @@ in
 {
   imports = [
     ./homebrew.nix
+    ./neovim-app
     ./orbstack.nix
     ./power.nix
     ./services
