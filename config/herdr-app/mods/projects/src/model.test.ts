@@ -14,6 +14,7 @@ import {
   waitingOn,
   type Project,
 } from "./projects";
+import { parsePull, parsePulls, pullLabel } from "./pulls";
 import { buildScene, usualFolder } from "./scene";
 import { groupOf, mostUrgent, parseReported, parseStatus, withReport } from "./status";
 import { machineOf, parseTerminal, type Terminal } from "./terminal";
@@ -110,7 +111,7 @@ function space(overrides: Partial<SpaceInfo> & Pick<SpaceInfo, "id">, tabs: TabI
 }
 
 function snapshot(overrides: Partial<Snapshot>): Snapshot {
-  return { spaces: [], panes: [], agents: [], terminals: [], focused: null, ...overrides };
+  return { spaces: [], panes: [], agents: [], terminals: [], pulls: {}, focused: null, ...overrides };
 }
 
 function only(terminals: Terminal[]): Project {
@@ -251,7 +252,7 @@ describe("projects", () => {
   test("an entry says who waits and who works, and marks the most urgent state", () => {
     const billing = projects[1];
     if (!billing) throw new Error("no billing project");
-    expect(projectEntry(billing, true, false)).toMatchObject({
+    expect(projectEntry(billing, { selected: true, offline: false, pulls: {} })).toMatchObject({
       name: "billing",
       aside: "2 machines",
       detail: "1 waiting · 1 working",
@@ -261,16 +262,17 @@ describe("projects", () => {
   });
 
   test("a quiet project counts its open threads, and says when its machine is out of reach", () => {
+    const unselected = { selected: false, offline: false, pulls: {} };
     const quiet = only([
       terminal({ address: "box/t1", project: "p", role: "orchestrator" }),
       terminal({ address: "box/t2", project: "p", status: "idle" }),
       terminal({ address: "box/t3", project: "p", status: "working", resolved: true }),
     ]);
-    expect(projectEntry(quiet, false, true)).toMatchObject({ aside: "box · offline", detail: "1 thread" });
+    expect(projectEntry(quiet, { ...unselected, offline: true })).toMatchObject({ aside: "box · offline", detail: "1 thread" });
     const empty = only([terminal({ address: "t1", project: "p", role: "orchestrator", status: "blocked" })]);
-    expect(projectEntry(empty, false, false)).toMatchObject({ aside: "local", detail: "orchestrator waits" });
+    expect(projectEntry(empty, unselected)).toMatchObject({ aside: "local", detail: "orchestrator waits" });
     const idle = only([terminal({ address: "t1", project: "p", role: "orchestrator" })]);
-    expect(projectEntry(idle, false, false).detail).toBe("No thread");
+    expect(projectEntry(idle, unselected).detail).toBe("No thread");
   });
 });
 
@@ -578,4 +580,84 @@ describe("the sessions that wait on the person", () => {
     expect(nextWait([], "t1")).toBeUndefined();
   });
 
+});
+
+describe("a thread's pull request", () => {
+  const view = (fields: Record<string, unknown>) => parsePull({ number: 7, url: "https://example.test/pull/7", ...fields });
+
+  test("is read from gh, and says where it stands for the person", () => {
+    expect(view({ state: "OPEN", isDraft: true })?.stage).toBe("draft");
+    expect(view({ state: "OPEN", isDraft: false, reviewDecision: "" })?.stage).toBe("review");
+    expect(view({ state: "OPEN", reviewDecision: "CHANGES_REQUESTED" })?.stage).toBe("changes");
+    expect(view({ state: "OPEN", reviewDecision: "APPROVED" })?.stage).toBe("landing");
+    expect(view({ state: "OPEN", reviewDecision: "", autoMergeRequest: { mergeMethod: "SQUASH" } })?.stage).toBe("landing");
+    const auto = { state: "OPEN", autoMergeRequest: { mergeMethod: "SQUASH" } };
+    expect(view({ ...auto, reviewDecision: "CHANGES_REQUESTED" })?.stage).toBe("changes");
+    expect(view({ ...auto, reviewDecision: "REVIEW_REQUIRED" })?.stage).toBe("review");
+    expect(view({ state: "MERGED", reviewDecision: "APPROVED" })?.stage).toBe("merged");
+    expect(view({ state: "CLOSED" })?.stage).toBe("closed");
+    expect(parsePull({ url: "https://example.test/pull/7" })).toBeNull();
+    expect(pullLabel({ number: 7, url: "", stage: "review" })).toBe("#7 in review");
+  });
+
+  test("is stored and read back, anything else is dropped", () => {
+    const pull = { number: 7, url: "https://example.test/pull/7", stage: "landing" };
+    expect(parsePulls({ t1: pull, t2: "oops", t3: { number: "7" } })).toEqual({ t1: pull });
+    expect(parsePulls(null)).toEqual({});
+  });
+
+  test("moves a thread that rests to Ready for review or Landing; an agent at work says more", () => {
+    expect(groupOf("idle", false, "review")).toBe("review");
+    expect(groupOf("done", false, "landing")).toBe("landing");
+    expect(groupOf("working", false, "review")).toBe("working");
+    expect(groupOf("blocked", false, "landing")).toBe("waiting");
+    expect(groupOf("done", false, "draft")).toBe("finished");
+    expect(groupOf("idle", true, "review")).toBe("resolved");
+  });
+
+  test("shows on the thread and in its project's row", () => {
+    const lead = terminal({ address: "t1", project: "p", role: "orchestrator" });
+    const thread = terminal({ address: "t2", project: "p", heading: "Fix it", status: "idle" });
+    const project = only([lead, thread]);
+    const pulls = { t2: { number: 7, url: "https://example.test/pull/7", stage: "review" as const } };
+    const scene = snapshot({
+      spaces: [space({ id: "s1" }, [tab({ id: "a" }), tab({ id: "b" })])],
+      panes: [
+        pane({ pane: "p1", tab: "a", terminal: "t1" }),
+        pane({ pane: "p2", tab: "b", terminal: "t2", cwd: "/work/fix", branch: "fix-it" }),
+      ],
+      pulls,
+    });
+    const [row] = projectThreads(scene, project);
+    expect(row).toMatchObject({ checkout: { folder: "/work/fix", branch: "fix-it" }, pull: pulls.t2 });
+    expect(groupThreads(row ? [row] : []).map((group) => group.id)).toEqual(["review"]);
+    expect(projectEntry(project, { selected: false, offline: false, pulls }).detail).toBe("1 to review");
+  });
+
+  test("is not read for sessions that share a folder: the branch there belongs to none of them", () => {
+    const members = [terminal({ address: "t1", project: "p" }), terminal({ address: "t2", project: "p" })];
+    const project = only(members);
+    const scene = snapshot({
+      terminals: members,
+      panes: [
+        pane({ pane: "p1", tab: "a", terminal: "t1", cwd: "/work", branch: "main" }),
+        pane({ pane: "p2", tab: "b", terminal: "t2", cwd: "/work", branch: "main" }),
+      ],
+    });
+    expect(projectThreads(scene, project).map((thread) => thread.checkout)).toEqual([null, null]);
+  });
+
+  test("is read for a session whose folder holds only a plain shell, or the same path on another machine", () => {
+    const members = [terminal({ address: "t1", project: "p" }), terminal({ address: "box/t2", project: "p" })];
+    const scene = snapshot({
+      terminals: members,
+      panes: [
+        pane({ pane: "p1", tab: "a", terminal: "t1", cwd: "/work", branch: "fix" }),
+        pane({ pane: "p2", tab: "b", terminal: "box/t2", cwd: "/work", branch: "fix" }),
+        pane({ pane: "p3", tab: "c", terminal: "t9", cwd: "/work", branch: "fix" }),
+      ],
+    });
+    const checkouts = projectThreads(scene, only(members)).map((thread) => thread.checkout?.folder);
+    expect(checkouts).toEqual(["/work", "/work"]);
+  });
 });

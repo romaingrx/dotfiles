@@ -1,7 +1,8 @@
 import type { AgentInfo, PaneInfo, SpaceInfo, Status, TabInfo } from "herdr";
 import { leadOf, LOCAL, threadsOf, type Project } from "./projects";
+import type { Pull, Pulls } from "./pulls";
 import { GROUPS, groupOf, isBusy, type Group } from "./status";
-import type { Terminal } from "./terminal";
+import { machineOf, type Terminal } from "./terminal";
 import { stripGlyph } from "./text";
 
 /** What the app reports, read once per render. */
@@ -10,6 +11,7 @@ export interface Snapshot {
   readonly panes: readonly PaneInfo[];
   readonly agents: readonly AgentInfo[];
   readonly terminals: readonly Terminal[];
+  readonly pulls: Pulls;
   /** The address of the terminal that has the keyboard. */
   readonly focused: string | null;
 }
@@ -40,6 +42,10 @@ export interface Thread {
   readonly aside: string | null;
   /** When its status last changed, in ms since the epoch. */
   readonly since: number | null;
+  /** Its folder and the git branch there, when it works in a repository folder of its own. */
+  readonly checkout: { readonly folder: string; readonly branch: string } | null;
+  /** The pull request of that branch, as last read. */
+  readonly pull: Pull | null;
   /** Where a click shows it: in its own pane in the middle, or in the right panel. */
   readonly opens: "pane" | "panel";
 }
@@ -97,9 +103,43 @@ function sessionTitle(terminal: Terminal, seat: Seat | undefined): string {
   return terminal.heading ?? terminal.name ?? (stripGlyph(terminal.title) || terminal.address);
 }
 
+/** A folder on a machine, as one word. */
+function place(pane: PaneInfo): string | null {
+  return pane.terminal && pane.cwd ? `${machineOf(pane.terminal) ?? ""}:${pane.cwd}` : null;
+}
+
+/**
+ * The folders that more than one session of a project works in. The branch
+ * there belongs to none of them. A plain shell in a thread's folder is no
+ * such session.
+ */
+function sharedFolders(snapshot: Snapshot): ReadonlySet<string> {
+  const sessions = new Set(snapshot.terminals.filter((terminal) => terminal.project).map((terminal) => terminal.address));
+  const seen = new Set<string>();
+  const shared = new Set<string>();
+  for (const pane of snapshot.panes) {
+    const key = sessions.has(pane.terminal ?? "") ? place(pane) : null;
+    if (key === null) continue;
+    (seen.has(key) ? shared : seen).add(key);
+  }
+  return shared;
+}
+
+function checkout(seat: Seat | undefined, shared: ReadonlySet<string>): Thread["checkout"] {
+  const { cwd, branch } = seat?.pane ?? {};
+  if (!seat || !cwd || !branch || shared.has(place(seat.pane) ?? "")) return null;
+  return { folder: cwd, branch };
+}
+
+/** Whose move a thread is. */
+export function threadGroup(thread: Thread): Group {
+  return groupOf(thread.status, thread.resolved, thread.pull?.stage);
+}
+
 /** The threads of a project. Its orchestrator is not one of them: it is the project's own session. */
 export function projectThreads(snapshot: Snapshot, project: Project): Thread[] {
   const seated = seats(snapshot);
+  const shared = sharedFolders(snapshot);
   const spread = project.machines.length > 1;
   // With the orchestrator in the middle, a thread opens beside it; without one, in its own pane.
   const lead = leadOf(project);
@@ -119,6 +159,8 @@ export function projectThreads(snapshot: Snapshot, project: Project): Thread[] {
       note: note(member),
       aside: spread ? (member.machine ?? LOCAL) : null,
       since: seat?.home?.tab.changed_at ?? member.since,
+      checkout: checkout(seat, shared),
+      pull: snapshot.pulls[member.address] ?? null,
       opens: seat && !beside ? "pane" : "panel",
     };
   });
@@ -167,12 +209,12 @@ export function longestFirst(a: { readonly since: number | null }, b: { readonly
 }
 
 /** The groups whose threads are the person's to act on: they are a queue. */
-const QUEUES: readonly Group[] = ["waiting", "finished"];
+const QUEUES: readonly Group[] = ["review", "waiting", "finished"];
 
 /** The groups that have threads, in the order a person acts on them. */
 export function groupThreads(threads: readonly Thread[]): ThreadGroup[] {
   return GROUPS.map((group) => {
-    const members = threads.filter((thread) => groupOf(thread.status, thread.resolved) === group.id);
+    const members = threads.filter((thread) => threadGroup(thread) === group.id);
     return { ...group, threads: QUEUES.includes(group.id) ? members.sort(longestFirst) : members };
   }).filter((group) => group.threads.length > 0);
 }

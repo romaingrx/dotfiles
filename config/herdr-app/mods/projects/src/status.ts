@@ -1,14 +1,17 @@
 import type { Status } from "herdr";
+import type { PullStage } from "./pulls";
 
-export type Group = "waiting" | "finished" | "working" | "idle" | "resolved";
+export type Group = "review" | "waiting" | "finished" | "working" | "landing" | "idle" | "resolved";
 
 /** What a thread last told its orchestrator with `report.sh`. */
 export type Reported = "done" | "review" | "needs-you";
 
 export const GROUPS: readonly { readonly id: Group; readonly label: string }[] = [
+  { id: "review", label: "Ready for review" },
   { id: "waiting", label: "Waiting on you" },
   { id: "finished", label: "Finished" },
   { id: "working", label: "Working" },
+  { id: "landing", label: "Landing" },
   { id: "idle", label: "Idle" },
   { id: "resolved", label: "Resolved" },
 ];
@@ -55,15 +58,18 @@ export function isBusy(status: Status | null): boolean {
 }
 
 /**
- * Whose move it is. "done" is a turn that ended and that the person has not
- * looked at yet: Herdr calls it idle once they have.
+ * Whose move it is. An agent that waits or works says so itself. When it
+ * rests, its pull request says more: one that is open for review is the
+ * person's to read, one that lands needs nobody. "done" is a turn that ended
+ * and that the person has not looked at yet: Herdr calls it idle once they have.
  */
-export function groupOf(status: Status | null, resolved: boolean): Group {
+export function groupOf(status: Status | null, resolved: boolean, pull: PullStage | null = null): Group {
   if (resolved) return "resolved";
   if (status === "blocked") return "waiting";
-  if (status === "done") return "finished";
   if (status === "working") return "working";
-  return "idle";
+  if (pull === "review") return "review";
+  if (pull === "landing") return "landing";
+  return status === "done" ? "finished" : "idle";
 }
 
 export function groupLabel(group: Group): string {
