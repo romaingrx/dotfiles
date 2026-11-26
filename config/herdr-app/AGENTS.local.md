@@ -74,7 +74,9 @@ one machine, so it runs while this computer is off.
   thread's header opens it in the browser. Sessions that share a folder get
   none: the branch there belongs to none of them.
 - **Review:** the thread's header opens a review of its branch: the files it
-  changed against its base, and the diff of one of them. The base is the one
+  changed against its base, as a tree of folders, and the diff of one of
+  them. A Shift-click on a second line puts a comment on all the lines from
+  the first one to it. The base is the one
   of its pull request, else the repository's main branch. The diff is of the
   thread's folder, so it has what is not committed yet. A click on a line
   takes a comment. The comments are a draft that stays until it is sent; Send

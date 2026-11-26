@@ -7,15 +7,27 @@ import {
   anchorKey,
   commentAt,
   isEmpty,
+  linesOf,
   NO_DRAFT,
   reviewMessage,
   withComment,
   withNote,
   withoutComment,
   type Anchor,
+  type Span,
 } from "../review/draft";
 import { readBranchDiff } from "../review/reader";
-import { fileRows, lineKey, reviewFiles, widest, type ReviewFile, type Row } from "../review/rows";
+import {
+  fileRows,
+  quoteOf,
+  reviewFiles,
+  spanBetween,
+  spanRows,
+  widest,
+  type ReviewFile,
+  type Row,
+} from "../review/rows";
+import { fileTree, firstFile } from "../review/tree";
 import { readDraft, saveDraft } from "../review/store";
 import {
   commentColumns,
@@ -33,10 +45,12 @@ import { threadAt, type Thread } from "../threads";
 import { readTheme, type TextButton, type Theme } from "../ui";
 import type { Part } from "./part";
 
-/** The line the person writes a comment on. */
+/** The lines the person writes a comment on. */
 interface Target {
-  readonly anchor: Anchor;
-  /** The text of the line. */
+  readonly anchor: Span;
+  /** The line the person picked first: a Shift-click on another line makes a span from it. */
+  readonly pivot: Anchor;
+  /** The text of the lines. */
   readonly code: string;
   /** Set when the line has a comment already. */
   readonly written: boolean;
@@ -52,8 +66,9 @@ interface Drawn {
 /** The width the diff is taken to have before the app says how wide it is. */
 const FIRST_WIDTH = 900;
 
-function whereOf(anchor: Anchor): string {
-  return anchor.side === "old" ? `Line ${anchor.line}, which the branch removes` : `Line ${anchor.line}`;
+function whereOf(span: Span): string {
+  if (span.start) return `Lines ${linesOf(span)}`;
+  return span.side === "old" ? `Line ${span.line}, which the branch removes` : `Line ${span.line}`;
 }
 
 /**
@@ -62,7 +77,10 @@ function whereOf(anchor: Anchor): string {
  * draft until they are sent to the thread, in one message.
  */
 export class ReviewDialog implements Part {
-  private readonly field = TextareaState.new({ placeholder: "Write a comment on this line", rows: 4 });
+  private readonly field = TextareaState.new({
+    placeholder: "Write a comment. Shift-click another line to comment on all the lines between.",
+    rows: 4,
+  });
   private readonly note: InputState;
   private readonly scroll = VirtualListScrollHandle.new();
   private readonly handle: FocusHandle;
@@ -77,7 +95,11 @@ export class ReviewDialog implements Part {
   private sent = false;
   /** The path of the file on show; the first file while null. */
   private open: string | null = null;
+  /** The folders of the file tree that the person folded. */
+  private readonly folded = new Set<string>();
   private target: Target | null = null;
+  /** Whether Shift was held at the last press on the diff. */
+  private shift = false;
   private width = FIRST_WIDTH;
   private drawn: Drawn | null = null;
 
@@ -103,7 +125,7 @@ export class ReviewDialog implements Part {
     if (thread && !this.asked) this.load(cx);
     const draft = readDraft(this.thread);
     const files = reviewFiles(this.diff?.files ?? [], draft.comments);
-    const shown = files.find((entry) => entry.file.path === this.open) ?? files[0];
+    const shown = files.find((entry) => entry.file.path === this.open) ?? firstFile(files);
     const range = thread?.checkout && this.diff ? `${thread.checkout.branch} → ${this.diff.base}` : null;
     return v_flex()
       .id("review")
@@ -128,7 +150,8 @@ export class ReviewDialog implements Part {
           .items_start()
           .child(
             fileList(colors, {
-              files,
+              rows: fileTree(files, this.folded),
+              onFold: (path, cx) => this.fold(path, cx),
               open: shown?.file.path ?? null,
               empty: this.emptyText(),
               onOpen: (path, cx) => this.show(path, cx),
@@ -178,7 +201,10 @@ export class ReviewDialog implements Part {
         type,
         columns,
         scroll: this.scroll,
-        active: target ? lineKey(target.anchor) : null,
+        active: new Set(target ? spanRows(drawn.rows, target.anchor).map((row) => row.key) : []),
+        onPress: (shift) => {
+          this.shift = shift;
+        },
         onPick: (key, cx) => this.pick(drawn.rows, key, cx),
         onWidth: (width, cx) => this.resize(width, cx),
       }),
@@ -187,7 +213,7 @@ export class ReviewDialog implements Part {
     return pane.child(
       composer(colors, {
         where: whereOf(target.anchor),
-        code: target.code,
+        code: target.code.split("\n")[0] ?? "",
         type,
         field: this.field,
         buttons: this.composerButtons(target),
@@ -270,15 +296,47 @@ export class ReviewDialog implements Part {
   private pick(rows: readonly Row[], key: string, cx: Context): void {
     const row = rows.find((candidate) => candidate.key === key);
     if (row?.kind !== "line" && row?.kind !== "comment") return;
+    if (this.shift && row.kind === "line" && this.extend(rows, row.anchor, cx)) return;
     this.keepTyped();
     const written = commentAt(readDraft(this.thread), row.anchor);
     this.target = {
-      anchor: row.anchor,
-      code: row.kind === "line" ? row.line.text : (written?.code ?? ""),
+      anchor: written ?? { ...row.anchor, start: null },
+      pivot: row.anchor,
+      code: written?.code ?? (row.kind === "line" ? row.line.text : ""),
       written: Boolean(written),
     };
     this.field.set_value(written?.body ?? "");
     this.field.focus();
+    cx.notify();
+  }
+
+  /**
+   * A Shift-click on a line while a comment is open: the comment is then on
+   * every line from the one picked first to this one. What is typed stays.
+   * False when no comment of this file is open.
+   */
+  private extend(rows: readonly Row[], anchor: Anchor, cx: Context): boolean {
+    const { target } = this;
+    if (!target || target.pivot.path !== anchor.path) return false;
+    const span = spanBetween(rows, target.pivot, anchor);
+    this.target = { ...target, anchor: span, code: quoteOf(spanRows(rows, span)) };
+    // A comment that was written moves with its last line.
+    if (target.written && anchorKey(span) !== anchorKey(target.anchor)) this.moveComment(target.anchor, this.target);
+    this.field.focus();
+    cx.notify();
+    return true;
+  }
+
+  /** Takes a written comment from the lines it was on and puts it on other lines, with the same words. */
+  private moveComment(from: Span, to: Target): void {
+    const draft = readDraft(this.thread);
+    const written = commentAt(draft, from);
+    if (!written) return;
+    saveDraft(this.thread, withComment(withoutComment(draft, from), to.anchor, to.code, written.body));
+  }
+
+  private fold(path: string, cx: Context): void {
+    if (!this.folded.delete(path)) this.folded.add(path);
     cx.notify();
   }
 

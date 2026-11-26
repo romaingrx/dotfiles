@@ -1329,17 +1329,23 @@ function anchorKey(anchor) {
 function anchorOf(path, line) {
   return line.now === null ? { path, side: "old", line: line.old ?? 0 } : { path, side: "new", line: line.now };
 }
+function isSide(value) {
+  return value === "old" || value === "new";
+}
+function parseMark(value) {
+  if (!isRecord(value) || !isSide(value.side) || typeof value.line !== "number")
+    return null;
+  return { side: value.side, line: value.line };
+}
 function parseComment(value) {
   if (!isRecord(value))
     return null;
-  const { side, line, code } = value;
   const path = text(value.path);
   const body = text(value.body);
-  if (!path || !body || side !== "old" && side !== "new")
+  const last = parseMark(value);
+  if (!path || !body || !last || typeof value.code !== "string")
     return null;
-  if (typeof line !== "number" || typeof code !== "string")
-    return null;
-  return { path, side, line, code, body };
+  return { path, ...last, start: parseMark(value.start), code: value.code, body };
 }
 function parseDraft(value) {
   if (!isRecord(value))
@@ -1371,10 +1377,11 @@ function withoutComment(draft, anchor) {
   const key = anchorKey(anchor);
   return { ...draft, comments: draft.comments.filter((comment) => anchorKey(comment) !== key) };
 }
-function withComment(draft, anchor, code, body) {
-  const rest = withoutComment(draft, anchor);
+function withComment(draft, span, code, body) {
+  const rest = withoutComment(draft, span);
+  const { path, side, line, start } = span;
   const words = body.trim();
-  return words ? { ...rest, comments: [...rest.comments, { ...anchor, code, body: words }] } : rest;
+  return words ? { ...rest, comments: [...rest.comments, { path, side, line, start, code, body: words }] } : rest;
 }
 function withNote(draft, note) {
   return { ...draft, note };
@@ -1392,10 +1399,25 @@ function indent(text) {
 `).map((line) => line ? INDENT + line : "").join(`
 `);
 }
+function linesOf(span) {
+  return span.start ? `${span.start.line}-${span.line}` : String(span.line);
+}
+function quoted(code) {
+  if (!code.trim())
+    return [];
+  return [
+    indent(code.split(`
+`).map((line) => `> ${line.trim()}`).join(`
+`))
+  ];
+}
 function commentText(comment, index) {
-  const where = `${comment.path}:${comment.line}${comment.side === "old" ? " (a line the branch removes)" : ""}`;
-  const quote = comment.code.trim() ? [`${INDENT}> ${comment.code.trim()}`] : [];
-  return [`${index + 1}. ${where}`, ...quote, indent(comment.body)].join(`
+  const removed = comment.side === "old" ? " (a line the branch removes)" : "";
+  return [
+    `${index + 1}. ${comment.path}:${linesOf(comment)}${removed}`,
+    ...quoted(comment.code),
+    indent(comment.body)
+  ].join(`
 `);
 }
 function countOf(comments) {
@@ -1626,10 +1648,79 @@ function fileRows(entry, columns) {
   if (lines.length > MAX_LINES) {
     rows.push({ kind: "note", key: "note:cut", text: `This diff is long: only its first ${MAX_LINES} lines show.` });
   }
-  return rows;
+  const covered = new Set(comments.flatMap((comment) => spanRows(rows, comment).map((row) => row.key)));
+  return rows.map((row) => row.kind === "line" && covered.has(row.key) ? { ...row, commented: true } : row);
+}
+function lineRows(rows) {
+  return rows.filter((row) => row.kind === "line");
+}
+function spanRows(rows, span) {
+  const lines = lineRows(rows);
+  const last = lines.findIndex((row) => row.key === lineKey(span));
+  if (last < 0)
+    return [];
+  const from = span.start ? lineKey({ path: span.path, ...span.start }) : null;
+  const first = lines.findIndex((row) => row.key === from);
+  return lines.slice(first < 0 || first > last ? last : first, last + 1);
+}
+function spanBetween(rows, a, b) {
+  const lines = lineRows(rows);
+  const at = (anchor) => lines.findIndex((row) => row.key === lineKey(anchor));
+  const [first, last] = at(a) <= at(b) ? [a, b] : [b, a];
+  const start = anchorKey(first) === anchorKey(last) ? null : { side: first.side, line: first.line };
+  return { path: last.path, side: last.side, line: last.line, start };
+}
+var MAX_QUOTE = 12;
+function quoteOf(lines) {
+  const texts = lines.slice(0, MAX_QUOTE).map((row) => row.line.text);
+  return [...texts, ...lines.length > MAX_QUOTE ? ["…"] : []].join(`
+`);
 }
 function widest(rows) {
   return Math.max(0, ...rows.map((row) => row.kind === "line" || row.kind === "hunk" ? row.text.length : 0));
+}
+
+// src/review/tree.ts
+function folder(path, name) {
+  return { path, name, folders: new Map, files: [] };
+}
+function place3(root, entry) {
+  const parts = entry.file.path.split("/");
+  const name = parts.pop() ?? entry.file.path;
+  let at = root;
+  for (const part of parts) {
+    const path = at.path ? `${at.path}/${part}` : part;
+    const below = at.folders.get(part) ?? folder(path, part);
+    at.folders.set(part, below);
+    at = below;
+  }
+  at.files.push({ name, entry });
+}
+function joined(node) {
+  const [only] = node.folders.values();
+  if (!only || node.folders.size > 1 || node.files.length > 0)
+    return node;
+  return joined({ ...only, name: `${node.name}/${only.name}` });
+}
+function rowsOf(node, depth, folded) {
+  const folders = [...node.folders.values()].map(joined).sort((a, b) => a.name.localeCompare(b.name));
+  const below = folders.flatMap((child) => {
+    const open = !folded.has(child.path);
+    const head = { kind: "folder", path: child.path, name: child.name, depth, open };
+    return open ? [head, ...rowsOf(child, depth + 1, folded)] : [head];
+  });
+  const files = node.files.map(({ name, entry }) => ({ kind: "file", name, depth, entry }));
+  return [...below, ...files];
+}
+function fileTree(files, folded) {
+  const root = folder("", "");
+  for (const entry of files)
+    place3(root, entry);
+  return rowsOf(root, 0, folded);
+}
+function firstFile(files) {
+  const first = fileTree(files, new Set).find((row) => row.kind === "file");
+  return first?.kind === "file" ? first.entry : undefined;
 }
 
 // src/review/store.ts
@@ -1706,13 +1797,13 @@ function diffPane(colors, props) {
   const { rows, type } = props;
   const draw = (row) => {
     if (row.kind === "line")
-      return lineRow(colors, type, row, row.key === props.active);
+      return lineRow(colors, type, row, props.active.has(row.key));
     if (row.kind === "comment")
       return commentRow2(colors, type, row, props.columns);
     return plainRow(colors, type, row.text, row.kind === "hunk");
   };
   const list = v_virtual_list("review-diff", rows.length, rows.map((row) => rowHeight(row, type)), (index) => rows[index]?.key ?? String(index), (range) => rows.slice(range.start, range.end).map(draw)).track_scroll(props.scroll).on_item_click(props.onPick).size_full();
-  return div6().id("review-diff-box").flex_1().min_h(0).relative().font_family(type.family).text_size(type.size).on_size_change((size, cx) => props.onWidth(size.width / readZoom(), cx)).child(div6().id("review-diff-x").size_full().overflow_x_scrollbar().child(div6().w_full().min_w(Math.ceil(props.widest * type.char) + gutter(type) + DIFF_END).h_full().child(list))).child(Scrollbar.vertical("review-diff").viewport_from_layout().absolute().inset_0());
+  return div6().id("review-diff-box").flex_1().min_h(0).relative().font_family(type.family).text_size(type.size).on_size_change((size, cx) => props.onWidth(size.width / readZoom(), cx)).on_mouse_down("left", (event) => props.onPress(event.modifiers.shift)).child(div6().id("review-diff-x").size_full().overflow_x_scrollbar().child(div6().w_full().min_w(Math.ceil(props.widest * type.char) + gutter(type) + DIFF_END).h_full().child(list))).child(Scrollbar.vertical("review-diff").viewport_from_layout().absolute().inset_0());
 }
 var CHANGES = {
   added: { letter: "A", tone: "ansi2" },
@@ -1730,17 +1821,21 @@ function counts(colors, added, removed) {
 function badge2(colors, amount) {
   return div6().px(5).h(16).flex().flex_none().items_center().rounded(8).bg(colors.accent).text_size(10.5).font_semibold().text_color(colors.background).child(String(amount));
 }
-function pathLabel(colors, path) {
-  const cut = path.lastIndexOf("/");
-  return h_flex6().flex_1().min_w(0).gap(6).child(div6().flex_none().max_w(190).truncate().child(path.slice(cut + 1))).child(div6().min_w(0).truncate().text_color(colors.dim).child(path.slice(0, Math.max(cut, 0))));
+function inset(depth) {
+  return 8 + depth * 14;
 }
-function fileRow(colors, entry, open, onOpen) {
+function folderRow(colors, row, onFold) {
+  return h_flex6().id(`review-folder-${row.path}`).h(26).flex_none().pl(inset(row.depth)).pr(8).gap(6).items_center().rounded(7).cursor_pointer().text_color(colors.muted).hover((style) => style.bg(colors.hover)).on_click((_event, cx) => onFold(cx)).child(svg3(chromeIcon(row.open ? "chevron-down" : "chevron-right")).size(11).flex_none()).child(div6().flex_1().min_w(0).truncate().child(row.name));
+}
+function fileRow(colors, row, open, onOpen) {
+  const { entry } = row;
   const { file } = entry;
   const change = CHANGES[file.change];
-  return h_flex6().id(`review-file-${file.path}`).h(28).flex_none().px(8).gap(8).items_center().rounded(7).cursor_pointer().when(open, (el) => el.bg(colors.selected)).hover((style) => style.bg(colors.hover)).on_click((_event, cx) => onOpen(cx)).child(div6().w(12).flex_none().text_size(11).text_color(colors[entry.gone ? "blocked" : change.tone]).child(entry.gone ? "!" : change.letter)).child(pathLabel(colors, file.path)).when(entry.comments.length > 0, (el) => el.child(badge2(colors, entry.comments.length))).children(counts(colors, file.added, file.removed));
+  return h_flex6().id(`review-file-${file.path}`).h(28).flex_none().pl(inset(row.depth)).pr(8).gap(8).items_center().rounded(7).cursor_pointer().when(open, (el) => el.bg(colors.selected)).hover((style) => style.bg(colors.hover)).on_click((_event, cx) => onOpen(cx)).child(div6().w(12).flex_none().text_size(11).text_color(colors[entry.gone ? "blocked" : change.tone]).child(entry.gone ? "!" : change.letter)).child(div6().flex_1().min_w(0).truncate().child(row.name)).when(entry.comments.length > 0, (el) => el.child(badge2(colors, entry.comments.length))).children(counts(colors, file.added, file.removed));
 }
 function fileList(colors, props) {
-  return v_flex5().id("review-files").w(300).h_full().flex_none().p(6).border_r(1).border_color(colors.border).text_size(12.5).overflow_y_scrollbar().children(props.files.map((entry) => fileRow(colors, entry, entry.file.path === props.open, (cx) => props.onOpen(entry.file.path, cx)))).when(props.files.length === 0, (el) => el.child(div6().p(8).text_size(12).text_color(colors.muted).child(props.empty)));
+  const draw = (row) => row.kind === "folder" ? folderRow(colors, row, (cx) => props.onFold(row.path, cx)) : fileRow(colors, row, row.entry.file.path === props.open, (cx) => props.onOpen(row.entry.file.path, cx));
+  return v_flex5().id("review-files").w(300).h_full().flex_none().p(6).border_r(1).border_color(colors.border).text_size(12.5).overflow_y_scrollbar().children(props.rows.map(draw)).when(props.rows.length === 0, (el) => el.child(div6().p(8).text_size(12).text_color(colors.muted).child(props.empty)));
 }
 function reviewHead(colors, props) {
   const added = props.files.reduce((sum, file) => sum + file.added, 0);
@@ -1767,14 +1862,19 @@ function reviewFoot(colors, props) {
 
 // src/parts/review.ts
 var FIRST_WIDTH = 900;
-function whereOf(anchor) {
-  return anchor.side === "old" ? `Line ${anchor.line}, which the branch removes` : `Line ${anchor.line}`;
+function whereOf(span) {
+  if (span.start)
+    return `Lines ${linesOf(span)}`;
+  return span.side === "old" ? `Line ${span.line}, which the branch removes` : `Line ${span.line}`;
 }
 
 class ReviewDialog {
   overlay;
   thread;
-  field = TextareaState.new({ placeholder: "Write a comment on this line", rows: 4 });
+  field = TextareaState.new({
+    placeholder: "Write a comment. Shift-click another line to comment on all the lines between.",
+    rows: 4
+  });
   note;
   scroll = VirtualListScrollHandle.new();
   handle;
@@ -1785,7 +1885,9 @@ class ReviewDialog {
   sending = false;
   sent = false;
   open = null;
+  folded = new Set;
   target = null;
+  shift = false;
   width = FIRST_WIDTH;
   drawn = null;
   constructor(overlay, thread, cx) {
@@ -1808,7 +1910,7 @@ class ReviewDialog {
       this.load(cx);
     const draft = readDraft(this.thread);
     const files = reviewFiles(this.diff?.files ?? [], draft.comments);
-    const shown = files.find((entry) => entry.file.path === this.open) ?? files[0];
+    const shown = files.find((entry) => entry.file.path === this.open) ?? firstFile(files);
     const range = thread?.checkout && this.diff ? `${thread.checkout.branch} → ${this.diff.base}` : null;
     return v_flex6().id("review").size_full().bg(colors.popover).text_color(colors.foreground).track_focus(this.handle).child(reviewHead(colors, {
       title: thread?.title ?? "This thread has ended.",
@@ -1818,7 +1920,8 @@ class ReviewDialog {
       onRefresh: (cx) => this.load(cx),
       onClose: () => closeOverlay4(this.overlay)
     })).child(h_flex7().flex_1().min_h(0).items_start().child(fileList(colors, {
-      files,
+      rows: fileTree(files, this.folded),
+      onFold: (path, cx) => this.fold(path, cx),
       open: shown?.file.path ?? null,
       empty: this.emptyText(),
       onOpen: (path, cx) => this.show(path, cx)
@@ -1858,7 +1961,10 @@ class ReviewDialog {
       type,
       columns,
       scroll: this.scroll,
-      active: target ? lineKey(target.anchor) : null,
+      active: new Set(target ? spanRows(drawn.rows, target.anchor).map((row) => row.key) : []),
+      onPress: (shift) => {
+        this.shift = shift;
+      },
       onPick: (key, cx) => this.pick(drawn.rows, key, cx),
       onWidth: (width, cx) => this.resize(width, cx)
     }));
@@ -1866,7 +1972,8 @@ class ReviewDialog {
       return pane;
     return pane.child(composer(colors, {
       where: whereOf(target.anchor),
-      code: target.code,
+      code: target.code.split(`
+`)[0] ?? "",
       type,
       field: this.field,
       buttons: this.composerButtons(target)
@@ -1944,15 +2051,42 @@ class ReviewDialog {
     const row = rows.find((candidate) => candidate.key === key);
     if (row?.kind !== "line" && row?.kind !== "comment")
       return;
+    if (this.shift && row.kind === "line" && this.extend(rows, row.anchor, cx))
+      return;
     this.keepTyped();
     const written = commentAt(readDraft(this.thread), row.anchor);
     this.target = {
-      anchor: row.anchor,
-      code: row.kind === "line" ? row.line.text : written?.code ?? "",
+      anchor: written ?? { ...row.anchor, start: null },
+      pivot: row.anchor,
+      code: written?.code ?? (row.kind === "line" ? row.line.text : ""),
       written: Boolean(written)
     };
     this.field.set_value(written?.body ?? "");
     this.field.focus();
+    cx.notify();
+  }
+  extend(rows, anchor, cx) {
+    const { target } = this;
+    if (!target || target.pivot.path !== anchor.path)
+      return false;
+    const span = spanBetween(rows, target.pivot, anchor);
+    this.target = { ...target, anchor: span, code: quoteOf(spanRows(rows, span)) };
+    if (target.written && anchorKey(span) !== anchorKey(target.anchor))
+      this.moveComment(target.anchor, this.target);
+    this.field.focus();
+    cx.notify();
+    return true;
+  }
+  moveComment(from, to) {
+    const draft = readDraft(this.thread);
+    const written = commentAt(draft, from);
+    if (!written)
+      return;
+    saveDraft(this.thread, withComment(withoutComment(draft, from), to.anchor, to.code, written.body));
+  }
+  fold(path, cx) {
+    if (!this.folded.delete(path))
+      this.folded.add(path);
     cx.notify();
   }
   keepTyped() {

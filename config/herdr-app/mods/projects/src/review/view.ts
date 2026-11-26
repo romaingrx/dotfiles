@@ -14,7 +14,8 @@ import { settings } from "herdr";
 import { text } from "../parse";
 import { chromeIcon, iconButton, optional, textButton, type Handler, type TextButton, type Theme } from "../ui";
 import type { Change, DiffFile, DiffLine } from "./diff";
-import type { ReviewFile, Row } from "./rows";
+import type { Row } from "./rows";
+import type { TreeRow } from "./tree";
 
 /** The type the diff is set in: the terminals' font, and the room one character and one row take. */
 export interface Type {
@@ -163,8 +164,10 @@ export interface DiffPane {
   /** How many characters of a comment fit on one line. */
   readonly columns: number;
   readonly scroll: VirtualListScrollHandle;
-  /** The key of the row the person writes a comment on. */
-  readonly active: string | null;
+  /** The keys of the lines the person writes a comment on. */
+  readonly active: ReadonlySet<string>;
+  /** A press on the diff, with whether Shift is held: a click on a row follows it. */
+  readonly onPress: (shift: boolean) => void;
   /** A click on a row, by its key. */
   readonly onPick: (key: string, cx: Context) => void;
   /** The width the diff has on screen, in px of the mod. */
@@ -175,7 +178,7 @@ export interface DiffPane {
 export function diffPane(colors: Theme, props: DiffPane): Element {
   const { rows, type } = props;
   const draw = (row: Row): Element => {
-    if (row.kind === "line") return lineRow(colors, type, row, row.key === props.active);
+    if (row.kind === "line") return lineRow(colors, type, row, props.active.has(row.key));
     if (row.kind === "comment") return commentRow(colors, type, row, props.columns);
     return plainRow(colors, type, row.text, row.kind === "hunk");
   };
@@ -189,28 +192,32 @@ export function diffPane(colors: Theme, props: DiffPane): Element {
     .track_scroll(props.scroll)
     .on_item_click(props.onPick)
     .size_full();
-  return div()
-    .id("review-diff-box")
-    .flex_1()
-    .min_h(0)
-    .relative()
-    .font_family(type.family)
-    .text_size(type.size)
-    .on_size_change((size, cx) => props.onWidth(size.width / readZoom(), cx))
-    .child(
-      div()
-        .id("review-diff-x")
-        .size_full()
-        .overflow_x_scrollbar()
-        .child(
-          div()
-            .w_full()
-            .min_w(Math.ceil(props.widest * type.char) + gutter(type) + DIFF_END)
-            .h_full()
-            .child(list),
-        ),
-    )
-    .child(Scrollbar.vertical("review-diff").viewport_from_layout().absolute().inset_0());
+  return (
+    div()
+      .id("review-diff-box")
+      .flex_1()
+      .min_h(0)
+      .relative()
+      .font_family(type.family)
+      .text_size(type.size)
+      .on_size_change((size, cx) => props.onWidth(size.width / readZoom(), cx))
+      // A click on a row of the list says which row, not which keys are held: the press before it does.
+      .on_mouse_down("left", (event) => props.onPress(event.modifiers.shift))
+      .child(
+        div()
+          .id("review-diff-x")
+          .size_full()
+          .overflow_x_scrollbar()
+          .child(
+            div()
+              .w_full()
+              .min_w(Math.ceil(props.widest * type.char) + gutter(type) + DIFF_END)
+              .h_full()
+              .child(list),
+          ),
+      )
+      .child(Scrollbar.vertical("review-diff").viewport_from_layout().absolute().inset_0())
+  );
 }
 
 const CHANGES: Readonly<Record<Change, { readonly letter: string; readonly tone: "ansi1" | "ansi2" | "muted" }>> = {
@@ -244,37 +251,46 @@ function badge(colors: Theme, amount: number): Element {
     .child(String(amount));
 }
 
-/** A path as a name, then its folder, drawn faint: the name is what a narrow list must keep. */
-function pathLabel(colors: Theme, path: string): Element {
-  const cut = path.lastIndexOf("/");
-  return h_flex()
-    .flex_1()
-    .min_w(0)
-    .gap(6)
-    .child(
-      div()
-        .flex_none()
-        .max_w(190)
-        .truncate()
-        .child(path.slice(cut + 1)),
-    )
-    .child(
-      div()
-        .min_w(0)
-        .truncate()
-        .text_color(colors.dim)
-        .child(path.slice(0, Math.max(cut, 0))),
-    );
+type FolderRow = Extract<TreeRow, { kind: "folder" }>;
+type FileRow = Extract<TreeRow, { kind: "file" }>;
+
+/** How far a row of the tree is from the left edge, for its depth. */
+function inset(depth: number): number {
+  return 8 + depth * 14;
 }
 
-function fileRow(colors: Theme, entry: ReviewFile, open: boolean, onOpen: Handler): Element {
+function folderRow(colors: Theme, row: FolderRow, onFold: Handler): Element {
+  return h_flex()
+    .id(`review-folder-${row.path}`)
+    .h(26)
+    .flex_none()
+    .pl(inset(row.depth))
+    .pr(8)
+    .gap(6)
+    .items_center()
+    .rounded(7)
+    .cursor_pointer()
+    .text_color(colors.muted)
+    .hover((style) => style.bg(colors.hover))
+    .on_click((_event, cx) => onFold(cx))
+    .child(
+      svg(chromeIcon(row.open ? "chevron-down" : "chevron-right"))
+        .size(11)
+        .flex_none(),
+    )
+    .child(div().flex_1().min_w(0).truncate().child(row.name));
+}
+
+function fileRow(colors: Theme, row: FileRow, open: boolean, onOpen: Handler): Element {
+  const { entry } = row;
   const { file } = entry;
   const change = CHANGES[file.change];
   return h_flex()
     .id(`review-file-${file.path}`)
     .h(28)
     .flex_none()
-    .px(8)
+    .pl(inset(row.depth))
+    .pr(8)
     .gap(8)
     .items_center()
     .rounded(7)
@@ -290,21 +306,28 @@ function fileRow(colors: Theme, entry: ReviewFile, open: boolean, onOpen: Handle
         .text_color(colors[entry.gone ? "blocked" : change.tone])
         .child(entry.gone ? "!" : change.letter),
     )
-    .child(pathLabel(colors, file.path))
+    .child(div().flex_1().min_w(0).truncate().child(row.name))
     .when(entry.comments.length > 0, (el) => el.child(badge(colors, entry.comments.length)))
     .children(counts(colors, file.added, file.removed));
 }
 
 export interface FileList {
-  readonly files: readonly ReviewFile[];
+  /** The files of the review as a tree, from the top. */
+  readonly rows: readonly TreeRow[];
   /** The path of the file whose diff shows. */
   readonly open: string | null;
   /** What the list says while it has no file. */
   readonly empty: string;
   readonly onOpen: (path: string, cx: Context) => void;
+  /** A click on a folder, to fold it or to open it again. */
+  readonly onFold: (path: string, cx: Context) => void;
 }
 
 export function fileList(colors: Theme, props: FileList): Element {
+  const draw = (row: TreeRow): Element =>
+    row.kind === "folder"
+      ? folderRow(colors, row, (cx) => props.onFold(row.path, cx))
+      : fileRow(colors, row, row.entry.file.path === props.open, (cx) => props.onOpen(row.entry.file.path, cx));
   return v_flex()
     .id("review-files")
     .w(300)
@@ -315,12 +338,8 @@ export function fileList(colors: Theme, props: FileList): Element {
     .border_color(colors.border)
     .text_size(12.5)
     .overflow_y_scrollbar()
-    .children(
-      props.files.map((entry) =>
-        fileRow(colors, entry, entry.file.path === props.open, (cx) => props.onOpen(entry.file.path, cx)),
-      ),
-    )
-    .when(props.files.length === 0, (el) =>
+    .children(props.rows.map(draw))
+    .when(props.rows.length === 0, (el) =>
       el.child(div().p(8).text_size(12).text_color(colors.muted).child(props.empty)),
     );
 }

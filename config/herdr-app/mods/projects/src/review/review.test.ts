@@ -13,10 +13,25 @@ import {
   withNote,
   withoutComment,
   type Anchor,
+  type Span,
   type Comment,
   type Draft,
 } from "./draft";
-import { fileRows, lineKey, MAX_LINES, reviewFiles, untab, widest, wrap, type Row } from "./rows";
+import {
+  fileRows,
+  lineKey,
+  MAX_LINES,
+  quoteOf,
+  reviewFiles,
+  spanBetween,
+  spanRows,
+  untab,
+  widest,
+  wrap,
+  type ReviewFile,
+  type Row,
+} from "./rows";
+import { fileTree, firstFile } from "./tree";
 
 const MODIFIED = `diff --git a/src/app.ts b/src/app.ts
 index 1111111..2222222 100644
@@ -72,7 +87,7 @@ function only(text: string): DiffFile {
 }
 
 function comment(fields: Partial<Comment> & Pick<Comment, "path" | "line">): Comment {
-  return { side: "new", code: "", body: "Fix this.", ...fields };
+  return { side: "new", start: null, code: "", body: "Fix this.", ...fields };
 }
 
 function texts(rows: readonly Row[]): string[] {
@@ -154,7 +169,7 @@ describe("a branch's diff", () => {
 });
 
 describe("a draft review", () => {
-  const line: Anchor = { path: "src/app.ts", side: "new", line: 2 };
+  const line: Span = { path: "src/app.ts", side: "new", line: 2, start: null };
 
   test("has one comment a line; no words remove it", () => {
     const first = withComment(NO_DRAFT, line, "const b = 3;", "  Why 3?  ");
@@ -322,5 +337,111 @@ describe("the rows of a file", () => {
     expect(untab("\tx")).toBe("    x");
     expect(untab("ab\tc")).toBe("ab  c");
     expect(untab("abcd\te")).toBe("abcd    e");
+  });
+});
+
+describe("a comment on several lines", () => {
+  const file = only(MODIFIED);
+  const rows = fileRows({ file, comments: [], gone: false }, 60);
+  const at = (side: "old" | "new", line: number): Anchor => ({ path: "src/app.ts", side, line });
+  const texts = (span: Span) => spanRows(rows, span).map((row) => row.text);
+
+  test("goes from the line picked first to the other one, whichever the diff lists first", () => {
+    const down = spanBetween(rows, at("old", 2), at("new", 4));
+    expect(down).toEqual({ path: "src/app.ts", side: "new", line: 4, start: { side: "old", line: 2 } });
+    expect(spanBetween(rows, at("new", 4), at("old", 2))).toEqual(down);
+    expect(spanBetween(rows, at("new", 3), at("new", 3))).toEqual({ ...at("new", 3), start: null });
+    expect(texts(down)).toEqual(["const b = 2;", "const b = 3;", "const c = 4;", "return a;"]);
+  });
+
+  test("covers its last line when the diff does not show its first one, and none when it shows neither", () => {
+    expect(texts({ ...at("new", 3), start: { side: "new", line: 90 } })).toEqual(["const c = 4;"]);
+    expect(texts({ ...at("new", 90), start: { side: "new", line: 2 } })).toEqual([]);
+    expect(texts({ ...at("new", 1), start: null })).toEqual(["const a = 1;"]);
+  });
+
+  test("marks each of its lines, and shows under the last one", () => {
+    const span = spanBetween(rows, at("new", 2), at("new", 4));
+    const [entry] = reviewFiles([file], [comment({ ...span, body: "Too long." })]);
+    if (!entry) throw new Error("expected a file");
+    const drawn = fileRows(entry, 60);
+    expect(drawn.filter((row) => row.kind === "line" && row.commented).map((row) => row.key)).toEqual(
+      [at("new", 2), at("new", 3), at("new", 4)].map(lineKey),
+    );
+    const card = drawn.findIndex((row) => row.kind === "comment");
+    expect(drawn[card - 1]?.key).toBe(lineKey(at("new", 4)));
+  });
+
+  test("is told to the thread with its lines and their text", () => {
+    const span = spanBetween(rows, at("new", 2), at("new", 3));
+    const code = quoteOf(spanRows(rows, span));
+    const draft = withComment(NO_DRAFT, span, code, "One name for both.");
+    expect(parseDrafts(JSON.parse(JSON.stringify({ t1: draft }))).t1).toEqual(draft);
+    expect(reviewMessage(draft, ["src/app.ts"])).toBe(
+      [
+        "Review of your branch: 1 comment.",
+        "1. src/app.ts:2-3\n   > const b = 3;\n   > const c = 4;\n   One name for both.",
+      ].join("\n\n"),
+    );
+  });
+
+  test("quotes the first lines of a long one", () => {
+    const added = Array.from({ length: 14 }, (_, index) => `+line ${index}`).join("\n");
+    const long = only(`diff --git a/big.txt b/big.txt\n--- /dev/null\n+++ b/big.txt\n@@ -0,0 +1,14 @@\n${added}\n`);
+    const all: Span = { path: "big.txt", side: "new", line: 14, start: { side: "new", line: 1 } };
+    const quote = quoteOf(spanRows(fileRows({ file: long, comments: [], gone: false }, 60), all)).split("\n");
+    expect(quote).toHaveLength(13);
+    expect(quote.at(-1)).toBe("…");
+  });
+});
+
+describe("the tree of a review's files", () => {
+  const entry = (path: string): ReviewFile => ({ file: { ...only(MODIFIED), path }, comments: [], gone: false });
+  const files = [
+    "README.md",
+    "config/app/mods/a.ts",
+    "config/app/mods/src/b.ts",
+    "config/app/x.ts",
+    "docs/guide/one.md",
+  ].map(entry);
+  const shape = (folded: string[] = []) =>
+    fileTree(files, new Set(folded)).map(
+      (row) => `${"  ".repeat(row.depth)}${row.name}${row.kind === "folder" ? "/" : ""}`,
+    );
+
+  test("has the folders of a folder first, then its files; a folder with one folder in it takes one row", () => {
+    expect(shape()).toEqual([
+      "config/app/",
+      "  mods/",
+      "    src/",
+      "      b.ts",
+      "    a.ts",
+      "  x.ts",
+      "docs/guide/",
+      "  one.md",
+      "README.md",
+    ]);
+  });
+
+  test("shows nothing under a folded folder", () => {
+    expect(shape(["config/app/mods"])).toEqual([
+      "config/app/",
+      "  mods/",
+      "  x.ts",
+      "docs/guide/",
+      "  one.md",
+      "README.md",
+    ]);
+    expect(shape(["config/app", "docs/guide"])).toEqual(["config/app/", "docs/guide/", "README.md"]);
+    expect(fileTree(files, new Set(["config/app"])).find((row) => row.kind === "folder")).toMatchObject({
+      path: "config/app",
+      open: false,
+    });
+  });
+
+  test("opens on its first file from the top, whatever is folded", () => {
+    expect(firstFile(files)?.file.path).toBe("config/app/mods/src/b.ts");
+    expect(firstFile([])).toBeUndefined();
+    expect(fileTree([], new Set())).toEqual([]);
   });
 });

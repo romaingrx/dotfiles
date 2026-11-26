@@ -1,5 +1,5 @@
 import type { DiffFile, DiffLine } from "./diff";
-import { anchorKey, anchorOf, type Anchor, type Comment } from "./draft";
+import { anchorKey, anchorOf, type Anchor, type Comment, type Span } from "./draft";
 
 /** A file of the review: one the branch changed, with the comments on it. */
 export interface ReviewFile {
@@ -136,7 +136,47 @@ export function fileRows(entry: ReviewFile, columns: number): Row[] {
   if (lines.length > MAX_LINES) {
     rows.push({ kind: "note", key: "note:cut", text: `This diff is long: only its first ${MAX_LINES} lines show.` });
   }
-  return rows;
+  // A comment on several lines marks each of them, not only the last one.
+  const covered = new Set(comments.flatMap((comment) => spanRows(rows, comment).map((row) => row.key)));
+  return rows.map((row) => (row.kind === "line" && covered.has(row.key) ? { ...row, commented: true } : row));
+}
+
+export type LineRow = Extract<Row, { kind: "line" }>;
+
+function lineRows(rows: readonly Row[]): LineRow[] {
+  return rows.filter((row) => row.kind === "line");
+}
+
+/**
+ * The lines a span covers, from its first one to its last one as the diff
+ * lists them. A span whose first line the diff does not show covers its last
+ * line; one whose last line is not shown covers none.
+ */
+export function spanRows(rows: readonly Row[], span: Span): LineRow[] {
+  const lines = lineRows(rows);
+  const last = lines.findIndex((row) => row.key === lineKey(span));
+  if (last < 0) return [];
+  const from = span.start ? lineKey({ path: span.path, ...span.start }) : null;
+  const first = lines.findIndex((row) => row.key === from);
+  return lines.slice(first < 0 || first > last ? last : first, last + 1);
+}
+
+/** The span from one line of a file to another one, whichever the diff lists first. */
+export function spanBetween(rows: readonly Row[], a: Anchor, b: Anchor): Span {
+  const lines = lineRows(rows);
+  const at = (anchor: Anchor) => lines.findIndex((row) => row.key === lineKey(anchor));
+  const [first, last] = at(a) <= at(b) ? [a, b] : [b, a];
+  const start = anchorKey(first) === anchorKey(last) ? null : { side: first.side, line: first.line };
+  return { path: last.path, side: last.side, line: last.line, start };
+}
+
+/** How many lines of a span are quoted to the thread. */
+const MAX_QUOTE = 12;
+
+/** The text of some lines, as a comment on them quotes it: the first ones of a long span. */
+export function quoteOf(lines: readonly LineRow[]): string {
+  const texts = lines.slice(0, MAX_QUOTE).map((row) => row.line.text);
+  return [...texts, ...(lines.length > MAX_QUOTE ? ["…"] : [])].join("\n");
 }
 
 /** The longest line of the rows, in characters: how wide the diff is. */

@@ -11,9 +11,18 @@ export interface Anchor {
   readonly line: number;
 }
 
-/** One comment of a review. A line has one comment at most. */
-export interface Comment extends Anchor {
-  /** The text of the line, quoted to the thread. */
+/** A line of a file's diff, without the file. */
+export type Mark = Pick<Anchor, "side" | "line">;
+
+/** One line, or several in a row. It is anchored on its last line: what is said about it shows under that one. */
+export interface Span extends Anchor {
+  /** Its first line, when it has more than one. */
+  readonly start: Mark | null;
+}
+
+/** One comment of a review. A line is the last one of one comment at most. */
+export interface Comment extends Span {
+  /** The text of its lines, quoted to the thread. */
   readonly code: string;
   readonly body: string;
 }
@@ -39,14 +48,22 @@ export function anchorOf(path: string, line: DiffLine): Anchor {
   return line.now === null ? { path, side: "old", line: line.old ?? 0 } : { path, side: "new", line: line.now };
 }
 
+function isSide(value: unknown): value is Side {
+  return value === "old" || value === "new";
+}
+
+function parseMark(value: unknown): Mark | null {
+  if (!isRecord(value) || !isSide(value.side) || typeof value.line !== "number") return null;
+  return { side: value.side, line: value.line };
+}
+
 function parseComment(value: unknown): Comment | null {
   if (!isRecord(value)) return null;
-  const { side, line, code } = value;
   const path = text(value.path);
   const body = text(value.body);
-  if (!path || !body || (side !== "old" && side !== "new")) return null;
-  if (typeof line !== "number" || typeof code !== "string") return null;
-  return { path, side, line, code, body };
+  const last = parseMark(value);
+  if (!path || !body || !last || typeof value.code !== "string") return null;
+  return { path, ...last, start: parseMark(value.start), code: value.code, body };
 }
 
 function parseDraft(value: unknown): Draft {
@@ -85,11 +102,12 @@ export function withoutComment(draft: Draft, anchor: Anchor): Draft {
   return { ...draft, comments: draft.comments.filter((comment) => anchorKey(comment) !== key) };
 }
 
-/** The draft with the comment of a line set to `body`. A body without words removes the comment. */
-export function withComment(draft: Draft, anchor: Anchor, code: string, body: string): Draft {
-  const rest = withoutComment(draft, anchor);
+/** The draft with the comment of some lines set to `body`. A body without words removes the comment. */
+export function withComment(draft: Draft, span: Span, code: string, body: string): Draft {
+  const rest = withoutComment(draft, span);
+  const { path, side, line, start } = span;
   const words = body.trim();
-  return words ? { ...rest, comments: [...rest.comments, { ...anchor, code, body: words }] } : rest;
+  return words ? { ...rest, comments: [...rest.comments, { path, side, line, start, code, body: words }] } : rest;
 }
 
 export function withNote(draft: Draft, note: string): Draft {
@@ -116,10 +134,31 @@ function indent(text: string): string {
     .join("\n");
 }
 
+/** The lines of a span as a reader names them: `12`, or `12-15`. */
+export function linesOf(span: Span): string {
+  return span.start ? `${span.start.line}-${span.line}` : String(span.line);
+}
+
+/** The text of the lines a comment is on, each one quoted. */
+function quoted(code: string): string[] {
+  if (!code.trim()) return [];
+  return [
+    indent(
+      code
+        .split("\n")
+        .map((line) => `> ${line.trim()}`)
+        .join("\n"),
+    ),
+  ];
+}
+
 function commentText(comment: Comment, index: number): string {
-  const where = `${comment.path}:${comment.line}${comment.side === "old" ? " (a line the branch removes)" : ""}`;
-  const quote = comment.code.trim() ? [`${INDENT}> ${comment.code.trim()}`] : [];
-  return [`${index + 1}. ${where}`, ...quote, indent(comment.body)].join("\n");
+  const removed = comment.side === "old" ? " (a line the branch removes)" : "";
+  return [
+    `${index + 1}. ${comment.path}:${linesOf(comment)}${removed}`,
+    ...quoted(comment.code),
+    indent(comment.body),
+  ].join("\n");
 }
 
 function countOf(comments: number): string {
