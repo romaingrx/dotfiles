@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "paths": {
+      "herdr": ["../../../../../.config/herdr-app/herdr.d.ts"]
+    }
+  },
+  "include": ["src", "../../../../../.config/herdr-app/gpui-kit.d.ts"],
+  "exclude": ["src/**/*.test.ts"]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "herdr-projects-mod",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "nix shell nixpkgs#typescript -c tsc --noEmit -p .",
+    "test": "bun test",
+    "bundle": "bun build src/main.ts --outfile main.js --format esm --external gpui-kit --external gpui-base --external herdr",
+    "reload": "touch -h ~/.config/herdr-app/mods/projects && herdr-app check .",
+    "build": "bun run typecheck && bun run test && bun run bundle && bun run reload"
+  }
+}
