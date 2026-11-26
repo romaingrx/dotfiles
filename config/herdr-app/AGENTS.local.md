@@ -81,7 +81,10 @@ one machine, so it runs while this computer is off.
   thread's folder, so it has what is not committed yet. A click on a line
   takes a comment. The comments are a draft that stays until it is sent; Send
   types them into the thread as one message, each with its file, its line and
-  the line's text. They do not go to GitHub.
+  the line's text. They do not go to GitHub. The open discussions of the
+  thread's pull request on GitHub show under their lines, read with `gh`. A
+  comment on such a line tells the thread which comment on GitHub it answers,
+  and one button asks the thread to address it.
 - **Waits:** a session waits on the person when its agent is blocked, or when
   its thread reported `needs-you`. The mod puts the number of waits on the
   app's icon, and the project row says who waits and who works. It posts no

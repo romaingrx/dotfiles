@@ -11,6 +11,14 @@ export interface Anchor {
   readonly line: number;
 }
 
+/** What a comment of the review answers: a comment someone left on GitHub. */
+export interface About {
+  readonly author: string;
+  readonly url: string;
+  /** The start of what they wrote. */
+  readonly quote: string;
+}
+
 /** A line of a file's diff, without the file. */
 export type Mark = Pick<Anchor, "side" | "line">;
 
@@ -25,6 +33,8 @@ export interface Comment extends Span {
   /** The text of its lines, quoted to the thread. */
   readonly code: string;
   readonly body: string;
+  /** Set for a comment on a line that has a discussion on GitHub. */
+  readonly about: About | null;
 }
 
 /** A review the person writes and has not sent yet. */
@@ -57,13 +67,21 @@ function parseMark(value: unknown): Mark | null {
   return { side: value.side, line: value.line };
 }
 
+function parseAbout(value: unknown): About | null {
+  if (!isRecord(value)) return null;
+  const author = text(value.author);
+  const url = text(value.url);
+  return author && url && typeof value.quote === "string" ? { author, url, quote: value.quote } : null;
+}
+
 function parseComment(value: unknown): Comment | null {
   if (!isRecord(value)) return null;
   const path = text(value.path);
   const body = text(value.body);
   const last = parseMark(value);
   if (!path || !body || !last || typeof value.code !== "string") return null;
-  return { path, ...last, start: parseMark(value.start), code: value.code, body };
+  const start = parseMark(value.start);
+  return { path, ...last, start, code: value.code, body, about: parseAbout(value.about) };
 }
 
 function parseDraft(value: unknown): Draft {
@@ -102,12 +120,15 @@ export function withoutComment(draft: Draft, anchor: Anchor): Draft {
   return { ...draft, comments: draft.comments.filter((comment) => anchorKey(comment) !== key) };
 }
 
-/** The draft with the comment of some lines set to `body`. A body without words removes the comment. */
-export function withComment(draft: Draft, span: Span, code: string, body: string): Draft {
+/** A comment as the person writes it on some lines: the lines' text, their words, and what they answer. */
+export type Written = Pick<Comment, "code" | "body" | "about">;
+
+/** The draft with the comment of some lines set. A body without words removes the comment. */
+export function withComment(draft: Draft, span: Span, written: Written): Draft {
   const rest = withoutComment(draft, span);
   const { path, side, line, start } = span;
-  const words = body.trim();
-  return words ? { ...rest, comments: [...rest.comments, { path, side, line, start, code, body: words }] } : rest;
+  const body = written.body.trim();
+  return body ? { ...rest, comments: [...rest.comments, { path, side, line, start, ...written, body }] } : rest;
 }
 
 export function withNote(draft: Draft, note: string): Draft {
@@ -154,9 +175,12 @@ function quoted(code: string): string[] {
 
 function commentText(comment: Comment, index: number): string {
   const removed = comment.side === "old" ? " (a line the branch removes)" : "";
+  const { about } = comment;
+  const answers = about ? [indent(`In answer to @${about.author} on GitHub (${about.url}):\n> ${about.quote}`)] : [];
   return [
     `${index + 1}. ${comment.path}:${linesOf(comment)}${removed}`,
     ...quoted(comment.code),
+    ...answers,
     indent(comment.body),
   ].join("\n");
 }

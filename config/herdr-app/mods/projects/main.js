@@ -1337,6 +1337,13 @@ function parseMark(value) {
     return null;
   return { side: value.side, line: value.line };
 }
+function parseAbout(value) {
+  if (!isRecord(value))
+    return null;
+  const author = text(value.author);
+  const url = text(value.url);
+  return author && url && typeof value.quote === "string" ? { author, url, quote: value.quote } : null;
+}
 function parseComment(value) {
   if (!isRecord(value))
     return null;
@@ -1345,7 +1352,8 @@ function parseComment(value) {
   const last = parseMark(value);
   if (!path || !body || !last || typeof value.code !== "string")
     return null;
-  return { path, ...last, start: parseMark(value.start), code: value.code, body };
+  const start = parseMark(value.start);
+  return { path, ...last, start, code: value.code, body, about: parseAbout(value.about) };
 }
 function parseDraft(value) {
   if (!isRecord(value))
@@ -1377,11 +1385,11 @@ function withoutComment(draft, anchor) {
   const key = anchorKey(anchor);
   return { ...draft, comments: draft.comments.filter((comment) => anchorKey(comment) !== key) };
 }
-function withComment(draft, span, code, body) {
+function withComment(draft, span, written) {
   const rest = withoutComment(draft, span);
   const { path, side, line, start } = span;
-  const words = body.trim();
-  return words ? { ...rest, comments: [...rest.comments, { path, side, line, start, code, body: words }] } : rest;
+  const body = written.body.trim();
+  return body ? { ...rest, comments: [...rest.comments, { path, side, line, start, ...written, body }] } : rest;
 }
 function withNote(draft, note) {
   return { ...draft, note };
@@ -1413,9 +1421,13 @@ function quoted(code) {
 }
 function commentText(comment, index) {
   const removed = comment.side === "old" ? " (a line the branch removes)" : "";
+  const { about } = comment;
+  const answers = about ? [indent(`In answer to @${about.author} on GitHub (${about.url}):
+> ${about.quote}`)] : [];
   return [
     `${index + 1}. ${comment.path}:${linesOf(comment)}${removed}`,
     ...quoted(comment.code),
+    ...answers,
     indent(comment.body)
   ].join(`
 `);
@@ -1430,6 +1442,56 @@ function reviewMessage(draft, paths) {
   return [head, ...note ? [note] : [], ...comments.map(commentText)].join(`
 
 `);
+}
+
+// src/review/discussions.ts
+var DISCUSSIONS_QUERY = `query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      reviewThreads(first: 100) {
+        nodes {
+          isResolved isOutdated path line originalLine diffSide
+          comments(first: 50) { nodes { author { login } body url } }
+        }
+      }
+    }
+  }
+}`;
+function nodes(value) {
+  const list = asRecord(value).nodes;
+  return Array.isArray(list) ? list : [];
+}
+function parseRemark(value) {
+  const raw = asRecord(value);
+  const body = text(raw.body);
+  const url = text(raw.url);
+  return body && url ? { author: text(asRecord(raw.author).login) ?? "ghost", body, url } : null;
+}
+function parseDiscussion(value) {
+  const raw = asRecord(value);
+  const path = text(raw.path);
+  const line = raw.line ?? raw.originalLine;
+  const remarks = nodes(raw.comments).map(parseRemark).filter((remark) => remark !== null);
+  if (raw.isResolved === true || !path || typeof line !== "number" || remarks.length === 0)
+    return null;
+  return { path, side: raw.diffSide === "LEFT" ? "old" : "new", line, outdated: raw.isOutdated === true, remarks };
+}
+function parseDiscussions(answer) {
+  const pull = asRecord(asRecord(asRecord(answer).data).repository).pullRequest;
+  return nodes(asRecord(pull).reviewThreads).map(parseDiscussion).filter((discussion) => discussion !== null);
+}
+var QUOTE = 160;
+function aboutOf(discussion) {
+  const [first] = discussion.remarks;
+  if (!first)
+    return null;
+  const start = first.body.trim().split(`
+`)[0] ?? "";
+  return { author: first.author, url: first.url, quote: start.length > QUOTE ? `${start.slice(0, QUOTE)}…` : start };
+}
+function discussionsAt(discussions, anchor) {
+  const key = anchorKey(anchor);
+  return discussions.filter((discussion) => anchorKey(discussion) === key);
 }
 
 // src/review/reader.ts
@@ -1546,6 +1608,17 @@ for base in "$@"; do
 done
 echo "this repository has no base branch to compare with" >&2
 exit 1`;
+var DISCUSSIONS_TIMEOUT = 30000;
+async function readDiscussions(thread) {
+  if (!thread.checkout || !thread.pull)
+    return [];
+  const fields = ["owner={owner}", "name={repo}", `number=${thread.pull.number}`].flatMap((field) => ["-F", field]);
+  const options = { cwd: thread.checkout.folder, on: machineOf(thread.key), timeout: DISCUSSIONS_TIMEOUT };
+  const result = await exec3("gh", ["api", "graphql", ...fields, "-f", `query=${DISCUSSIONS_QUERY}`], options);
+  if (result.code !== 0)
+    throw new Error(`GitHub's comments: ${result.stderr.trim() || `gh ended with code ${result.code}`}`);
+  return parseDiscussions(JSON.parse(result.stdout));
+}
 async function readBranchDiff(thread) {
   if (!thread.checkout)
     throw new Error("this thread has no folder of its own to review");
@@ -1558,6 +1631,7 @@ async function readBranchDiff(thread) {
 
 // src/review/rows.ts
 var MAX_LINES = 5000;
+var MAX_REMARK_LINES = 12;
 var TAB = 4;
 function untab(text) {
   if (!text.includes("\t"))
@@ -1590,28 +1664,42 @@ function wrap(text, columns) {
 function gone(path) {
   return { path, from: null, change: "modified", binary: false, hunks: [], added: 0, removed: 0 };
 }
-function reviewFiles(files, comments) {
-  const on = (path) => comments.filter((comment) => comment.path === path);
+function reviewFiles(files, comments, discussions) {
+  const entry = (file, isGone) => ({
+    file,
+    comments: comments.filter((comment) => comment.path === file.path),
+    discussions: discussions.filter((discussion) => discussion.path === file.path),
+    gone: isGone
+  });
   const changed = new Set(files.map((file) => file.path));
-  const left = [...new Set(comments.map((comment) => comment.path))].filter((path) => !changed.has(path));
-  return [
-    ...files.map((file) => ({ file, comments: on(file.path), gone: false })),
-    ...left.map((path) => ({ file: gone(path), comments: on(path), gone: true }))
-  ];
+  const spoken = [...comments, ...discussions].map((anchor) => anchor.path);
+  const left = [...new Set(spoken)].filter((path) => !changed.has(path));
+  return [...files.map((file) => entry(file, false)), ...left.map((path) => entry(gone(path), true))];
 }
 function lineKey(anchor) {
   return `line:${anchorKey(anchor)}`;
 }
-function commentRow(comment, columns, stale) {
-  const where = stale ? `Line ${comment.line}, which is no longer in the diff:
-` : "";
-  return {
-    kind: "comment",
-    key: `comment:${anchorKey(comment)}`,
-    anchor: comment,
-    lines: wrap(where + comment.body, columns),
-    stale
-  };
+function body(text, columns) {
+  return wrap(text, columns).map((line) => ({ text: line, head: false }));
+}
+function whereLine(anchor, stale) {
+  return stale ? [{ text: `Line ${anchor.line}, which is not in the diff:`, head: true }] : [];
+}
+function commentCard(comment, columns, stale) {
+  const lines = [...whereLine(comment, stale), ...body(comment.body, columns)];
+  return { kind: "card", key: `comment:${anchorKey(comment)}`, anchor: comment, from: "draft", lines, stale };
+}
+function remarkLines(remark, columns) {
+  const lines = body(remark.body.trim(), columns);
+  const cut = lines.length > MAX_REMARK_LINES ? [{ text: "…", head: false }] : [];
+  return [{ text: `@${remark.author} on GitHub`, head: true }, ...lines.slice(0, MAX_REMARK_LINES), ...cut];
+}
+function discussionCard(discussion, index, columns, stale) {
+  const lines = [
+    ...whereLine(discussion, stale),
+    ...discussion.remarks.flatMap((remark) => remarkLines(remark, columns))
+  ];
+  return { kind: "card", key: `discussion:${index}`, anchor: discussion, from: "github", lines, stale };
 }
 function emptyText(entry) {
   if (entry.gone)
@@ -1620,13 +1708,24 @@ function emptyText(entry) {
     return "A binary file: it has no text to show.";
   return entry.file.hunks.length === 0 ? "No line of this file changed." : null;
 }
+function cardsOf(entry, columns, stale) {
+  const cards = new Map;
+  const add = (anchor, card) => {
+    const key = anchorKey(anchor);
+    cards.set(key, [...cards.get(key) ?? [], card]);
+  };
+  entry.discussions.forEach((discussion, index) => add(discussion, discussionCard(discussion, index, columns, stale)));
+  for (const comment of entry.comments)
+    add(comment, commentCard(comment, columns, stale));
+  return cards;
+}
 function fileRows(entry, columns) {
-  const { file, comments } = entry;
-  const byLine = new Map(comments.map((comment) => [anchorKey(comment), comment]));
+  const { file } = entry;
   const lines = file.hunks.flatMap((hunk) => hunk.lines);
   const shown = new Set(lines.map((line) => anchorKey(anchorOf(file.path, line))));
-  const stale = comments.filter((comment) => !shown.has(anchorKey(comment)));
-  const rows = stale.map((comment) => commentRow(comment, columns, true));
+  const cards = cardsOf(entry, columns, false);
+  const stale = [...cardsOf(entry, columns, true)].filter(([key]) => !shown.has(key));
+  const rows = stale.flatMap(([, rowsOfLine]) => rowsOfLine);
   const empty = emptyText(entry);
   if (empty)
     return [...rows, { kind: "note", key: "note:empty", text: empty }];
@@ -1637,24 +1736,16 @@ function fileRows(entry, columns) {
     rows.push({ kind: "hunk", key: `hunk:${index}`, text: hunk.header });
     for (const line of hunk.lines.slice(0, MAX_LINES - drawn)) {
       const anchor = anchorOf(file.path, line);
-      const comment = byLine.get(anchorKey(anchor));
-      rows.push({
-        kind: "line",
-        key: lineKey(anchor),
-        anchor,
-        line,
-        text: untab(line.text),
-        commented: Boolean(comment)
-      });
-      if (comment)
-        rows.push(commentRow(comment, columns, false));
+      const under = cards.get(anchorKey(anchor)) ?? [];
+      const commented = under.some((card) => card.from === "draft");
+      rows.push({ kind: "line", key: lineKey(anchor), anchor, line, text: untab(line.text), commented }, ...under);
     }
     drawn += hunk.lines.length;
   }
   if (lines.length > MAX_LINES) {
     rows.push({ kind: "note", key: "note:cut", text: `This diff is long: only its first ${MAX_LINES} lines show.` });
   }
-  const covered = new Set(comments.flatMap((comment) => spanRows(rows, comment).map((row) => row.key)));
+  const covered = new Set(entry.comments.flatMap((comment) => spanRows(rows, comment).map((row) => row.key)));
   return rows.map((row) => row.kind === "line" && covered.has(row.key) ? { ...row, commented: true } : row);
 }
 function lineRows(rows) {
@@ -1775,7 +1866,7 @@ function commentColumns(width, type) {
   return Math.max(24, Math.floor(room / type.char));
 }
 function rowHeight(row, type) {
-  return row.kind === "comment" ? row.lines.length * type.row + 2 * (COMMENT_GAP + COMMENT_PAD.y) : type.row;
+  return row.kind === "card" ? row.lines.length * type.row + 2 * (COMMENT_GAP + COMMENT_PAD.y) : type.row;
 }
 function tint(colors, line) {
   if (line.sign === "+")
@@ -1793,8 +1884,13 @@ function lineRow(colors, type, row, active) {
     return face.bg(colors.selected);
   return optional(face, tint(colors, line), (el, color) => el.bg(color));
 }
-function commentRow2(colors, type, row, columns) {
-  return div6().w_full().h(rowHeight(row, type)).flex_none().pl(gutter(type)).py(COMMENT_GAP).cursor_pointer().child(v_flex5().w(Math.ceil(columns * type.char) + 2 * COMMENT_PAD.x).h_full().px(COMMENT_PAD.x).py(COMMENT_PAD.y).rounded(6).bg(colors.raised).border_l(2).border_color(row.stale ? colors.blocked : colors.accent).text_color(colors.foreground).children(row.lines.map((line) => div6().h(type.row).flex_none().whitespace_nowrap().child(line || " "))));
+function edge(colors, card) {
+  if (card.stale)
+    return colors.blocked;
+  return card.from === "github" ? colors.muted : colors.accent;
+}
+function cardRow(colors, type, row, columns) {
+  return div6().w_full().h(rowHeight(row, type)).flex_none().pl(gutter(type)).py(COMMENT_GAP).cursor_pointer().child(v_flex5().w(Math.ceil(columns * type.char) + 2 * COMMENT_PAD.x).h_full().px(COMMENT_PAD.x).py(COMMENT_PAD.y).rounded(6).bg(colors.raised).border_l(2).border_color(edge(colors, row)).text_color(colors.foreground).children(row.lines.map((line) => div6().h(type.row).flex_none().whitespace_nowrap().when(line.head, (el) => el.text_color(colors.muted)).child(line.text || " "))));
 }
 function plainRow(colors, type, text, raised) {
   return div6().w_full().h(type.row).flex_none().px(12).truncate().when(raised, (el) => el.bg(colors.raised)).text_color(colors.dim).child(text);
@@ -1804,8 +1900,8 @@ function diffPane(colors, props) {
   const draw = (row) => {
     if (row.kind === "line")
       return lineRow(colors, type, row, props.active.has(row.key));
-    if (row.kind === "comment")
-      return commentRow2(colors, type, row, props.columns);
+    if (row.kind === "card")
+      return cardRow(colors, type, row, props.columns);
     return plainRow(colors, type, row.text, row.kind === "hunk");
   };
   const list = v_virtual_list("review-diff", rows.length, rows.map((row) => rowHeight(row, type)), (index) => rows[index]?.key ?? String(index), (range) => rows.slice(range.start, range.end).map(draw)).track_scroll(props.scroll).on_item_click(props.onPick).size_full();
@@ -1824,8 +1920,11 @@ function counts(colors, added, removed) {
     ...removed > 0 ? [count(removed, "−", colors.ansi1)] : []
   ];
 }
-function badge2(colors, amount) {
-  return div6().px(5).h(16).flex().flex_none().items_center().rounded(8).bg(colors.accent).text_size(10.5).font_semibold().text_color(colors.background).child(String(amount));
+function badge2(colors, amount, own) {
+  const face = div6().px(5).h(16).flex().flex_none().items_center().rounded(8).text_size(10.5).font_semibold();
+  if (own)
+    return face.bg(colors.accent).text_color(colors.background).child(String(amount));
+  return face.border_1().border_color(colors.input).text_color(colors.muted).child(String(amount));
 }
 function inset(depth) {
   return 8 + depth * 14;
@@ -1837,7 +1936,7 @@ function fileRow(colors, row, open, onOpen) {
   const { entry } = row;
   const { file } = entry;
   const change = CHANGES[file.change];
-  return h_flex6().id(`review-file-${file.path}`).h(28).flex_none().pl(inset(row.depth)).pr(8).gap(8).items_center().rounded(7).cursor_pointer().when(open, (el) => el.bg(colors.selected)).hover((style) => style.bg(colors.hover)).on_click((_event, cx) => onOpen(cx)).child(div6().w(12).flex_none().text_size(11).text_color(colors[entry.gone ? "blocked" : change.tone]).child(entry.gone ? "!" : change.letter)).child(div6().flex_1().min_w(0).truncate().child(row.name)).when(entry.comments.length > 0, (el) => el.child(badge2(colors, entry.comments.length))).children(counts(colors, file.added, file.removed));
+  return h_flex6().id(`review-file-${file.path}`).h(28).flex_none().pl(inset(row.depth)).pr(8).gap(8).items_center().rounded(7).cursor_pointer().when(open, (el) => el.bg(colors.selected)).hover((style) => style.bg(colors.hover)).on_click((_event, cx) => onOpen(cx)).child(div6().w(12).flex_none().text_size(11).text_color(colors[entry.gone ? "blocked" : change.tone]).child(entry.gone ? "!" : change.letter)).child(div6().flex_1().min_w(0).truncate().child(row.name)).when(entry.discussions.length > 0, (el) => el.child(badge2(colors, entry.discussions.length, false))).when(entry.comments.length > 0, (el) => el.child(badge2(colors, entry.comments.length, true))).children(counts(colors, file.added, file.removed));
 }
 function fileList(colors, props) {
   const draw = (row) => row.kind === "folder" ? folderRow(colors, row, (cx) => props.onFold(row.path, cx)) : fileRow(colors, row, row.entry.file.path === props.open, (cx) => props.onOpen(row.entry.file.path, cx));
@@ -1868,10 +1967,15 @@ function reviewFoot(colors, props) {
 
 // src/parts/review.ts
 var FIRST_WIDTH = 900;
-function whereOf(span) {
+var ADDRESS = "Address this comment.";
+function linesWord(span) {
   if (span.start)
     return `Lines ${linesOf(span)}`;
   return span.side === "old" ? `Line ${span.line}, which the branch removes` : `Line ${span.line}`;
+}
+function whereOf(target) {
+  const lines = linesWord(target.anchor);
+  return target.about ? `${lines} · in answer to @${target.about.author} on GitHub` : lines;
 }
 
 class ReviewDialog {
@@ -1885,6 +1989,7 @@ class ReviewDialog {
   scroll = VirtualListScrollHandle.new();
   handle;
   diff = null;
+  discussions = [];
   asked = false;
   loading = false;
   error = null;
@@ -1915,7 +2020,7 @@ class ReviewDialog {
     if (thread && !this.asked)
       this.load(cx);
     const draft = readDraft(this.thread);
-    const files = reviewFiles(this.diff?.files ?? [], draft.comments);
+    const files = reviewFiles(this.diff?.files ?? [], draft.comments, this.discussions);
     const shown = files.find((entry) => entry.file.path === this.open) ?? firstFile(files);
     const range = thread?.checkout && this.diff ? `${thread.checkout.branch} → ${this.diff.base}` : null;
     return v_flex6().id("review").size_full().bg(colors.popover).text_color(colors.foreground).track_focus(this.handle).child(reviewHead(colors, {
@@ -1977,7 +2082,7 @@ class ReviewDialog {
     if (!target)
       return pane;
     return pane.child(composer(colors, {
-      where: whereOf(target.anchor),
+      where: whereOf(target),
       code: target.code.split(`
 `)[0] ?? "",
       type,
@@ -1991,7 +2096,9 @@ class ReviewDialog {
       label: "Delete",
       onClick: (cx) => this.removeComment(target.anchor, cx)
     };
+    const address = { id: "review-address", label: "Ask to address it", onClick: (cx) => this.address(cx) };
     return [
+      ...target.about && !target.written ? [address] : [],
       ...target.written ? [remove] : [],
       { id: "review-cancel", label: "Cancel", onClick: (cx) => this.closeComposer(cx) },
       {
@@ -2027,18 +2134,24 @@ class ReviewDialog {
       return;
     this.asked = true;
     this.loading = true;
+    this.error = null;
     cx.spawn(async (task) => {
-      try {
-        this.diff = await readBranchDiff(thread);
-        this.drawn = null;
-        this.error = null;
-      } catch (error) {
-        this.error = messageOf(error);
-      } finally {
-        this.loading = false;
-        task.notify();
-      }
+      await Promise.all([
+        this.read(readBranchDiff(thread), (diff) => this.diff = diff, task),
+        this.read(readDiscussions(thread), (discussions) => this.discussions = discussions, task)
+      ]);
+      this.loading = false;
+      task.notify();
     });
+  }
+  async read(reading, keep, task) {
+    try {
+      keep(await reading);
+    } catch (error) {
+      this.error = messageOf(error);
+    }
+    this.drawn = null;
+    task.notify();
   }
   show(path, cx) {
     this.keepTyped();
@@ -2055,17 +2168,19 @@ class ReviewDialog {
   }
   pick(rows, key, cx) {
     const row = rows.find((candidate) => candidate.key === key);
-    if (row?.kind !== "line" && row?.kind !== "comment")
+    if (row?.kind !== "line" && row?.kind !== "card")
       return;
     if (this.shift && row.kind === "line" && this.extend(rows, row.anchor, cx))
       return;
     this.keepTyped();
     const written = commentAt(readDraft(this.thread), row.anchor);
+    const line = rows.find((candidate) => candidate.key === lineKey(row.anchor));
     this.target = {
-      anchor: written ?? { ...row.anchor, start: null },
+      anchor: written ?? { path: row.anchor.path, side: row.anchor.side, line: row.anchor.line, start: null },
       pivot: row.anchor,
-      code: written?.code ?? (row.kind === "line" ? row.line.text : ""),
-      written: Boolean(written)
+      code: written?.code ?? (line?.kind === "line" ? line.line.text : ""),
+      written: Boolean(written),
+      about: this.aboutAt(row.anchor)
     };
     this.field.set_value(written?.body ?? "");
     this.field.focus();
@@ -2076,19 +2191,23 @@ class ReviewDialog {
     if (!target || target.pivot.path !== anchor.path)
       return false;
     const span = spanBetween(rows, target.pivot, anchor);
-    this.target = { ...target, anchor: span, code: quoteOf(spanRows(rows, span)) };
+    this.target = { ...target, anchor: span, code: quoteOf(spanRows(rows, span)), about: this.aboutAt(span) };
     if (target.written && anchorKey(span) !== anchorKey(target.anchor))
       this.moveComment(target.anchor, this.target);
     this.field.focus();
     cx.notify();
     return true;
   }
+  aboutAt(anchor) {
+    const [discussion] = discussionsAt(this.discussions, anchor);
+    return discussion ? aboutOf(discussion) : null;
+  }
   moveComment(from, to) {
     const draft = readDraft(this.thread);
     const written = commentAt(draft, from);
     if (!written)
       return;
-    saveDraft(this.thread, withComment(withoutComment(draft, from), to.anchor, to.code, written.body));
+    saveDraft(this.thread, withComment(withoutComment(draft, from), to.anchor, { ...written, code: to.code }));
   }
   fold(path, cx) {
     if (!this.folded.delete(path))
@@ -2099,7 +2218,8 @@ class ReviewDialog {
     const { target } = this;
     if (!target || this.field.value().trim() === "")
       return;
-    saveDraft(this.thread, withComment(readDraft(this.thread), target.anchor, target.code, this.field.value()));
+    const written = { code: target.code, body: this.field.value(), about: target.about };
+    saveDraft(this.thread, withComment(readDraft(this.thread), target.anchor, written));
   }
   keepNote() {
     const draft = readDraft(this.thread);
@@ -2110,6 +2230,10 @@ class ReviewDialog {
   keepComment(cx) {
     this.keepTyped();
     this.closeComposer(cx);
+  }
+  address(cx) {
+    this.field.set_value(ADDRESS);
+    this.keepComment(cx);
   }
   removeComment(anchor, cx) {
     saveDraft(this.thread, withoutComment(readDraft(this.thread), anchor));

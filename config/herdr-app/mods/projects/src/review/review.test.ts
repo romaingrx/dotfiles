@@ -17,10 +17,12 @@ import {
   type Comment,
   type Draft,
 } from "./draft";
+import { aboutOf, discussionsAt, parseDiscussions, type Discussion } from "./discussions";
 import {
   fileRows,
   lineKey,
   MAX_LINES,
+  MAX_REMARK_LINES,
   quoteOf,
   reviewFiles,
   spanBetween,
@@ -87,11 +89,16 @@ function only(text: string): DiffFile {
 }
 
 function comment(fields: Partial<Comment> & Pick<Comment, "path" | "line">): Comment {
-  return { side: "new", start: null, code: "", body: "Fix this.", ...fields };
+  return { side: "new", start: null, code: "", body: "Fix this.", about: null, ...fields };
+}
+
+function discussion(fields: Partial<Discussion> & Pick<Discussion, "path" | "line">): Discussion {
+  const remarks = [{ author: "ana", body: "Rename this.", url: "https://example.test/pull/7#r1" }];
+  return { side: "new", outdated: false, remarks, ...fields };
 }
 
 function texts(rows: readonly Row[]): string[] {
-  return rows.map((row) => (row.kind === "comment" ? `> ${row.lines.join(" / ")}` : row.text));
+  return rows.map((row) => (row.kind === "card" ? `> ${row.lines.map((line) => line.text).join(" / ")}` : row.text));
 }
 
 describe("a branch's diff", () => {
@@ -172,13 +179,14 @@ describe("a draft review", () => {
   const line: Span = { path: "src/app.ts", side: "new", line: 2, start: null };
 
   test("has one comment a line; no words remove it", () => {
-    const first = withComment(NO_DRAFT, line, "const b = 3;", "  Why 3?  ");
-    expect(first.comments).toEqual([{ ...line, code: "const b = 3;", body: "Why 3?" }]);
-    const again = withComment(first, line, "const b = 3;", "Name it.");
+    const written = { code: "const b = 3;", about: null };
+    const first = withComment(NO_DRAFT, line, { ...written, body: "  Why 3?  " });
+    expect(first.comments).toEqual([{ ...line, ...written, body: "Why 3?" }]);
+    const again = withComment(first, line, { ...written, body: "Name it." });
     expect(again.comments.map((entry) => entry.body)).toEqual(["Name it."]);
     expect(commentAt(again, line)?.body).toBe("Name it.");
     expect(commentAt(again, { ...line, side: "old" })).toBeUndefined();
-    expect(withComment(again, line, "", "  ").comments).toEqual([]);
+    expect(withComment(again, line, { ...written, body: "  " }).comments).toEqual([]);
     expect(withoutComment(again, line).comments).toEqual([]);
   });
 
@@ -197,7 +205,8 @@ describe("a draft review", () => {
   });
 
   test("is stored by thread; an empty one is dropped", () => {
-    const draft = withComment(NO_DRAFT, line, "code", "Fix this.");
+    const about = { author: "ana", url: "https://example.test/pull/7#r1", quote: "Rename this." };
+    const draft = withComment(NO_DRAFT, line, { code: "code", body: "Fix this.", about });
     const drafts = withDraft({}, "t2", draft);
     expect(parseDrafts(JSON.parse(JSON.stringify(drafts)))).toEqual({ t2: draft });
     expect(withDraft(drafts, "t1", withNote(NO_DRAFT, "Good."))).toEqual({
@@ -220,7 +229,8 @@ describe("a draft review", () => {
       },
       t2: "oops",
     };
-    expect(parseDrafts(stored)).toEqual({ t1: { note: "", comments: [{ ...line, code: "x", body: "ok" }] } });
+    const kept = { ...line, code: "x", body: "ok", about: null };
+    expect(parseDrafts(stored)).toEqual({ t1: { note: "", comments: [kept] } });
     expect(parseDrafts(null)).toEqual({});
   });
 
@@ -252,9 +262,86 @@ describe("a draft review", () => {
       ].join("\n\n"),
     );
     expect(reviewMessage(withNote(NO_DRAFT, "All good."), [])).toBe("Review of your branch.\n\nAll good.");
+  });
+
+  test("says which comment on GitHub a comment answers", () => {
+    const about = { author: "ana", url: "https://example.test/pull/7#r1", quote: "Rename this." };
+    const answer = comment({ path: "a.ts", line: 3, code: "const a = 1;", body: "Address this comment.", about });
+    expect(reviewMessage({ note: "", comments: [answer] }, ["a.ts"])).toBe(
+      [
+        "Review of your branch: 1 comment.",
+        [
+          "1. a.ts:3",
+          "   > const a = 1;",
+          "   In answer to @ana on GitHub (https://example.test/pull/7#r1):",
+          "   > Rename this.",
+          "   Address this comment.",
+        ].join("\n"),
+      ].join("\n\n"),
+    );
     expect(reviewMessage({ note: "", comments: [comment({ path: "a.ts", line: 1 })] }, ["a.ts"])).toStartWith(
       "Review of your branch: 1 comment.\n\n1. a.ts:1\n",
     );
+  });
+});
+
+describe("the discussions of a pull request on GitHub", () => {
+  const thread = (fields: Record<string, unknown>) => ({
+    isResolved: false,
+    isOutdated: false,
+    path: "src/app.ts",
+    line: 3,
+    originalLine: 2,
+    diffSide: "RIGHT",
+    comments: {
+      nodes: [{ author: { login: "ana" }, body: "Rename this.\nIt reads badly.", url: "https://example.test/r1" }],
+    },
+    ...fields,
+  });
+  const answer = (nodes: unknown[]) => ({ data: { repository: { pullRequest: { reviewThreads: { nodes } } } } });
+
+  test("are read from GitHub's answer: the open ones that have a line and a comment", () => {
+    const removed = { author: null, body: "Why?", url: "https://example.test/r2" };
+    const read = parseDiscussions(
+      answer([
+        thread({}),
+        thread({ isResolved: true }),
+        thread({ line: null, isOutdated: true, diffSide: "LEFT", comments: { nodes: [removed, { body: "" }] } }),
+        thread({ line: null, originalLine: null }),
+        thread({ comments: { nodes: [] } }),
+        "oops",
+      ]),
+    );
+    expect(read).toEqual([
+      {
+        path: "src/app.ts",
+        side: "new",
+        line: 3,
+        outdated: false,
+        remarks: [{ author: "ana", body: "Rename this.\nIt reads badly.", url: "https://example.test/r1" }],
+      },
+      { path: "src/app.ts", side: "old", line: 2, outdated: true, remarks: [{ ...removed, author: "ghost" }] },
+    ]);
+    expect(parseDiscussions({ errors: [] })).toEqual([]);
+    expect(parseDiscussions(null)).toEqual([]);
+  });
+
+  test("are found by their line, and name what an answer is about", () => {
+    const talks = [discussion({ path: "a.ts", line: 3 }), discussion({ path: "a.ts", line: 3, side: "old" })];
+    expect(discussionsAt(talks, { path: "a.ts", side: "new", line: 3 })).toEqual([talks[0] as Discussion]);
+    expect(discussionsAt(talks, { path: "a.ts", side: "new", line: 4 })).toEqual([]);
+    const long = discussion({
+      path: "a.ts",
+      line: 1,
+      remarks: [{ author: "ana", body: `${"x".repeat(200)}\nmore`, url: "u" }],
+    });
+    expect(aboutOf(talks[0] as Discussion)).toEqual({
+      author: "ana",
+      url: "https://example.test/pull/7#r1",
+      quote: "Rename this.",
+    });
+    expect(aboutOf(long)?.quote).toBe(`${"x".repeat(160)}…`);
+    expect(aboutOf(discussion({ path: "a.ts", line: 1, remarks: [] }))).toBeNull();
   });
 });
 
@@ -263,7 +350,7 @@ describe("the rows of a file", () => {
 
   test("are its hunks and lines, with a comment under its line", () => {
     const on = comment({ path: "src/app.ts", line: 2, body: "Why 3?" });
-    const [entry] = reviewFiles([file], [on]);
+    const [entry] = reviewFiles([file], [on], []);
     if (!entry) throw new Error("expected a file");
     const rows = fileRows(entry, 40);
     expect(texts(rows)).toEqual([
@@ -285,33 +372,67 @@ describe("the rows of a file", () => {
     expect(widest(rows)).toBe("@@ -1,4 +1,5 @@ export function app() {".length);
   });
 
-  test("start with the comments whose line is no longer in the diff", () => {
-    const [entry] = reviewFiles([file], [comment({ path: "src/app.ts", line: 99, body: "Old." })]);
+  test("start with the cards whose line is not in the diff", () => {
+    const [entry] = reviewFiles([file], [comment({ path: "src/app.ts", line: 99, body: "Old." })], []);
     if (!entry) throw new Error("expected a file");
     const [first] = fileRows(entry, 60);
-    expect(first).toMatchObject({
-      kind: "comment",
-      stale: true,
-      lines: ["Line 99, which is no longer in the diff:", "Old."],
-    });
+    expect(first).toMatchObject({ kind: "card", from: "draft", stale: true });
+    expect(texts([first as Row])).toEqual(["> Line 99, which is not in the diff: / Old."]);
   });
 
-  test("keep a file that only has comments left, after the files of the diff", () => {
-    const files = reviewFiles([file], [comment({ path: "gone.ts", line: 4 })]);
-    expect(files.map((entry) => [entry.file.path, entry.gone, entry.comments.length])).toEqual([
-      ["src/app.ts", false, 0],
-      ["gone.ts", true, 1],
+  test("show a discussion on GitHub under its line, before the person's answer", () => {
+    const remarks = [
+      { author: "ana", body: "Rename this.", url: "https://example.test/pull/7#r1" },
+      {
+        author: "bo",
+        body: Array.from({ length: MAX_REMARK_LINES + 3 }, (_, index) => `line ${index}`).join("\n"),
+        url: "u",
+      },
+    ];
+    const talk = discussion({ path: "src/app.ts", line: 3, remarks });
+    const answer = comment({ path: "src/app.ts", line: 3, body: "Address this comment." });
+    const [entry] = reviewFiles([file], [answer], [talk, discussion({ path: "src/app.ts", line: 3 })]);
+    if (!entry) throw new Error("expected a file");
+    const rows = fileRows(entry, 60);
+    const at = rows.findIndex((row) => row.key === lineKey(talk));
+    const under = rows.slice(at + 1, at + 4);
+    expect(under.map((row) => (row.kind === "card" ? row.from : row.kind))).toEqual(["github", "github", "draft"]);
+    const [first] = under;
+    if (first?.kind !== "card") throw new Error("expected a card");
+    expect(first.lines.filter((line) => line.head).map((line) => line.text)).toEqual([
+      "@ana on GitHub",
+      "@bo on GitHub",
     ]);
-    const last = files[1];
-    if (!last) throw new Error("expected a file");
-    expect(texts(fileRows(last, 60))).toEqual([
-      "> Line 4, which is no longer in the diff: / Fix this.",
+    expect(first.lines).toHaveLength(2 + 1 + MAX_REMARK_LINES + 1);
+    expect(first.lines.at(-1)?.text).toBe("…");
+    expect(new Set(rows.map((row) => row.key)).size).toBe(rows.length);
+  });
+
+  test("keep a file that only has comments or discussions left, after the files of the diff", () => {
+    const files = reviewFiles(
+      [file],
+      [comment({ path: "gone.ts", line: 4 })],
+      [discussion({ path: "old.ts", line: 8 })],
+    );
+    expect(
+      files.map((entry) => [entry.file.path, entry.gone, entry.comments.length, entry.discussions.length]),
+    ).toEqual([
+      ["src/app.ts", false, 0, 0],
+      ["gone.ts", true, 1, 0],
+      ["old.ts", true, 0, 1],
+    ]);
+    const [, gone, old] = files;
+    if (!gone || !old) throw new Error("expected three files");
+    expect(texts(fileRows(gone, 60))).toEqual([
+      "> Line 4, which is not in the diff: / Fix this.",
       "This file is no longer in the diff.",
     ]);
+    expect(texts(fileRows(old, 60))[0]).toBe("> Line 8, which is not in the diff: / @ana on GitHub / Rename this.");
   });
 
   test("say why a file has no line to show", () => {
-    const rowsOf = (text: string) => texts(fileRows({ file: only(text), comments: [], gone: false }, 60));
+    const rowsOf = (text: string) =>
+      texts(fileRows({ file: only(text), comments: [], discussions: [], gone: false }, 60));
     expect(rowsOf(BINARY)).toEqual(["A binary file: it has no text to show."]);
     expect(rowsOf(RENAMED)).toEqual(["No line of this file changed."]);
   });
@@ -321,7 +442,7 @@ describe("the rows of a file", () => {
     const long = only(
       `diff --git a/big.txt b/big.txt\n--- /dev/null\n+++ b/big.txt\n@@ -0,0 +1,${MAX_LINES + 10} @@\n${lines}\n`,
     );
-    const rows = fileRows({ file: long, comments: [], gone: false }, 60);
+    const rows = fileRows({ file: long, comments: [], discussions: [], gone: false }, 60);
     expect(rows.filter((row) => row.kind === "line")).toHaveLength(MAX_LINES);
     expect(rows.at(-1)).toMatchObject({ kind: "note" });
   });
@@ -345,7 +466,7 @@ describe("the rows of a file", () => {
 
 describe("a comment on several lines", () => {
   const file = only(MODIFIED);
-  const rows = fileRows({ file, comments: [], gone: false }, 60);
+  const rows = fileRows({ file, comments: [], discussions: [], gone: false }, 60);
   const at = (side: "old" | "new", line: number): Anchor => ({ path: "src/app.ts", side, line });
   const texts = (span: Span) => spanRows(rows, span).map((row) => row.text);
 
@@ -365,20 +486,20 @@ describe("a comment on several lines", () => {
 
   test("marks each of its lines, and shows under the last one", () => {
     const span = spanBetween(rows, at("new", 2), at("new", 4));
-    const [entry] = reviewFiles([file], [comment({ ...span, body: "Too long." })]);
+    const [entry] = reviewFiles([file], [comment({ ...span, body: "Too long." })], []);
     if (!entry) throw new Error("expected a file");
     const drawn = fileRows(entry, 60);
     expect(drawn.filter((row) => row.kind === "line" && row.commented).map((row) => row.key)).toEqual(
       [at("new", 2), at("new", 3), at("new", 4)].map(lineKey),
     );
-    const card = drawn.findIndex((row) => row.kind === "comment");
+    const card = drawn.findIndex((row) => row.kind === "card");
     expect(drawn[card - 1]?.key).toBe(lineKey(at("new", 4)));
   });
 
   test("is told to the thread with its lines and their text", () => {
     const span = spanBetween(rows, at("new", 2), at("new", 3));
     const code = quoteOf(spanRows(rows, span));
-    const draft = withComment(NO_DRAFT, span, code, "One name for both.");
+    const draft = withComment(NO_DRAFT, span, { code, body: "One name for both.", about: null });
     expect(parseDrafts(JSON.parse(JSON.stringify({ t1: draft }))).t1).toEqual(draft);
     expect(reviewMessage(draft, ["src/app.ts"])).toBe(
       [
@@ -392,14 +513,21 @@ describe("a comment on several lines", () => {
     const added = Array.from({ length: 14 }, (_, index) => `+line ${index}`).join("\n");
     const long = only(`diff --git a/big.txt b/big.txt\n--- /dev/null\n+++ b/big.txt\n@@ -0,0 +1,14 @@\n${added}\n`);
     const all: Span = { path: "big.txt", side: "new", line: 14, start: { side: "new", line: 1 } };
-    const quote = quoteOf(spanRows(fileRows({ file: long, comments: [], gone: false }, 60), all)).split("\n");
+    const quote = quoteOf(
+      spanRows(fileRows({ file: long, comments: [], discussions: [], gone: false }, 60), all),
+    ).split("\n");
     expect(quote).toHaveLength(13);
     expect(quote.at(-1)).toBe("…");
   });
 });
 
 describe("the tree of a review's files", () => {
-  const entry = (path: string): ReviewFile => ({ file: { ...only(MODIFIED), path }, comments: [], gone: false });
+  const entry = (path: string): ReviewFile => ({
+    file: { ...only(MODIFIED), path },
+    comments: [],
+    discussions: [],
+    gone: false,
+  });
   const files = [
     "README.md",
     "config/app/mods/a.ts",
