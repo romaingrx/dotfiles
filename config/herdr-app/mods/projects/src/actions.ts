@@ -1,4 +1,4 @@
-import { appHome, exec, hc, notify, openOverlay, run, type ExecResult } from "herdr";
+import { appHome, exec, hc, notify, openOverlay, run, window, type ExecResult } from "herdr";
 import { leadOf, type Project } from "./projects";
 import type { OwnTab, Thread } from "./threads";
 
@@ -106,4 +106,12 @@ export async function closeProject(ownSpace: string | null, outside: readonly st
 export async function ungroupProject(project: Project): Promise<void> {
   const cleared = LABELS.map((label) => `${label}=`);
   await Promise.all(project.members.map((member) => core(["label", member.address, ...cleared])));
+}
+
+/** Opens a web page in the person's browser. */
+export function openLink(url: string): void {
+  const opener = window()?.platform === "macos" ? "open" : "xdg-open";
+  exec(opener, [url])
+    .then((result) => succeed(result, opener))
+    .catch((error: unknown) => reportFailure("Could not open the link", error));
 }

@@ -1,6 +1,7 @@
 import { agents, focused, machines, panes, shared, spaces, terminals } from "herdr";
 import type { Status } from "herdr";
 import { parseOrder } from "./projects";
+import { parsePulls } from "./pulls";
 import { buildScene, type Scene } from "./scene";
 import { withReport } from "./status";
 import { parseTerminal, type Terminal } from "./terminal";
@@ -10,6 +11,8 @@ import { parseViews, type Views } from "./views";
 /** The shared keys of what the person chose: the projects' order, and each project's open thread. */
 export const ORDER = "projects.order";
 export const VIEWS = "projects.views";
+/** The pull requests of the threads, as the mod last read them. */
+export const PULLS = "projects.pulls";
 
 function isPresent<T>(value: T | null): value is T {
   return value !== null;
@@ -36,6 +39,7 @@ export function readSnapshot(): Snapshot {
       .map(parseTerminal)
       .filter(isPresent)
       .map((terminal) => shownStatus(terminal, statuses)),
+    pulls: parsePulls(shared(PULLS)),
     focused: focused()?.terminal ?? null,
   };
 }

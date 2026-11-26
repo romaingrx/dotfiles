@@ -1,6 +1,6 @@
 import { div, type Element } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { canRename, renameThread, setResolved } from "../actions";
+import { canRename, openLink, renameThread, setResolved } from "../actions";
 import type { Drawer } from "../layout-tree";
 import { showThreadList } from "../navigation";
 import { readPanel, toggleDrawer } from "../panel";
@@ -44,7 +44,18 @@ function controls(colors: Theme, thread: Thread): Element[] {
       showThreadList();
     },
   });
-  return canRename(thread) ? [rename, resolve] : [resolve];
+  const { pull } = thread;
+  const link = pull
+    ? [
+        iconButton(colors, {
+          id: "pull-request",
+          icon: chromeIcon("git-branch"),
+          tip: `Open pull request #${pull.number}`,
+          onClick: () => openLink(pull.url),
+        }),
+      ]
+    : [];
+  return [...link, ...(canRename(thread) ? [rename] : []), resolve];
 }
 
 /** The strip over an open thread: back to the list, its name and state, its drawers, rename and resolve. */

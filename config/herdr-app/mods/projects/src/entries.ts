@@ -1,5 +1,6 @@
 import type { Status } from "herdr";
 import { leadOf, LOCAL, threadsOf, type Project } from "./projects";
+import type { Pulls } from "./pulls";
 import { attention, groupOf, mostUrgent, type Group } from "./status";
 
 /** One row of the project list. */
@@ -24,12 +25,14 @@ function place(project: Project, offline: boolean): string {
   return offline ? `${where} · offline` : where;
 }
 
-function detail(project: Project): string {
+function detail(project: Project, pulls: Pulls): string {
   const lead = leadOf(project);
   const open = threadsOf(project).filter((thread) => !thread.resolved);
-  const amount = (group: Group) => open.filter((thread) => groupOf(thread.status, false) === group).length;
+  const groupOfThread = (thread: (typeof open)[number]) => groupOf(thread.status, false, pulls[thread.address]?.stage);
+  const amount = (group: Group) => open.filter((thread) => groupOfThread(thread) === group).length;
   const moves = [
     lead && groupOf(lead.status, lead.resolved) === "waiting" ? "orchestrator waits" : null,
+    amount("review") > 0 ? `${amount("review")} to review` : null,
     amount("waiting") > 0 ? `${amount("waiting")} waiting` : null,
     amount("finished") > 0 ? `${amount("finished")} finished` : null,
     amount("working") > 0 ? `${amount("working")} working` : null,
@@ -38,13 +41,20 @@ function detail(project: Project): string {
   return open.length > 0 ? count(open.length, "thread") : "No thread";
 }
 
-/** `offline` is true when a machine the project runs on cannot be reached: what the row shows is then old. */
-export function projectEntry(project: Project, selected: boolean, offline: boolean): Entry {
+/** What a row is drawn from, beside the project itself. */
+export interface EntryContext {
+  readonly selected: boolean;
+  /** True when a machine the project runs on cannot be reached: what the row shows is then old. */
+  readonly offline: boolean;
+  readonly pulls: Pulls;
+}
+
+export function projectEntry(project: Project, { selected, offline, pulls }: EntryContext): Entry {
   return {
     id: `project-${project.name}`,
     name: project.name,
     aside: place(project, offline),
-    detail: detail(project),
+    detail: detail(project, pulls),
     status: attention(mostUrgent(project.members.map((member) => member.status))),
     selected,
   };

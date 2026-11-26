@@ -66,6 +66,13 @@ one machine, so it runs while this computer is off.
   instructions in `thread.md`. A click opens the thread in the right panel;
   its header has its state, rename, resolve, and a drawer with the Files and
   Changes of that thread's folder.
+- **Pull requests:** every two minutes, while the window is on show, the mod
+  reads the pull request of each open thread with `gh pr view` in the thread's
+  folder, on its machine. A thread that rests with a pull request open for
+  review is listed under Ready for review, and one that is approved or set to
+  merge under Landing. The row shows the number and the state, and the
+  thread's header opens it in the browser. Sessions that share a folder get
+  none: the branch there belongs to none of them.
 - **Waits:** a session waits on the person when its agent is blocked, or when
   its thread reported `needs-you`. The mod puts the number of waits on the
   app's icon, and the project row says who waits and who works. It posts no

@@ -52,7 +52,8 @@ export class ProjectList implements Part {
   }
 
   private row(colors: Theme, scene: Scene, project: Project, offline: boolean): Element {
-    return entryRow(colors, projectEntry(project, project === scene.shown, offline), {
+    const entry = projectEntry(project, { selected: project === scene.shown, offline, pulls: scene.snapshot.pulls });
+    return entryRow(colors, entry, {
       onOpen: () => openProject(scene, project),
       onMenu: () => openProjectMenu(project.name),
       onPress: () => this.press(project.name),

@@ -3,16 +3,18 @@ import { View, div as div8 } from "gpui-kit";
 import { props } from "herdr";
 
 // src/background.ts
-import { checking, nextCommand, setBadge } from "herdr";
+import { checking, nextCommand, setBadge, window as window2 } from "herdr";
 
 // src/actions.ts
-import { appHome, exec, hc, notify, openOverlay, run } from "herdr";
+import { appHome, exec, hc, notify, openOverlay, run, window } from "herdr";
 
 // src/status.ts
 var GROUPS = [
+  { id: "review", label: "Ready for review" },
   { id: "waiting", label: "Waiting on you" },
   { id: "finished", label: "Finished" },
   { id: "working", label: "Working" },
+  { id: "landing", label: "Landing" },
   { id: "idle", label: "Idle" },
   { id: "resolved", label: "Resolved" }
 ];
@@ -45,16 +47,18 @@ function attention(status) {
 function isBusy(status) {
   return status === "working" || status === "blocked";
 }
-function groupOf(status, resolved) {
+function groupOf(status, resolved, pull = null) {
   if (resolved)
     return "resolved";
   if (status === "blocked")
     return "waiting";
-  if (status === "done")
-    return "finished";
   if (status === "working")
     return "working";
-  return "idle";
+  if (pull === "review")
+    return "review";
+  if (pull === "landing")
+    return "landing";
+  return status === "done" ? "finished" : "idle";
 }
 function groupLabel(group) {
   return GROUPS.find((candidate) => candidate.id === group)?.label ?? group;
@@ -190,6 +194,10 @@ async function closeProject(ownSpace, outside) {
 async function ungroupProject(project) {
   const cleared = LABELS.map((label) => `${label}=`);
   await Promise.all(project.members.map((member) => core(["label", member.address, ...cleared])));
+}
+function openLink(url) {
+  const opener = window()?.platform === "macos" ? "open" : "xdg-open";
+  exec(opener, [url]).then((result) => succeed(result, opener)).catch((error) => reportFailure("Could not open the link", error));
 }
 
 // src/navigation.ts
@@ -329,6 +337,43 @@ async function syncLayout() {
 // src/snapshot.ts
 import { agents, focused, machines, panes, shared as shared2, spaces, terminals } from "herdr";
 
+// src/pulls.ts
+var PULL_FIELDS = "number,url,state,isDraft,reviewDecision,autoMergeRequest";
+var STAGE_WORDS = {
+  draft: "draft",
+  review: "in review",
+  changes: "changes requested",
+  landing: "landing",
+  merged: "merged",
+  closed: "closed"
+};
+function stageOf(raw) {
+  if (raw.state === "MERGED")
+    return "merged";
+  if (raw.state === "CLOSED")
+    return "closed";
+  if (raw.isDraft === true)
+    return "draft";
+  if (raw.reviewDecision === "APPROVED" || isRecord(raw.autoMergeRequest))
+    return "landing";
+  return raw.reviewDecision === "CHANGES_REQUESTED" ? "changes" : "review";
+}
+function parsePull(value) {
+  if (!isRecord(value) || typeof value.number !== "number" || typeof value.url !== "string")
+    return null;
+  const stored = typeof value.stage === "string" && value.stage in STAGE_WORDS ? value.stage : null;
+  return { number: value.number, url: value.url, stage: stored ?? stageOf(value) };
+}
+function parsePulls(value) {
+  if (!isRecord(value))
+    return {};
+  const pulls = Object.entries(value).map(([address, pull]) => [address, parsePull(pull)]);
+  return Object.fromEntries(pulls.filter((entry) => entry[1] !== null));
+}
+function pullLabel(pull) {
+  return `#${pull.number} ${STAGE_WORDS[pull.stage]}`;
+}
+
 // src/scene.ts
 function buildScene(snapshot, order) {
   const projects = orderProjects(projectsOf(snapshot.terminals), order);
@@ -391,6 +436,7 @@ function rememberedThread(views, project, threads) {
 // src/snapshot.ts
 var ORDER = "projects.order";
 var VIEWS = "projects.views";
+var PULLS = "projects.pulls";
 function isPresent(value) {
   return value !== null;
 }
@@ -406,6 +452,7 @@ function readSnapshot() {
     panes: panes(),
     agents: listed,
     terminals: terminals().map(parseTerminal).filter(isPresent).map((terminal) => shownStatus(terminal, statuses)),
+    pulls: parsePulls(shared2(PULLS)),
     focused: focused()?.terminal ?? null
   };
 }
@@ -461,8 +508,32 @@ function sessionTitle(terminal, seat) {
     return tab.name;
   return terminal.heading ?? terminal.name ?? (stripGlyph(terminal.title) || terminal.address);
 }
+function place(pane) {
+  return pane.terminal && pane.cwd ? `${machineOf(pane.terminal) ?? ""}:${pane.cwd}` : null;
+}
+function sharedFolders(panes) {
+  const seen = new Set;
+  const shared = new Set;
+  for (const pane of panes) {
+    const key = place(pane);
+    if (key === null)
+      continue;
+    (seen.has(key) ? shared : seen).add(key);
+  }
+  return shared;
+}
+function checkout(seat, shared) {
+  const { cwd, branch } = seat?.pane ?? {};
+  if (!seat || !cwd || !branch || shared.has(place(seat.pane) ?? ""))
+    return null;
+  return { folder: cwd, branch };
+}
+function threadGroup(thread) {
+  return groupOf(thread.status, thread.resolved, thread.pull?.stage);
+}
 function projectThreads(snapshot, project) {
   const seated = seats(snapshot);
+  const shared = sharedFolders(snapshot.panes);
   const spread = project.machines.length > 1;
   const lead = leadOf(project);
   const beside = lead !== undefined && seated.has(lead.address);
@@ -481,6 +552,8 @@ function projectThreads(snapshot, project) {
       note: note(member),
       aside: spread ? member.machine ?? LOCAL : null,
       since: seat?.home?.tab.changed_at ?? member.since,
+      checkout: checkout(seat, shared),
+      pull: snapshot.pulls[member.address] ?? null,
       opens: seat && !beside ? "pane" : "panel"
     };
   });
@@ -507,10 +580,10 @@ function projectFootprint(snapshot, project) {
 function longestFirst(a, b) {
   return (a.since ?? Number.POSITIVE_INFINITY) - (b.since ?? Number.POSITIVE_INFINITY);
 }
-var QUEUES = ["waiting", "finished"];
+var QUEUES = ["review", "waiting", "finished"];
 function groupThreads(threads) {
   return GROUPS.map((group) => {
-    const members = threads.filter((thread) => groupOf(thread.status, thread.resolved) === group.id);
+    const members = threads.filter((thread) => threadGroup(thread) === group.id);
     return { ...group, threads: QUEUES.includes(group.id) ? members.sort(longestFirst) : members };
   }).filter((group) => group.threads.length > 0);
 }
@@ -628,9 +701,33 @@ function selectProject(index) {
     openProject(scene, project);
 }
 
+// src/pull-reader.ts
+import { exec as exec2, setShared as setShared3 } from "herdr";
+var PULL_TIMEOUT = 20000;
+async function readPull(thread) {
+  if (!thread.checkout)
+    return null;
+  try {
+    const options = { cwd: thread.checkout.folder, on: machineOf(thread.key), timeout: PULL_TIMEOUT };
+    const result = await exec2("gh", ["pr", "view", "--json", PULL_FIELDS], options);
+    return result.code === 0 ? parsePull(JSON.parse(result.stdout)) : null;
+  } catch {
+    return null;
+  }
+}
+async function refreshPulls() {
+  const { snapshot, projects } = readScene();
+  const open = projects.flatMap((project) => projectThreads(snapshot, project)).filter((thread) => !thread.resolved);
+  const read = await Promise.all(open.map(async (thread) => [thread.key, await readPull(thread)]));
+  const pulls = Object.fromEntries(read.filter(([, pull]) => pull !== null));
+  if (JSON.stringify(pulls) !== JSON.stringify(snapshot.pulls))
+    setShared3(PULLS, pulls);
+}
+
 // src/background.ts
 var MOD2 = "projects";
 var LOOK_EVERY = 5000;
+var PULLS_EVERY = 120000;
 var SELECT = Object.fromEntries(Array.from({ length: 9 }, (_, index) => [`select-${index + 1}`, () => selectProject(index)]));
 var COMMANDS = {
   ...SELECT,
@@ -664,11 +761,20 @@ function watchWaits(cx) {
   look();
   cx.timer.every(LOOK_EVERY, look);
 }
+function watchPulls(cx) {
+  const look = () => {
+    if (window2()?.visible)
+      refreshPulls();
+  };
+  look();
+  cx.timer.every(PULLS_EVERY, look);
+}
 function startBackground(cx) {
   if (checking())
     return;
   cx.spawn(runCommands);
   watchWaits(cx);
+  watchPulls(cx);
 }
 
 // src/parts/new-project.ts
@@ -936,17 +1042,19 @@ import { v_flex as v_flex3 } from "gpui-base";
 function count(amount, noun) {
   return `${amount} ${noun}${amount === 1 ? "" : "s"}`;
 }
-function place(project, offline) {
+function place2(project, offline) {
   const [machine] = project.machines;
   const where = project.machines.length > 1 ? count(project.machines.length, "machine") : machine ?? LOCAL;
   return offline ? `${where} · offline` : where;
 }
-function detail(project) {
+function detail(project, pulls) {
   const lead = leadOf(project);
   const open = threadsOf(project).filter((thread) => !thread.resolved);
-  const amount = (group) => open.filter((thread) => groupOf(thread.status, false) === group).length;
+  const groupOfThread = (thread) => groupOf(thread.status, false, pulls[thread.address]?.stage);
+  const amount = (group) => open.filter((thread) => groupOfThread(thread) === group).length;
   const moves = [
     lead && groupOf(lead.status, lead.resolved) === "waiting" ? "orchestrator waits" : null,
+    amount("review") > 0 ? `${amount("review")} to review` : null,
     amount("waiting") > 0 ? `${amount("waiting")} waiting` : null,
     amount("finished") > 0 ? `${amount("finished")} finished` : null,
     amount("working") > 0 ? `${amount("working")} working` : null
@@ -955,12 +1063,12 @@ function detail(project) {
     return moves.join(" · ");
   return open.length > 0 ? count(open.length, "thread") : "No thread";
 }
-function projectEntry(project, selected, offline) {
+function projectEntry(project, { selected, offline, pulls }) {
   return {
     id: `project-${project.name}`,
     name: project.name,
-    aside: place(project, offline),
-    detail: detail(project),
+    aside: place2(project, offline),
+    detail: detail(project, pulls),
     status: attention(mostUrgent(project.members.map((member) => member.status))),
     selected
   };
@@ -1001,10 +1109,11 @@ function threadMark(colors, thread) {
 }
 function threadMeta(thread, now) {
   const since = thread.since === null ? null : age(now - thread.since);
-  return [thread.aside, since].filter((part) => part !== null).join(" · ");
+  const pull = thread.pull ? pullLabel(thread.pull) : null;
+  return [thread.aside, pull, since].filter((part) => part !== null).join(" · ");
 }
 function threadState(thread, now) {
-  return [groupLabel(groupOf(thread.status, thread.resolved)), threadMeta(thread, now)].filter(Boolean).join(" · ");
+  return [groupLabel(threadGroup(thread)), threadMeta(thread, now)].filter(Boolean).join(" · ");
 }
 function resolveButton(colors, thread, onResolve) {
   return iconButton(colors, {
@@ -1038,7 +1147,8 @@ class ProjectList {
     })).children(rows).when(rows.length === 0, (el) => el.child(div5().px(8).text_size(12).text_color(colors.muted).child("No project yet. Start one with the + above.")));
   }
   row(colors, scene, project, offline) {
-    return entryRow(colors, projectEntry(project, project === scene.shown, offline), {
+    const entry = projectEntry(project, { selected: project === scene.shown, offline, pulls: scene.snapshot.pulls });
+    return entryRow(colors, entry, {
       onOpen: () => openProject(scene, project),
       onMenu: () => openProjectMenu(project.name),
       onPress: () => this.press(project.name),
@@ -1217,7 +1327,16 @@ function controls(colors, thread) {
       showThreadList();
     }
   });
-  return canRename(thread) ? [rename, resolve] : [resolve];
+  const { pull } = thread;
+  const link = pull ? [
+    iconButton(colors, {
+      id: "pull-request",
+      icon: chromeIcon("git-branch"),
+      tip: `Open pull request #${pull.number}`,
+      onClick: () => openLink(pull.url)
+    })
+  ] : [];
+  return [...link, ...canRename(thread) ? [rename] : [], resolve];
 }
 var threadHead = {
   render() {
@@ -1306,13 +1425,13 @@ class ThreadPanel {
 
 // src/parts/top-bar.ts
 import { h_flex as h_flex7 } from "gpui-base";
-import { window } from "herdr";
+import { window as window3 } from "herdr";
 var WINDOW_BUTTONS = 76;
 var EDGE = 12;
 var topBar = {
   render() {
     const colors = readTheme();
-    const frame = window();
+    const frame = window3();
     const hasWindowButtons = frame?.platform === "macos" && !frame.fullscreen;
     return h_flex7().size_full().pl(hasWindowButtons ? WINDOW_BUTTONS : EDGE).pr(EDGE).items_center().justify_end().bg(colors.chrome).child(iconButton(colors, {
       id: "toggle-panel",

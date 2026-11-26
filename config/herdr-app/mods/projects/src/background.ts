@@ -1,13 +1,16 @@
 import type { AsyncContext } from "gpui-kit";
-import { checking, nextCommand, setBadge } from "herdr";
+import { checking, nextCommand, setBadge, window } from "herdr";
 import { openNewProjectDialog, reportFailure } from "./actions";
 import { openNextWait, selectProject, showThreadList, stepProject } from "./navigation";
+import { refreshPulls } from "./pull-reader";
 import { readScene } from "./snapshot";
 import { waits } from "./waits";
 
 const MOD = "projects";
 /** How often the waits are looked at. */
 const LOOK_EVERY = 5_000;
+/** How often the threads' pull requests are read again. */
+const PULLS_EVERY = 120_000;
 
 /** `select-1` to `select-9` show the project at that place in the list, as a number key does for a tab. */
 const SELECT = Object.fromEntries(
@@ -54,6 +57,15 @@ function watchWaits(cx: AsyncContext): void {
   cx.timer.every(LOOK_EVERY, look);
 }
 
+/** Keeps the threads' pull requests up to date while the window is on show. */
+function watchPulls(cx: AsyncContext): void {
+  const look = (): void => {
+    if (window()?.visible) void refreshPulls();
+  };
+  look();
+  cx.timer.every(PULLS_EVERY, look);
+}
+
 /**
  * What one copy of the mod does beside drawing. The project list's copy does
  * it: the sidebar is always there. `herdr-app check` loads the mod without an
@@ -63,4 +75,5 @@ export function startBackground(cx: AsyncContext): void {
   if (checking()) return;
   cx.spawn(runCommands);
   watchWaits(cx);
+  watchPulls(cx);
 }
