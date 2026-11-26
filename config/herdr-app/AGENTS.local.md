@@ -85,7 +85,8 @@ one machine, so it runs while this computer is off.
   the first one to it. The base is the one
   of its pull request, else the repository's main branch. The diff is of the
   thread's folder, so it has what is not committed yet. A thread with a stack
-  gets one button for each open pull request: the review is of one layer,
+  gets a strip with one tab for each open pull request (its number, its
+  title and where it stands): the review is of one layer,
   with its own draft, and a layer that is not checked out is read from its
   branch. A click on a line
   takes a comment. The comments are a draft that stays until it is sent; Send

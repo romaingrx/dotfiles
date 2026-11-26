@@ -46,6 +46,7 @@ import {
   fileList,
   readType,
   reviewFoot,
+  pullStrip,
   reviewHead,
   type Type,
 } from "../review/view";
@@ -164,13 +165,17 @@ export class ReviewDialog implements Part {
         reviewHead(colors, {
           title: thread?.title ?? "This thread has ended.",
           range,
-          choices: openPulls(thread?.pulls ?? []),
-          shown: this.subject,
-          onPick: (pull, cx) => this.turn(pull, cx),
           files: this.diff?.files ?? [],
           loading: this.loading,
           onRefresh: (cx) => this.load(cx),
           onClose: () => closeOverlay(this.overlay),
+        }),
+      )
+      .children(
+        pullStrip(colors, {
+          choices: openPulls(thread?.pulls ?? []),
+          shown: this.subject,
+          onPick: (pull, cx) => this.turn(pull, cx),
         }),
       )
       .child(

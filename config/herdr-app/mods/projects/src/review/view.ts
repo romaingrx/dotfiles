@@ -12,7 +12,7 @@ import {
 } from "gpui-base";
 import { settings } from "herdr";
 import { text } from "../parse";
-import { pullLabel, type Pull, type Stack } from "../pulls";
+import { stageLabel, type Pull, type Stack } from "../pulls";
 import { chromeIcon, iconButton, optional, textButton, type Handler, type TextButton, type Theme } from "../ui";
 import type { Change, DiffFile, DiffLine } from "./diff";
 import type { Card, Row } from "./rows";
@@ -344,28 +344,51 @@ export interface ReviewHead {
   readonly title: string;
   /** The branch and what it is compared with: "fix-it → origin/main". */
   readonly range: string | null;
-  /** The pull requests the person can review, the lowest of a stack first. */
-  readonly choices: Stack;
-  /** The one whose diff shows. */
-  readonly shown: Pull | null;
-  readonly onPick: (pull: Pull, cx: Context) => void;
   readonly files: readonly DiffFile[];
   readonly loading: boolean;
   readonly onRefresh: Handler;
   readonly onClose: Handler;
 }
 
-/** One button for each pull request of a stack, the shown one filled. A thread with one has nothing to pick. */
-function picker(colors: Theme, props: ReviewHead): Element[] {
+export interface PullStrip {
+  /** The pull requests the person can review, the lowest of a stack first. */
+  readonly choices: Stack;
+  /** The one whose diff shows. */
+  readonly shown: Pull | null;
+  readonly onPick: (pull: Pull, cx: Context) => void;
+}
+
+/** One pull request of a stack, as a tab: its number, its title, and where it stands. */
+function pullTab(colors: Theme, pull: Pull, shown: boolean, onPick: Handler): Element {
+  return h_flex()
+    .id(`review-pull-${pull.number}`)
+    .h(24)
+    .max_w(340)
+    .min_w(0)
+    .px(8)
+    .gap(6)
+    .items_center()
+    .rounded(6)
+    .text_size(11.5)
+    .cursor_pointer()
+    .when(shown, (el) => el.bg(colors.selected))
+    .text_color(shown ? colors.foreground : colors.muted)
+    .hover((style) => style.bg(colors.hover))
+    .on_click((_event, cx) => onPick(cx))
+    .child(div().flex_none().font_medium().child(`#${pull.number}`))
+    .child(div().min_w(0).truncate().child(pull.title))
+    .child(div().flex_none().text_color(colors.dim).child(stageLabel(pull.stage)));
+}
+
+/** The strip under the review's head, for a thread with a stack: one tab for each open pull request. None for one. */
+export function pullStrip(colors: Theme, props: PullStrip): Element[] {
   if (props.choices.length < 2) return [];
-  return props.choices.map((pull) =>
-    textButton(colors, {
-      id: `review-pull-${pull.number}`,
-      label: pullLabel(pull),
-      primary: pull.url === props.shown?.url,
-      onClick: (cx) => props.onPick(pull, cx),
-    }),
+  const tabs = props.choices.map((pull) =>
+    pullTab(colors, pull, pull.url === props.shown?.url, (cx) => props.onPick(pull, cx)),
   );
+  return [
+    h_flex().h(34).flex_none().px(10).gap(4).items_center().border_b(1).border_color(colors.border).children(tabs),
+  ];
 }
 
 export function reviewHead(colors: Theme, props: ReviewHead): Element {
@@ -382,8 +405,7 @@ export function reviewHead(colors: Theme, props: ReviewHead): Element {
     .text_size(13)
     .child(svg(chromeIcon("git-compare")).size(14).flex_none().text_color(colors.muted))
     .child(div().flex_none().font_semibold().child("Review"))
-    .child(div().min_w(0).truncate().text_color(colors.muted).child(props.title))
-    .children(picker(colors, props));
+    .child(div().min_w(0).truncate().text_color(colors.muted).child(props.title));
   return optional(bar, props.range, (el, range) =>
     el.child(
       div()

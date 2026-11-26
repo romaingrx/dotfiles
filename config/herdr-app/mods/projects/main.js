@@ -352,7 +352,7 @@ var STAGE_WORDS = {
   merged: "merged",
   closed: "closed"
 };
-var PULL_FIELDS = "number,url,state,isDraft,reviewDecision,autoMergeRequest,baseRefName,headRefName";
+var PULL_FIELDS = "number,url,state,isDraft,reviewDecision,autoMergeRequest,baseRefName,headRefName,title";
 var MAX_DECLARED = 8;
 var PULL_URL = /^https:\/\/([^/\s]+)\/([^/\s]+)\/([^/\s]+)\/pull\/(\d+)$/;
 function isStage(word) {
@@ -376,13 +376,15 @@ function stageOf(raw) {
 function parsePull(value) {
   if (!isRecord(value) || typeof value.number !== "number" || typeof value.url !== "string")
     return null;
+  const title = text(value.title);
   const base = text(value.base) ?? text(value.baseRefName);
   const head = text(value.head) ?? text(value.headRefName);
-  if (!base || !head)
+  if (!title || !base || !head)
     return null;
   return {
     number: value.number,
     url: value.url,
+    title,
     stage: isStage(value.stage) ? value.stage : stageOf(value),
     base,
     head
@@ -442,8 +444,8 @@ function leadPull(stack) {
 function openPulls(stack) {
   return stack.filter((pull) => pull.stage !== "merged" && pull.stage !== "closed");
 }
-function pullLabel(pull) {
-  return `#${pull.number} ${STAGE_WORDS[pull.stage]}`;
+function stageLabel(stage) {
+  return STAGE_WORDS[stage];
 }
 function stackLabel(stack) {
   const runs = [];
@@ -2101,20 +2103,21 @@ function fileList(colors, props) {
   const draw = (row) => row.kind === "folder" ? folderRow(colors, row, (cx) => props.onFold(row.path, cx)) : fileRow(colors, row, row.entry.file.path === props.open, (cx) => props.onOpen(row.entry.file.path, cx));
   return v_flex5().id("review-files").w(300).h_full().flex_none().p(6).border_r(1).border_color(colors.border).text_size(12.5).overflow_y_scrollbar().children(props.rows.map(draw)).when(props.rows.length === 0, (el) => el.child(div6().p(8).text_size(12).text_color(colors.muted).child(props.empty)));
 }
-function picker(colors, props) {
+function pullTab(colors, pull, shown, onPick) {
+  return h_flex6().id(`review-pull-${pull.number}`).h(24).max_w(340).min_w(0).px(8).gap(6).items_center().rounded(6).text_size(11.5).cursor_pointer().when(shown, (el) => el.bg(colors.selected)).text_color(shown ? colors.foreground : colors.muted).hover((style) => style.bg(colors.hover)).on_click((_event, cx) => onPick(cx)).child(div6().flex_none().font_medium().child(`#${pull.number}`)).child(div6().min_w(0).truncate().child(pull.title)).child(div6().flex_none().text_color(colors.dim).child(stageLabel(pull.stage)));
+}
+function pullStrip(colors, props) {
   if (props.choices.length < 2)
     return [];
-  return props.choices.map((pull) => textButton(colors, {
-    id: `review-pull-${pull.number}`,
-    label: pullLabel(pull),
-    primary: pull.url === props.shown?.url,
-    onClick: (cx) => props.onPick(pull, cx)
-  }));
+  const tabs = props.choices.map((pull) => pullTab(colors, pull, pull.url === props.shown?.url, (cx) => props.onPick(pull, cx)));
+  return [
+    h_flex6().h(34).flex_none().px(10).gap(4).items_center().border_b(1).border_color(colors.border).children(tabs)
+  ];
 }
 function reviewHead(colors, props) {
   const added = props.files.reduce((sum, file) => sum + file.added, 0);
   const removed = props.files.reduce((sum, file) => sum + file.removed, 0);
-  const bar = h_flex6().h(44).flex_none().px(14).gap(8).items_center().border_b(1).border_color(colors.border).text_size(13).child(svg3(chromeIcon("git-compare")).size(14).flex_none().text_color(colors.muted)).child(div6().flex_none().font_semibold().child("Review")).child(div6().min_w(0).truncate().text_color(colors.muted).child(props.title)).children(picker(colors, props));
+  const bar = h_flex6().h(44).flex_none().px(14).gap(8).items_center().border_b(1).border_color(colors.border).text_size(13).child(svg3(chromeIcon("git-compare")).size(14).flex_none().text_color(colors.muted)).child(div6().flex_none().font_semibold().child("Review")).child(div6().min_w(0).truncate().text_color(colors.muted).child(props.title));
   return optional(bar, props.range, (el, range) => el.child(div6().flex_none().px(6).py(1).rounded(4).border_1().border_color(colors.border).text_size(11).text_color(colors.muted).child(range))).child(div6().flex_1()).children(counts(colors, added, removed)).child(props.loading ? svg3(chromeIcon("spinner")).size(13).flex_none().text_color(colors.working).spin(900) : iconButton(colors, {
     id: "review-refresh",
     icon: "mods/projects/refresh.svg",
@@ -2199,13 +2202,14 @@ class ReviewDialog {
     return v_flex6().id("review").size_full().bg(colors.popover).text_color(colors.foreground).track_focus(this.handle).child(reviewHead(colors, {
       title: thread?.title ?? "This thread has ended.",
       range,
-      choices: openPulls(thread?.pulls ?? []),
-      shown: this.subject,
-      onPick: (pull, cx) => this.turn(pull, cx),
       files: this.diff?.files ?? [],
       loading: this.loading,
       onRefresh: (cx) => this.load(cx),
       onClose: () => closeOverlay4(this.overlay)
+    })).children(pullStrip(colors, {
+      choices: openPulls(thread?.pulls ?? []),
+      shown: this.subject,
+      onPick: (pull, cx) => this.turn(pull, cx)
     })).child(h_flex7().flex_1().min_h(0).items_start().child(fileList(colors, {
       rows: fileTree(files, this.folded),
       onFold: (path, cx) => this.fold(path, cx),

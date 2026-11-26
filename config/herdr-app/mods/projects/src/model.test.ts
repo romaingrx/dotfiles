@@ -29,6 +29,7 @@ import {
   refsOf,
   stackLabel,
   stackOf,
+  stageLabel,
   type Pull,
   type PullStage,
 } from "./pulls";
@@ -82,7 +83,7 @@ function terminal(overrides: Partial<Terminal> & Pick<Terminal, "address">): Ter
 
 /** A pull request of a made-up repository: its branch is `b<number>`, on `main` unless told. */
 function pull(number: number, stage: PullStage, base = "main"): Pull {
-  return { number, url: `https://example.test/o/r/pull/${number}`, stage, base, head: `b${number}` };
+  return { number, url: `https://example.test/o/r/pull/${number}`, title: `Pull ${number}`, stage, base, head: `b${number}` };
 }
 
 function tab(overrides: Partial<TabInfo> & Pick<TabInfo, "id">): TabInfo {
@@ -614,7 +615,7 @@ describe("the sessions that wait on the person", () => {
 
 describe("a thread's pull request", () => {
   const view = (fields: Record<string, unknown>) =>
-    parsePull({ number: 7, url: "https://example.test/pull/7", baseRefName: "main", headRefName: "fix-it", ...fields });
+    parsePull({ number: 7, url: "https://example.test/pull/7", title: "Fix it", baseRefName: "main", headRefName: "fix-it", ...fields });
 
   test("is read from gh, and says where it stands for the person", () => {
     expect(view({ state: "OPEN", isDraft: true })?.stage).toBe("draft");
@@ -628,14 +629,17 @@ describe("a thread's pull request", () => {
     expect(view({ state: "MERGED", reviewDecision: "APPROVED" })?.stage).toBe("merged");
     expect(view({ state: "CLOSED" })?.stage).toBe("closed");
     expect(view({ state: "OPEN" })).toMatchObject({ base: "main", head: "fix-it" });
-    expect(parsePull({ number: 7, url: "https://example.test/pull/7", state: "OPEN", baseRefName: "main" })).toBeNull();
+    expect(view({ state: "OPEN" })?.title).toBe("Fix it");
+    expect(view({ state: "OPEN", headRefName: "" })).toBeNull();
+    expect(view({ state: "OPEN", title: "" })).toBeNull();
+    expect(stageLabel("changes")).toBe("changes requested");
     expect(parsePull({ url: "https://example.test/pull/7" })).toBeNull();
     expect(pullLabel(pull(7, "review"))).toBe("#7 in review");
   });
 
   test("is stored and read back; one without its branches, or anything else, is dropped", () => {
-    const stored = { number: 7, url: "https://example.test/pull/7", stage: "landing", base: "main", head: "fix-it" };
-    const old = { number: 8, url: "https://example.test/pull/8", stage: "review", base: "main" };
+    const stored = { number: 7, url: "https://example.test/pull/7", title: "Fix it", stage: "landing", base: "main", head: "fix-it" };
+    const old = { number: 8, url: "https://example.test/pull/8", title: "Old", stage: "review", base: "main" };
     expect(parsePulls({ t1: stored, t2: "oops", t3: { number: "7" }, t4: old })).toEqual({ t1: stored });
     expect(parsePulls({ t1: { ...stored, stage: "soon", state: "MERGED" } }).t1?.stage).toBe("merged");
     expect(parsePulls(null)).toEqual({});

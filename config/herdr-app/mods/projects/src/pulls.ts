@@ -15,6 +15,7 @@ export type PullStage = keyof typeof STAGE_WORDS;
 export interface Pull {
   readonly number: number;
   readonly url: string;
+  readonly title: string;
   readonly stage: PullStage;
   /** The branch it merges into. */
   readonly base: string;
@@ -41,7 +42,7 @@ export interface PullPlace {
 }
 
 /** The fields `gh pr view --json` is asked for. */
-export const PULL_FIELDS = "number,url,state,isDraft,reviewDecision,autoMergeRequest,baseRefName,headRefName";
+export const PULL_FIELDS = "number,url,state,isDraft,reviewDecision,autoMergeRequest,baseRefName,headRefName,title";
 
 /** How many pull requests a thread declares at most. `report.sh` holds the same number. */
 export const MAX_DECLARED = 8;
@@ -70,16 +71,19 @@ function stageOf(raw: Readonly<Record<string, unknown>>): PullStage {
 
 /**
  * Reads what `gh pr view --json` prints, or a stored pull request; null for
- * anything else. One stored without its branches is not one: it is read again.
+ * anything else. One stored without its title or its branches is not one: it
+ * is read again.
  */
 export function parsePull(value: unknown): Pull | null {
   if (!isRecord(value) || typeof value.number !== "number" || typeof value.url !== "string") return null;
+  const title = text(value.title);
   const base = text(value.base) ?? text(value.baseRefName);
   const head = text(value.head) ?? text(value.headRefName);
-  if (!base || !head) return null;
+  if (!title || !base || !head) return null;
   return {
     number: value.number,
     url: value.url,
+    title,
     stage: isStage(value.stage) ? value.stage : stageOf(value),
     base,
     head,
@@ -175,9 +179,14 @@ export function openPulls(stack: Stack): Stack {
   return stack.filter((pull) => pull.stage !== "merged" && pull.stage !== "closed");
 }
 
+/** Where a pull request stands, in words: "in review". */
+export function stageLabel(stage: PullStage): string {
+  return STAGE_WORDS[stage];
+}
+
 /** A pull request in a few words: "#123 in review". */
 export function pullLabel(pull: Pull): string {
-  return `#${pull.number} ${STAGE_WORDS[pull.stage]}`;
+  return `#${pull.number} ${stageLabel(pull.stage)}`;
 }
 
 /** A stack in a few words: neighbours at one stage share its words, as in "#1 merged, #2 #3 in review". */

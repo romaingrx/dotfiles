@@ -91,6 +91,7 @@ Binary files a/logo.png and b/logo.png differ
 const LAYER: Pull = {
   number: 136,
   url: "https://example.test/o/r/pull/136",
+  title: "The lower layer",
   stage: "review",
   base: "main",
   head: "low",
