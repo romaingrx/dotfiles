@@ -12,6 +12,7 @@ import {
 } from "gpui-base";
 import { settings } from "herdr";
 import { text } from "../parse";
+import { pullLabel, type Pull, type Stack } from "../pulls";
 import { chromeIcon, iconButton, optional, textButton, type Handler, type TextButton, type Theme } from "../ui";
 import type { Change, DiffFile, DiffLine } from "./diff";
 import type { Card, Row } from "./rows";
@@ -343,10 +344,28 @@ export interface ReviewHead {
   readonly title: string;
   /** The branch and what it is compared with: "fix-it → origin/main". */
   readonly range: string | null;
+  /** The pull requests the person can review, the lowest of a stack first. */
+  readonly choices: Stack;
+  /** The one whose diff shows. */
+  readonly shown: Pull | null;
+  readonly onPick: (pull: Pull, cx: Context) => void;
   readonly files: readonly DiffFile[];
   readonly loading: boolean;
   readonly onRefresh: Handler;
   readonly onClose: Handler;
+}
+
+/** One button for each pull request of a stack, the shown one filled. A thread with one has nothing to pick. */
+function picker(colors: Theme, props: ReviewHead): Element[] {
+  if (props.choices.length < 2) return [];
+  return props.choices.map((pull) =>
+    textButton(colors, {
+      id: `review-pull-${pull.number}`,
+      label: pullLabel(pull),
+      primary: pull.url === props.shown?.url,
+      onClick: (cx) => props.onPick(pull, cx),
+    }),
+  );
 }
 
 export function reviewHead(colors: Theme, props: ReviewHead): Element {
@@ -363,7 +382,8 @@ export function reviewHead(colors: Theme, props: ReviewHead): Element {
     .text_size(13)
     .child(svg(chromeIcon("git-compare")).size(14).flex_none().text_color(colors.muted))
     .child(div().flex_none().font_semibold().child("Review"))
-    .child(div().min_w(0).truncate().text_color(colors.muted).child(props.title));
+    .child(div().min_w(0).truncate().text_color(colors.muted).child(props.title))
+    .children(picker(colors, props));
   return optional(bar, props.range, (el, range) =>
     el.child(
       div()

@@ -4,6 +4,7 @@ import { canRename, openLink, openReview, renameThread, setResolved } from "../a
 import type { Drawer } from "../layout-tree";
 import { showThreadList } from "../navigation";
 import { readPanel, toggleDrawer } from "../panel";
+import { leadPull } from "../pulls";
 import { threadState } from "../rows";
 import { readScene } from "../snapshot";
 import { threadAt, type Thread } from "../threads";
@@ -44,7 +45,7 @@ function controls(colors: Theme, thread: Thread): Element[] {
       showThreadList();
     },
   });
-  const { pull } = thread;
+  const pull = leadPull(thread.pulls);
   const link = pull
     ? [
         iconButton(colors, {

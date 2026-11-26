@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { baseRefs, parseBranchDiff, parseDiff, type DiffFile } from "./diff";
+import type { Pull } from "../pulls";
+import { baseRefs, parseBranchDiff, parseDiff, reviewRange, type DiffFile } from "./diff";
 import {
   anchorOf,
   commentAt,
+  draftKey,
   duePosts,
   inOrder,
   isEmpty,
@@ -84,6 +86,15 @@ const BINARY = `diff --git a/logo.png b/logo.png
 index 5555555..6666666 100644
 Binary files a/logo.png and b/logo.png differ
 `;
+
+/** The lower layer of a stack, on the main branch. */
+const LAYER: Pull = {
+  number: 136,
+  url: "https://example.test/o/r/pull/136",
+  stage: "review",
+  base: "main",
+  head: "low",
+};
 
 function only(text: string): DiffFile {
   const [file, ...rest] = parseDiff(text);
@@ -185,6 +196,12 @@ describe("a branch's diff", () => {
     expect(baseRefs("main")).toEqual(["origin/main", "main", "origin/HEAD", "origin/master", "master"]);
     expect(baseRefs(null)[0]).toBe("origin/HEAD");
   });
+
+  test("is read from the folder for the layer that is checked out, and from its branch for a lower one", () => {
+    expect(reviewRange(null, "top")).toEqual({ bases: baseRefs(null), tip: null });
+    expect(reviewRange({ ...LAYER, head: "top", base: "low" }, "top")).toEqual({ bases: baseRefs("low"), tip: null });
+    expect(reviewRange(LAYER, "top")).toEqual({ bases: baseRefs("main"), tip: "low" });
+  });
 });
 
 describe("a draft review", () => {
@@ -264,7 +281,7 @@ describe("a draft review", () => {
         comment({ path: "a.ts", line: 3, side: "old", code: "", body: "Keep this." }),
       ],
     };
-    expect(reviewMessage(draft, ["a.ts", "b.ts"])).toBe(
+    expect(reviewMessage(draft, ["a.ts", "b.ts"], null)).toBe(
       [
         "Review of your branch: 2 comments.",
         "Close. Two things.",
@@ -272,7 +289,19 @@ describe("a draft review", () => {
         "2. b.ts:9\n   > return b;\n   Return early.\n   See a.ts.",
       ].join("\n\n"),
     );
-    expect(reviewMessage(withNote(NO_DRAFT, "All good."), [])).toBe("Review of your branch.\n\nAll good.");
+    expect(reviewMessage(withNote(NO_DRAFT, "All good."), [], null)).toBe("Review of your branch.\n\nAll good.");
+  });
+
+  test("is kept and sent for one pull request of a stack", () => {
+    expect(draftKey("t7", null)).toBe("t7");
+    expect(draftKey("t7", LAYER)).toBe("t7#136");
+    expect(draftKey("t7", { ...LAYER, number: 137 })).not.toBe(draftKey("t7", LAYER));
+    expect(reviewMessage(withNote(NO_DRAFT, "All good."), [], LAYER)).toBe(
+      "Review of pull request #136 (https://example.test/o/r/pull/136).\n\nAll good.",
+    );
+    expect(reviewMessage({ note: "", comments: [comment({ path: "a.ts", line: 1 })] }, ["a.ts"], LAYER)).toStartWith(
+      "Review of pull request #136 (https://example.test/o/r/pull/136): 1 comment.\n\n1. a.ts:1\n",
+    );
   });
 
   test("says which comment on GitHub a comment answers", () => {
@@ -283,7 +312,7 @@ describe("a draft review", () => {
       body: "Address this comment.",
       about: ABOUT,
     });
-    expect(reviewMessage({ note: "", comments: [answer] }, ["a.ts"])).toBe(
+    expect(reviewMessage({ note: "", comments: [answer] }, ["a.ts"], null)).toBe(
       [
         "Review of your branch: 1 comment.",
         [
@@ -295,7 +324,7 @@ describe("a draft review", () => {
         ].join("\n"),
       ].join("\n\n"),
     );
-    expect(reviewMessage({ note: "", comments: [comment({ path: "a.ts", line: 1 })] }, ["a.ts"])).toStartWith(
+    expect(reviewMessage({ note: "", comments: [comment({ path: "a.ts", line: 1 })] }, ["a.ts"], null)).toStartWith(
       "Review of your branch: 1 comment.\n\n1. a.ts:1\n",
     );
   });
@@ -310,7 +339,7 @@ describe("a draft review", () => {
     expect(posted.comments.map((entry) => entry.about?.post ?? null)).toEqual(["done", "none", null]);
     expect(withPosted(draft, { path: "b.ts", side: "new", line: 1 })).toEqual(draft);
     expect(parseDrafts(JSON.parse(JSON.stringify({ t1: posted }))).t1).toEqual(posted);
-    expect(reviewMessage({ note: "", comments: [posted.comments[0] ?? due] }, ["a.ts"])).toContain(
+    expect(reviewMessage({ note: "", comments: [posted.comments[0] ?? due] }, ["a.ts"], null)).toContain(
       "In answer to @ana on GitHub (https://example.test/pull/7#r1), where this answer is posted too:",
     );
   });

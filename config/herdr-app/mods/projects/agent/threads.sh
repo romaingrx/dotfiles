@@ -19,6 +19,7 @@ hc ls --json --label "project=$project" --label role=thread |
         "now: " + (.status.state // "not an agent"),
         "reported: " + (.labels.state // "nothing"),
         (if .labels.report then "report: " + .labels.report else "no report" end),
+        (if .labels.pulls then "pulls: " + .labels.pulls else "no pull request" end),
         (if .labels.handled == "true" then "handled" else "not handled" end),
         (if .labels.resolved == "true" then "resolved" else "open" end)
       ] | join(" | ")'

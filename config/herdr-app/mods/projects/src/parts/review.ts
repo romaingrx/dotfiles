@@ -2,11 +2,13 @@ import type { AsyncContext, Context, Element, FocusHandle } from "gpui-kit";
 import { h_flex, InputState, TextareaState, v_flex, VirtualListScrollHandle } from "gpui-base";
 import { closeOverlay } from "herdr";
 import { messageOf, sendToThread } from "../actions";
-import type { BranchDiff } from "../review/diff";
+import { leadPull, openPulls, type Pull } from "../pulls";
+import { reviewRange, type BranchDiff } from "../review/diff";
 import { aboutOf, discussionsAt, type Discussion } from "../review/discussions";
 import {
   anchorKey,
   commentAt,
+  draftKey,
   duePosts,
   isEmpty,
   linesOf,
@@ -101,11 +103,15 @@ export class ReviewDialog implements Part {
   private readonly note: InputState;
   private readonly scroll = VirtualListScrollHandle.new();
   private readonly handle: FocusHandle;
+  /** The pull request under review. Null reviews the folder of a thread that has none. */
+  private subject: Pull | null = null;
   private diff: BranchDiff | null = null;
-  /** The open discussions of the thread's pull request on GitHub. */
+  /** The open discussions of that pull request on GitHub. */
   private discussions: readonly Discussion[] = [];
   /** Set once the branch was asked for. The app can show the review before it knows the thread. */
   private asked = false;
+  /** Counts the reads. An answer to a read that is not the last one is dropped. */
+  private round = 0;
   private loading = false;
   /** Why the branch could not be read, or the review not sent. */
   private error: string | null = null;
@@ -128,7 +134,7 @@ export class ReviewDialog implements Part {
     cx: AsyncContext,
   ) {
     this.handle = cx.focus_handle();
-    this.note = InputState.new({ placeholder: "A word on the whole branch (optional)", value: readDraft(thread).note });
+    this.note = InputState.new({ placeholder: "A word on the whole branch (optional)" });
     this.note.on("change", (_event, change) => change.notify());
     this.note.on("blur", () => this.keepNote());
     // Enter alone is a new line of the comment.
@@ -142,10 +148,12 @@ export class ReviewDialog implements Part {
     const type = readType();
     const thread = this.find();
     if (thread && !this.asked) this.load(cx);
-    const draft = readDraft(this.thread);
+    const draft = readDraft(this.key());
     const files = reviewFiles(this.diff?.files ?? [], draft.comments, this.discussions);
     const shown = files.find((entry) => entry.file.path === this.open) ?? firstFile(files);
-    const range = thread?.checkout && this.diff ? `${thread.checkout.branch} → ${this.diff.base}` : null;
+    const branch = thread?.checkout?.branch;
+    const tip = branch && (reviewRange(this.subject, branch).tip ?? branch);
+    const range = tip && this.diff ? `${tip} → ${this.diff.base}` : null;
     return v_flex()
       .id("review")
       .size_full()
@@ -156,6 +164,9 @@ export class ReviewDialog implements Part {
         reviewHead(colors, {
           title: thread?.title ?? "This thread has ended.",
           range,
+          choices: openPulls(thread?.pulls ?? []),
+          shown: this.subject,
+          onPick: (pull, cx) => this.turn(pull, cx),
           files: this.diff?.files ?? [],
           loading: this.loading,
           onRefresh: (cx) => this.load(cx),
@@ -198,6 +209,32 @@ export class ReviewDialog implements Part {
   private find(): Thread | undefined {
     const { snapshot, projects } = readScene();
     return threadAt(snapshot, projects, this.thread);
+  }
+
+  /** Where the draft of what is under review is kept. */
+  private key(): string {
+    return draftKey(this.thread, this.subject);
+  }
+
+  /** Puts a pull request under review: it has its own draft, and its own diff to read. */
+  private turnTo(pull: Pull | null): void {
+    this.keepTyped();
+    this.keepNote();
+    this.subject = pull;
+    this.diff = null;
+    this.discussions = [];
+    this.open = null;
+    this.target = null;
+    this.drawn = null;
+    this.field.set_value("");
+    this.note.set_value(readDraft(this.key()).note);
+  }
+
+  /** A pick of another pull request of the stack. */
+  private turn(pull: Pull, cx: Context): void {
+    if (pull.url === this.subject?.url) return;
+    this.turnTo(pull);
+    this.load(cx);
   }
 
   private emptyText(): string {
@@ -300,29 +337,44 @@ export class ReviewDialog implements Part {
 
   private load(cx: Context): void {
     const thread = this.find();
-    if (!thread || this.loading) return;
+    if (!thread) return;
+    // The pull requests of a thread can become known after its review opened: the next read takes the lead one.
+    if (this.subject === null) this.turnTo(leadPull(openPulls(thread.pulls)));
+    const { subject } = this;
+    const range = reviewRange(subject, thread.checkout?.branch ?? "");
+    const round = ++this.round;
+    const latest = (): boolean => this.round === round;
     this.asked = true;
     this.loading = true;
     this.error = null;
     cx.spawn(async (task) => {
+      const show = (): void => {
+        this.drawn = null;
+        task.notify();
+      };
       await Promise.all([
-        this.read(readBranchDiff(thread), (diff) => (this.diff = diff), task),
-        this.read(readDiscussions(thread), (discussions) => (this.discussions = discussions), task),
+        this.read(readBranchDiff(thread, range), (diff) => (this.diff = diff), latest).then(show),
+        this.read(readDiscussions(thread, subject), (discussions) => (this.discussions = discussions), latest).then(
+          show,
+        ),
       ]);
-      this.loading = false;
+      if (latest()) this.loading = false;
       task.notify();
     });
   }
 
-  /** Reads one part of the review, and shows it as soon as it is there: the other part may take longer, or fail. */
-  private async read<T>(reading: Promise<T>, keep: (value: T) => void, task: AsyncContext): Promise<void> {
+  /**
+   * Reads one part of the review. Each part shows as soon as it is there: the
+   * other one may take longer, or fail. An answer that comes after the person
+   * turned to another pull request is dropped.
+   */
+  private async read<T>(reading: Promise<T>, keep: (value: T) => void, latest: () => boolean): Promise<void> {
     try {
-      keep(await reading);
+      const value = await reading;
+      if (latest()) keep(value);
     } catch (error) {
-      this.error = messageOf(error);
+      if (latest()) this.error = messageOf(error);
     }
-    this.drawn = null;
-    task.notify();
   }
 
   private show(path: string, cx: Context): void {
@@ -345,7 +397,7 @@ export class ReviewDialog implements Part {
     if (row?.kind !== "line" && row?.kind !== "card") return;
     if (this.shift && row.kind === "line" && this.extend(rows, row.anchor, cx)) return;
     this.keepTyped();
-    const written = commentAt(readDraft(this.thread), row.anchor);
+    const written = commentAt(readDraft(this.key()), row.anchor);
     const line = rows.find((candidate) => candidate.key === lineKey(row.anchor));
     this.target = {
       anchor: written ?? { path: row.anchor.path, side: row.anchor.side, line: row.anchor.line, start: null },
@@ -384,10 +436,10 @@ export class ReviewDialog implements Part {
   }
 
   private moveComment(from: Span, to: Target): void {
-    const draft = readDraft(this.thread);
+    const draft = readDraft(this.key());
     const written = commentAt(draft, from);
     if (!written) return;
-    saveDraft(this.thread, withComment(withoutComment(draft, from), to.anchor, { ...written, code: to.code }));
+    saveDraft(this.key(), withComment(withoutComment(draft, from), to.anchor, { ...written, code: to.code }));
   }
 
   private fold(path: string, cx: Context): void {
@@ -399,17 +451,19 @@ export class ReviewDialog implements Part {
   private keepTyped(chosen?: Posting): void {
     const { target } = this;
     if (!target || this.field.value().trim() === "") return;
-    const draft = readDraft(this.thread);
+    const draft = readDraft(this.key());
     // Without a choice (another line is picked, the dialog closes), an answer goes where it went before: never to GitHub by itself.
     const post = chosen ?? commentAt(draft, target.anchor)?.about?.post ?? "none";
     const about = target.about && { ...target.about, post };
-    saveDraft(this.thread, withComment(draft, target.anchor, { code: target.code, body: this.field.value(), about }));
+    saveDraft(this.key(), withComment(draft, target.anchor, { code: target.code, body: this.field.value(), about }));
   }
 
   private keepNote(): void {
-    const draft = readDraft(this.thread);
-    if (this.sent || draft.note === this.note.value()) return;
-    saveDraft(this.thread, withNote(draft, this.note.value()));
+    // Before the first read, the field does not hold the draft's note yet.
+    if (this.sent || !this.asked) return;
+    const draft = readDraft(this.key());
+    if (draft.note === this.note.value()) return;
+    saveDraft(this.key(), withNote(draft, this.note.value()));
   }
 
   private keepComment(cx: Context, post?: Posting): void {
@@ -427,16 +481,17 @@ export class ReviewDialog implements Part {
    * Posts the answers that are replies on GitHub, one by one. Each is marked
    * once it is there, so a second try posts none twice.
    */
-  private async postReplies(thread: Thread): Promise<void> {
-    for (const comment of duePosts(readDraft(this.thread))) {
-      if (!comment.about) continue;
-      await postReply(thread, comment.about, comment.body);
-      saveDraft(this.thread, withPosted(readDraft(this.thread), comment));
+  private async postReplies(thread: Thread, key: string, pull: Pull | null): Promise<void> {
+    for (const comment of duePosts(readDraft(key))) {
+      // An answer is in a discussion, and a discussion is of the pull request under review.
+      if (!comment.about || !pull) continue;
+      await postReply(thread, pull, comment.about, comment.body);
+      saveDraft(key, withPosted(readDraft(key), comment));
     }
   }
 
   private removeComment(anchor: Anchor, cx: Context): void {
-    saveDraft(this.thread, withoutComment(readDraft(this.thread), anchor));
+    saveDraft(this.key(), withoutComment(readDraft(this.key()), anchor));
     this.closeComposer(cx);
   }
 
@@ -453,7 +508,10 @@ export class ReviewDialog implements Part {
     this.keepTyped();
     this.keepNote();
     const thread = this.find();
-    if (!thread || isEmpty(readDraft(this.thread))) return;
+    // What is sent is the draft of the pull request on show now, also if the person picks another one meanwhile.
+    const key = this.key();
+    const { subject } = this;
+    if (!thread || isEmpty(readDraft(key))) return;
     const paths = (this.diff?.files ?? []).map((file) => file.path);
     this.sending = true;
     this.error = null;
@@ -465,19 +523,19 @@ export class ReviewDialog implements Part {
       };
       // GitHub first: when a reply fails, the thread has no message yet, and another Send goes on from there.
       try {
-        await this.postReplies(thread);
+        await this.postReplies(thread, key, subject);
       } catch (error) {
         return fail(
           `${messageOf(error)}. Nothing went to the thread: send again, or keep that answer for the thread only.`,
         );
       }
       try {
-        await sendToThread(this.thread, reviewMessage(readDraft(this.thread), paths));
+        await sendToThread(this.thread, reviewMessage(readDraft(key), paths, subject));
       } catch (error) {
         return fail(messageOf(error));
       }
       this.sent = true;
-      saveDraft(this.thread, NO_DRAFT);
+      saveDraft(key, NO_DRAFT);
       closeOverlay(this.overlay);
     });
     cx.notify();
