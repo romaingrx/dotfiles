@@ -167,7 +167,7 @@ function openRenameProjectDialog(project) {
   openOverlay({ mod: MOD, kind: "dialog", width: 420, props: { part: "rename-project", project } });
 }
 function openProjectMenu(project) {
-  openOverlay({ mod: MOD, kind: "popup", width: 220, height: 72, props: { part: "project-menu", project } });
+  openOverlay({ mod: MOD, kind: "popup", width: 220, height: 103, props: { part: "project-menu", project } });
 }
 async function startProject(name, machine, cwd) {
   const args = ["orchestrator", name, "--cwd", cwd, ...machine ? ["--on", machine] : []];
@@ -182,11 +182,14 @@ async function renameProject(project, name) {
   if (lead)
     await core(["send", lead.address, `The person renamed this project to "${name}". Its memory folder has that name now.`]);
 }
-async function deleteProject(ownSpace, outside) {
+async function closeProject(ownSpace, outside) {
   if (ownSpace)
     run("space.close", { id: ownSpace, confirmed: true });
+  await Promise.all(outside.map((address) => core(["kill", address])));
+}
+async function ungroupProject(project) {
   const cleared = LABELS.map((label) => `${label}=`);
-  await Promise.all(outside.map((address) => core(["label", address, ...cleared])));
+  await Promise.all(project.members.map((member) => core(["label", member.address, ...cleared])));
 }
 
 // src/navigation.ts
@@ -618,11 +621,19 @@ function openNextWait() {
     focusTerminal(home);
   openThread(thread);
 }
+function selectProject(index) {
+  const scene = readScene();
+  const project = scene.projects[index];
+  if (project)
+    openProject(scene, project);
+}
 
 // src/background.ts
 var MOD2 = "projects";
 var LOOK_EVERY = 5000;
+var SELECT = Object.fromEntries(Array.from({ length: 9 }, (_, index) => [`select-${index + 1}`, () => selectProject(index)]));
 var COMMANDS = {
+  ...SELECT,
   new: openNewProjectDialog,
   next: () => stepProject(1),
   prev: () => stepProject(-1),
@@ -1067,48 +1078,68 @@ import { closeOverlay as closeOverlay2 } from "herdr";
 function sessions(amount) {
   return `${amount} session${amount === 1 ? "" : "s"}`;
 }
-function consequence(project, footprint) {
-  const inside = project.members.length - footprint.outside.length;
-  return footprint.space ? `End ${sessions(inside)}` : `Ungroup ${sessions(project.members.length)}`;
+function endings(project) {
+  const { snapshot } = readScene();
+  const { space, outside } = projectFootprint(snapshot, project);
+  const all = sessions(project.members.length);
+  return [
+    {
+      id: "close-project",
+      icon: chromeIcon("x"),
+      label: "Close project",
+      consequence: `End ${all}`,
+      run: () => closeProject(space, outside)
+    },
+    {
+      id: "ungroup-project",
+      icon: chromeIcon("layers"),
+      label: "Ungroup",
+      consequence: `Keep ${all} running`,
+      run: () => ungroupProject(project)
+    }
+  ];
 }
 
 class ProjectMenu {
   overlay;
   name;
-  confirming = false;
+  asked = null;
   constructor(overlay, name) {
     this.overlay = overlay;
     this.name = name;
   }
   render() {
     const colors = readTheme();
-    const scene = readScene();
-    const project = scene.projects.find((candidate) => candidate.name === this.name);
-    const footprint = project ? projectFootprint(scene.snapshot, project) : null;
-    const remove = this.confirming && project && footprint ? {
-      id: "confirm-delete",
-      icon: chromeIcon("check"),
-      label: consequence(project, footprint),
-      onClick: () => this.remove(footprint)
-    } : { id: "delete-project", icon: chromeIcon("x"), label: "Delete", onClick: (cx) => this.ask(cx) };
+    const project = readScene().projects.find((candidate) => candidate.name === this.name);
     return v_flex4().id("project-menu").w_full().p(5).bg(colors.popover).text_size(12.8).child(menuItem(colors, {
       id: "rename-project",
       icon: chromeIcon("square-pen"),
       label: "Rename",
       onClick: () => this.rename()
-    })).child(menuItem(colors, remove));
+    })).children(project ? endings(project).map((ending) => this.item(colors, ending)) : []);
+  }
+  item(colors, ending) {
+    if (this.asked !== ending.id) {
+      return menuItem(colors, { ...ending, onClick: (cx) => this.ask(ending.id, cx) });
+    }
+    return menuItem(colors, {
+      id: `confirm-${ending.id}`,
+      icon: chromeIcon("check"),
+      label: ending.consequence,
+      onClick: () => this.end(ending)
+    });
   }
   rename() {
     closeOverlay2(this.overlay);
     openRenameProjectDialog(this.name);
   }
-  ask(cx) {
-    this.confirming = true;
+  ask(id, cx) {
+    this.asked = id;
     cx.notify();
   }
-  remove(footprint) {
+  end(ending) {
     closeOverlay2(this.overlay);
-    deleteProject(footprint.space, footprint.outside).catch((error) => reportFailure(`Could not delete ${this.name}`, error));
+    ending.run().catch((error) => reportFailure(`Could not end ${this.name}`, error));
   }
 }
 

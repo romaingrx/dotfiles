@@ -1,7 +1,7 @@
 import type { AsyncContext } from "gpui-kit";
 import { checking, nextCommand, notify, setBadge } from "herdr";
 import { openNewProjectDialog, reportFailure } from "./actions";
-import { openNextWait, showThreadList, stepProject } from "./navigation";
+import { openNextWait, selectProject, showThreadList, stepProject } from "./navigation";
 import { readScene } from "./snapshot";
 import { waits, waitsToAnnounce, type Wait } from "./waits";
 
@@ -9,8 +9,14 @@ const MOD = "projects";
 /** How often the waits are looked at. */
 const LOOK_EVERY = 5_000;
 
+/** `select-1` to `select-9` show the project at that place in the list, as a number key does for a tab. */
+const SELECT = Object.fromEntries(
+  Array.from({ length: 9 }, (_, index) => [`select-${index + 1}`, () => selectProject(index)] as const),
+);
+
 /** The mod's commands, for keys.json (`projects.<name>`) and the command palette. */
 const COMMANDS: Readonly<Record<string, () => void>> = {
+  ...SELECT,
   new: openNewProjectDialog,
   next: () => stepProject(1),
   prev: () => stepProject(-1),

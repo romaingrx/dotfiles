@@ -1,26 +1,52 @@
 import type { Context, Element } from "gpui-kit";
 import { v_flex } from "gpui-base";
 import { closeOverlay } from "herdr";
-import { deleteProject, openRenameProjectDialog, reportFailure } from "../actions";
+import { closeProject, openRenameProjectDialog, reportFailure, ungroupProject } from "../actions";
 import type { Project } from "../projects";
 import { readScene } from "../snapshot";
-import { projectFootprint, type Footprint } from "../threads";
-import { chromeIcon, menuItem, readTheme } from "../ui";
+import { projectFootprint } from "../threads";
+import { chromeIcon, menuItem, readTheme, type Theme } from "../ui";
 import type { Part } from "./part";
+
+/** A way to end a project. The menu asks once more, in words that say what the step does. */
+interface Ending {
+  readonly id: string;
+  readonly icon: string;
+  readonly label: string;
+  readonly consequence: string;
+  readonly run: () => Promise<void>;
+}
 
 function sessions(amount: number): string {
   return `${amount} session${amount === 1 ? "" : "s"}`;
 }
 
-/** What a delete does to the project's sessions, as the words of the step that confirms it. */
-function consequence(project: Project, footprint: Footprint): string {
-  const inside = project.members.length - footprint.outside.length;
-  return footprint.space ? `End ${sessions(inside)}` : `Ungroup ${sessions(project.members.length)}`;
+function endings(project: Project): Ending[] {
+  const { snapshot } = readScene();
+  const { space, outside } = projectFootprint(snapshot, project);
+  const all = sessions(project.members.length);
+  return [
+    {
+      id: "close-project",
+      icon: chromeIcon("x"),
+      label: "Close project",
+      consequence: `End ${all}`,
+      run: () => closeProject(space, outside),
+    },
+    {
+      id: "ungroup-project",
+      icon: chromeIcon("layers"),
+      label: "Ungroup",
+      consequence: `Keep ${all} running`,
+      run: () => ungroupProject(project),
+    },
+  ];
 }
 
-/** The right-click menu of a project. Delete asks once more, and says what it does. */
+/** The right-click menu of a project: rename it, close it with its sessions, or take it apart and keep them. */
 export class ProjectMenu implements Part {
-  private confirming = false;
+  /** The id of the ending that waits for its second click. */
+  private asked: string | null = null;
 
   constructor(
     private readonly overlay: string,
@@ -29,18 +55,7 @@ export class ProjectMenu implements Part {
 
   render(): Element {
     const colors = readTheme();
-    const scene = readScene();
-    const project = scene.projects.find((candidate) => candidate.name === this.name);
-    const footprint = project ? projectFootprint(scene.snapshot, project) : null;
-    const remove =
-      this.confirming && project && footprint
-        ? {
-            id: "confirm-delete",
-            icon: chromeIcon("check"),
-            label: consequence(project, footprint),
-            onClick: () => this.remove(footprint),
-          }
-        : { id: "delete-project", icon: chromeIcon("x"), label: "Delete", onClick: (cx: Context) => this.ask(cx) };
+    const project = readScene().projects.find((candidate) => candidate.name === this.name);
     return v_flex()
       .id("project-menu")
       .w_full()
@@ -55,7 +70,19 @@ export class ProjectMenu implements Part {
           onClick: () => this.rename(),
         }),
       )
-      .child(menuItem(colors, remove));
+      .children(project ? endings(project).map((ending) => this.item(colors, ending)) : []);
+  }
+
+  private item(colors: Theme, ending: Ending): Element {
+    if (this.asked !== ending.id) {
+      return menuItem(colors, { ...ending, onClick: (cx) => this.ask(ending.id, cx) });
+    }
+    return menuItem(colors, {
+      id: `confirm-${ending.id}`,
+      icon: chromeIcon("check"),
+      label: ending.consequence,
+      onClick: () => this.end(ending),
+    });
   }
 
   private rename(): void {
@@ -63,15 +90,13 @@ export class ProjectMenu implements Part {
     openRenameProjectDialog(this.name);
   }
 
-  private ask(cx: Context): void {
-    this.confirming = true;
+  private ask(id: string, cx: Context): void {
+    this.asked = id;
     cx.notify();
   }
 
-  private remove(footprint: Footprint): void {
+  private end(ending: Ending): void {
     closeOverlay(this.overlay);
-    deleteProject(footprint.space, footprint.outside).catch((error: unknown) =>
-      reportFailure(`Could not delete ${this.name}`, error),
-    );
+    ending.run().catch((error: unknown) => reportFailure(`Could not end ${this.name}`, error));
   }
 }

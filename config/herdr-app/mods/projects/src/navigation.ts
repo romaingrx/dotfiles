@@ -110,3 +110,10 @@ export function openNextWait(): void {
   if (home && thread.opens === "panel") focusTerminal(home);
   openThread(thread);
 }
+
+/** Shows the project at a place in the list, counted from 0. */
+export function selectProject(index: number): void {
+  const scene = readScene();
+  const project = scene.projects[index];
+  if (project) openProject(scene, project);
+}

@@ -71,7 +71,7 @@ export function openRenameProjectDialog(project: string): void {
 }
 
 export function openProjectMenu(project: string): void {
-  openOverlay({ mod: MOD, kind: "popup", width: 220, height: 72, props: { part: "project-menu", project } });
+  openOverlay({ mod: MOD, kind: "popup", width: 220, height: 103, props: { part: "project-menu", project } });
 }
 
 /** Starts the project's orchestrator in a space of its own. `machine` is null for this computer. */
@@ -93,12 +93,17 @@ export async function renameProject(project: Project, name: string): Promise<voi
 }
 
 /**
- * Ends a project, once the person confirmed it. Its own space is closed, which
- * ends the sessions there. `outside` are its sessions elsewhere: they lose
- * their labels and keep running.
+ * Ends a project, once the person confirmed it: every session of it stops.
+ * Its own space is closed, which ends the sessions there. `outside` are its
+ * sessions elsewhere, which are ended one by one. Its memory folder stays.
  */
-export async function deleteProject(ownSpace: string | null, outside: readonly string[]): Promise<void> {
+export async function closeProject(ownSpace: string | null, outside: readonly string[]): Promise<void> {
   if (ownSpace) run("space.close", { id: ownSpace, confirmed: true });
+  await Promise.all(outside.map((address) => core(["kill", address])));
+}
+
+/** Takes a project apart and leaves its sessions running: they lose the labels of this setup. */
+export async function ungroupProject(project: Project): Promise<void> {
   const cleared = LABELS.map((label) => `${label}=`);
-  await Promise.all(outside.map((address) => core(["label", address, ...cleared])));
+  await Promise.all(project.members.map((member) => core(["label", member.address, ...cleared])));
 }

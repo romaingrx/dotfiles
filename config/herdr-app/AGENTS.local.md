@@ -82,12 +82,16 @@ one machine, so it runs while this computer is off.
   panel or by the orchestrator. A new report from the thread clears it.
 - **View:** each project remembers the thread it had open in the panel, and
   the projects keep the order the person drags them into.
-- **Rename and delete a project:** right-click it. Delete asks once more in
-  the menu and says what it does: it closes the project's own space, which
-  ends the sessions there, or only removes the labels when the project has no
-  space of its own. Its sessions elsewhere lose their labels and keep
-  running. Its memory folder stays.
+- **Rename and end a project:** right-click it. Close project ends every
+  session of it: it closes the project's own space and ends its sessions
+  elsewhere with `hc kill`. Ungroup removes the labels and keeps the sessions
+  running. Each asks once more in the menu and says what it does. The memory
+  folder stays.
 - **Commands:** `projects.new`, `projects.next`, `projects.prev`,
-  `projects.next-waiting` and `projects.threads`, in the command palette and
-  for `keys.json`. The copy of the mod in the sidebar runs them, and watches
-  the waits, so they need the sidebar on show.
+  `projects.next-waiting` and `projects.threads` are in the command palette.
+  `projects.select-1` to `projects.select-9` show the project at that place in
+  the list. The copy of the mod in the sidebar runs them, and watches the
+  waits, so they need the sidebar on show.
+- **Keys:** `keys.json` is not in the repository. Its `layout:projects`
+  section binds `cmd-1` to `cmd-9` to `projects.select-1` to
+  `projects.select-9`, in place of the tab keys that the layout has no use for.
