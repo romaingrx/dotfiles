@@ -1,8 +1,9 @@
 # Neovim.app: shows up in Finder's "Open With" for text files and opens them
-# in Neovim in a new Ghostty window. To make it the default for a type, use
-# Get Info > Open with > Change All.
+# in Neovim in a new window of your terminal (lib/apps). To make it the default
+# for a type, use Get Info > Open with > Change All.
 { lib, pkgs, ... }:
 let
+  inherit (import ../../../lib/apps) terminal;
   info = {
     CFBundleName = "Neovim";
     CFBundleDisplayName = "Neovim";
@@ -10,9 +11,9 @@ let
     CFBundleExecutable = "Neovim";
     CFBundleIconFile = "nvim";
     CFBundlePackageType = "APPL";
-    # No Dock icon: the app hands off to Ghostty and quits.
+    # No Dock icon: the app hands off to the terminal and quits.
     LSUIElement = true;
-    NSAppleEventsUsageDescription = "Neovim opens files in a new Ghostty window.";
+    NSAppleEventsUsageDescription = "Neovim opens files in a new terminal window.";
     CFBundleDocumentTypes = [
       {
         CFBundleTypeName = "Text";
@@ -27,10 +28,7 @@ let
     name = "neovim-app";
     src = lib.fileset.toSource {
       root = ./.;
-      fileset = lib.fileset.unions [
-        ./main.m
-        ./open.applescript
-      ];
+      fileset = ./main.m;
     };
     nativeBuildInputs = [ pkgs.libicns ];
     buildPhase = ''
@@ -40,7 +38,8 @@ let
     installPhase = ''
       dir=$out/Applications/Neovim.app/Contents
       install -Dm755 Neovim $dir/MacOS/Neovim
-      install -Dm644 open.applescript nvim.icns -t $dir/Resources
+      install -Dm644 nvim.icns -t $dir/Resources
+      install -Dm644 ${terminal.run} $dir/Resources/run.applescript
       cp ${pkgs.writeText "Info.plist" (lib.generators.toPlist { escape = true; } info)} $dir/Info.plist
     '';
   };

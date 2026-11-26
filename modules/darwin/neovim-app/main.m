@@ -1,6 +1,11 @@
 // Finder hands opened files to an app as Apple Events, which a plain script
-// can't receive. This stub collects them and passes them to open.applescript.
+// can't receive. This stub collects them and runs `nvim` on them through
+// run.applescript, which opens a new window in the terminal from lib/apps.
 #import <Cocoa/Cocoa.h>
+
+static NSString *shellQuote(NSString *s) {
+  return [NSString stringWithFormat:@"'%@'", [s stringByReplacingOccurrencesOfString:@"'" withString:@"'\\''"]];
+}
 
 @interface Launcher : NSObject <NSApplicationDelegate>
 @property NSMutableArray<NSString *> *paths;
@@ -8,8 +13,8 @@
 
 @implementation Launcher
 - (void)application:(NSApplication *)app openURLs:(NSArray<NSURL *> *)urls {
-  // The script types each path into a shell. Quoting can't neutralise
-  // control characters (they act as keys), so skip any path that has one.
+  // The command is typed into a shell. Quoting can't neutralise control
+  // characters (they act as keys), so skip any path that has one.
   NSCharacterSet *control = NSCharacterSet.controlCharacterSet;
   for (NSURL *url in urls)
     if (url.isFileURL && [url.path rangeOfCharacterFromSet:control].location == NSNotFound)
@@ -18,11 +23,14 @@
 
 // Files that launched the app arrive above, before this runs.
 - (void)applicationDidFinishLaunching:(NSNotification *)note {
-  NSString *script = [NSBundle.mainBundle pathForResource:@"open" ofType:@"applescript"];
-  NSMutableArray *args = [NSMutableArray arrayWithObject:script];
-  [args addObjectsFromArray:self.paths];
+  // The leading space keeps the command out of shell history.
+  NSMutableString *cmd = [NSMutableString stringWithString:@" exec nvim --"];
+  for (NSString *path in self.paths) [cmd appendFormat:@" %@", shellQuote(path)];
+  NSString *cwd = self.paths.count ? self.paths[0].stringByDeletingLastPathComponent : NSHomeDirectory();
+
+  NSString *script = [NSBundle.mainBundle pathForResource:@"run" ofType:@"applescript"];
   NSTask *task = [NSTask launchedTaskWithExecutableURL:[NSURL fileURLWithPath:@"/usr/bin/osascript"]
-                                             arguments:args
+                                             arguments:@[ script, cwd, cmd ]
                                                  error:nil
                                     terminationHandler:^(NSTask *t) {
                                       dispatch_async(dispatch_get_main_queue(), ^{ [NSApp terminate:nil]; });
