@@ -73,6 +73,13 @@ one machine, so it runs while this computer is off.
   merge under Landing. The row shows the number and the state, and the
   thread's header opens it in the browser. Sessions that share a folder get
   none: the branch there belongs to none of them.
+- **Review:** the thread's header opens a review of its branch: the files it
+  changed against its base, and the diff of one of them. The base is the one
+  of its pull request, else the repository's main branch. The diff is of the
+  thread's folder, so it has what is not committed yet. A click on a line
+  takes a comment. The comments are a draft that stays until it is sent; Send
+  types them into the thread as one message, each with its file, its line and
+  the line's text. They do not go to GitHub.
 - **Waits:** a session waits on the person when its agent is blocked, or when
   its thread reported `needs-you`. The mod puts the number of waits on the
   app's icon, and the project row says who waits and who works. It posts no
@@ -95,7 +102,8 @@ one machine, so it runs while this computer is off.
   running. Each asks once more in the menu and says what it does. The memory
   folder stays.
 - **Commands:** `projects.new`, `projects.next`, `projects.prev`,
-  `projects.next-waiting` and `projects.threads` are in the command palette.
+  `projects.next-waiting`, `projects.threads` and `projects.review` (the
+  review of the thread that is open in the panel) are in the command palette.
   `projects.select-1` to `projects.select-9` show the project at that place in
   the list. The copy of the mod in the sidebar runs them, and watches the
   waits, so they need the sidebar on show.

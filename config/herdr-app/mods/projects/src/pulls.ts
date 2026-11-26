@@ -1,4 +1,4 @@
-import { isRecord } from "./parse";
+import { isRecord, text } from "./parse";
 
 /** Where a pull request stands, as the person sees it. */
 export type PullStage = "draft" | "review" | "changes" | "landing" | "merged" | "closed";
@@ -8,13 +8,15 @@ export interface Pull {
   readonly number: number;
   readonly url: string;
   readonly stage: PullStage;
+  /** The branch it merges into. Null for one stored before the mod read that. */
+  readonly base: string | null;
 }
 
 /** The pull requests of the threads that have one, by the thread's terminal address. */
 export type Pulls = Readonly<Record<string, Pull>>;
 
 /** The fields `gh pr view --json` is asked for. */
-export const PULL_FIELDS = "number,url,state,isDraft,reviewDecision,autoMergeRequest";
+export const PULL_FIELDS = "number,url,state,isDraft,reviewDecision,autoMergeRequest,baseRefName";
 
 const STAGE_WORDS: Readonly<Record<PullStage, string>> = {
   draft: "draft",
@@ -44,7 +46,8 @@ function stageOf(raw: Readonly<Record<string, unknown>>): PullStage {
 export function parsePull(value: unknown): Pull | null {
   if (!isRecord(value) || typeof value.number !== "number" || typeof value.url !== "string") return null;
   const stored = typeof value.stage === "string" && value.stage in STAGE_WORDS ? (value.stage as PullStage) : null;
-  return { number: value.number, url: value.url, stage: stored ?? stageOf(value) };
+  const base = text(value.base) ?? text(value.baseRefName);
+  return { number: value.number, url: value.url, stage: stored ?? stageOf(value), base };
 }
 
 /** Reads the stored pull requests; anything that is not one is dropped. */

@@ -1,6 +1,6 @@
 import { div, type Element } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { canRename, openLink, renameThread, setResolved } from "../actions";
+import { canRename, openLink, openReview, renameThread, setResolved } from "../actions";
 import type { Drawer } from "../layout-tree";
 import { showThreadList } from "../navigation";
 import { readPanel, toggleDrawer } from "../panel";
@@ -55,10 +55,16 @@ function controls(colors: Theme, thread: Thread): Element[] {
         }),
       ]
     : [];
-  return [...link, ...(canRename(thread) ? [rename] : []), resolve];
+  const review = iconButton(colors, {
+    id: "review",
+    icon: chromeIcon("git-compare"),
+    tip: "Review its branch",
+    onClick: () => openReview(thread.key),
+  });
+  return [...(thread.checkout ? [review] : []), ...link, ...(canRename(thread) ? [rename] : []), resolve];
 }
 
-/** The strip over an open thread: back to the list, its name and state, its drawers, rename and resolve. */
+/** The strip over an open thread: back to the list, its name and state, its drawers, review, rename and resolve. */
 export const threadHead: Part = {
   render(): Element {
     const colors = readTheme();

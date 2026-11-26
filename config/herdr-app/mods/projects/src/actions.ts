@@ -74,6 +74,16 @@ export function openProjectMenu(project: string): void {
   openOverlay({ mod: MOD, kind: "popup", width: 220, height: 103, props: { part: "project-menu", project } });
 }
 
+/** Opens the review of a thread's branch, over most of the window. A click beside it does not close it. */
+export function openReview(thread: string): void {
+  openOverlay({ mod: MOD, kind: "dialog", modal: true, width: 0.92, height: 0.9, props: { part: "review", thread } });
+}
+
+/** Types a message into a thread's terminal and sends it. */
+export async function sendToThread(thread: string, message: string): Promise<void> {
+  await core(["send", thread, message]);
+}
+
 /** Starts the project's orchestrator in a space of its own. `machine` is null for this computer. */
 export async function startProject(name: string, machine: string | null, cwd: string): Promise<void> {
   const args = ["orchestrator", name, "--cwd", cwd, ...(machine ? ["--on", machine] : [])];
