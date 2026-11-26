@@ -122,13 +122,17 @@ function edgeOf(colors: Theme, row: Extract<Row, { kind: "line" }>, active: bool
   return row.line.sign === "-" ? colors.ansi1 : null;
 }
 
-/** A stretch of the file that the branch did not change, told in one row. */
+/**
+ * A stretch of the file that the branch did not change, told in one row. Its
+ * words start where the lines' text starts: a row is as wide as the longest
+ * line of the diff, so words in its middle can be off the screen.
+ */
 function foldRow(colors: Theme, type: Type, text: string): Element {
   return h_flex()
     .w_full()
     .h(type.row)
     .flex_none()
-    .justify_center()
+    .pl(gutter(type))
     .items_center()
     .bg(colors.raised)
     .text_size(type.size - 1)
