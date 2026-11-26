@@ -29,6 +29,7 @@ import {
 } from "./threads";
 import { age } from "./time";
 import { parseViews, rememberedThread, withView } from "./views";
+import { nextWait, waits } from "./waits";
 
 const CLAUDE: Program = {
   key: "claude",
@@ -151,7 +152,8 @@ describe("status", () => {
   test("a resolved thread is put away whatever its status", () => {
     expect(groupOf("working", true)).toBe("resolved");
     expect(groupOf("blocked", false)).toBe("waiting");
-    expect(groupOf("done", false)).toBe("idle");
+    expect(groupOf("done", false)).toBe("finished");
+    expect(groupOf("idle", false)).toBe("idle");
     expect(groupOf(null, false)).toBe("idle");
   });
 });
@@ -246,16 +248,29 @@ describe("projects", () => {
     expect(isProjectName("")).toBe(false);
   });
 
-  test("an entry counts machines and threads, not the orchestrator, and marks the most urgent state", () => {
+  test("an entry says who waits and who works, and marks the most urgent state", () => {
     const billing = projects[1];
     if (!billing) throw new Error("no billing project");
-    expect(projectEntry(billing, true)).toMatchObject({
+    expect(projectEntry(billing, true, false)).toMatchObject({
       name: "billing",
       aside: "2 machines",
-      detail: "2 threads",
+      detail: "1 waiting · 1 working",
       status: "blocked",
       selected: true,
     });
+  });
+
+  test("a quiet project counts its open threads, and says when its machine is out of reach", () => {
+    const quiet = only([
+      terminal({ address: "box/t1", project: "p", role: "orchestrator" }),
+      terminal({ address: "box/t2", project: "p", status: "idle" }),
+      terminal({ address: "box/t3", project: "p", status: "working", resolved: true }),
+    ]);
+    expect(projectEntry(quiet, false, true)).toMatchObject({ aside: "box · offline", detail: "1 thread" });
+    const empty = only([terminal({ address: "t1", project: "p", role: "orchestrator", status: "blocked" })]);
+    expect(projectEntry(empty, false, false)).toMatchObject({ aside: "local", detail: "orchestrator waits" });
+    const idle = only([terminal({ address: "t1", project: "p", role: "orchestrator" })]);
+    expect(projectEntry(idle, false, false).detail).toBe("No thread");
   });
 });
 
@@ -331,10 +346,22 @@ describe("a project started by the launcher", () => {
     expect(byTitle(projectThreads(settled, project), "Fix the export").resolved).toBe(false);
   });
 
-  test("its space is its own while every tab there is the project's", () => {
+  test("its space is its own while every session there is the project's", () => {
     expect(projectFootprint(scene, project)).toEqual({ space: "sp-p", outside: ["box/t4"] });
-    const shared = snapshot({ ...scene, spaces: [{ ...own, tabs: [...own.tabs, tab({ id: "someone-else" })] }] });
-    expect(projectFootprint(shared, project)).toEqual({ space: null, outside: ["t1", "t2", "t3", "box/t4"] });
+    const everyone = { space: null, outside: ["t1", "t2", "t3", "box/t4"] };
+    const visitor = pane({ pane: "p9", tab: "someone-else", terminal: "t9" });
+    const withTab = { ...own, tabs: [...own.tabs, tab({ id: "someone-else" })] };
+    expect(projectFootprint(snapshot({ ...scene, spaces: [withTab], panes: [...scene.panes, visitor] }), project)).toEqual(everyone);
+    const beside = pane({ pane: "p9", tab: "lead", terminal: "t9" });
+    expect(projectFootprint(snapshot({ ...scene, panes: [...scene.panes, beside] }), project)).toEqual(everyone);
+  });
+
+  test("a session of the project in a split of its space is inside it", () => {
+    const split = pane({ pane: "p4", tab: "lead", terminal: "box/t4" });
+    expect(projectFootprint(snapshot({ ...scene, panes: [...scene.panes, split] }), project)).toEqual({
+      space: "sp-p",
+      outside: [],
+    });
   });
 });
 
@@ -354,7 +381,7 @@ describe("sessions that were only grouped", () => {
     expect(projectHome(snapshot({}), project)).toBeNull();
   });
 
-  test("it has no space of its own, so ending it only ungroups its sessions", () => {
+  test("it has no space of its own, so closing it ends its sessions one by one", () => {
     expect(projectFootprint(scene, project)).toEqual({ space: null, outside: ["t1", "t2"] });
   });
 });
@@ -373,6 +400,20 @@ describe("the thread list", () => {
   test("groups keep the order a person acts in and drop empty ones", () => {
     expect(groupThreads(threads).map((group) => group.id)).toEqual(["waiting", "working", "idle", "resolved"]);
     expect(groupThreads(threads.slice(0, 1)).map((group) => group.id)).toEqual(["idle"]);
+  });
+
+  test("the threads that are the person's to act on are a queue: the longest first", () => {
+    const queue = projectThreads(
+      snapshot({}),
+      only([
+        terminal({ address: "t1", project: "p", heading: "late", status: "blocked", since: 30 }),
+        terminal({ address: "t2", project: "p", heading: "early", status: "blocked", since: 10 }),
+        terminal({ address: "t3", project: "p", heading: "read me", status: "done" }),
+      ]),
+    );
+    const groups = groupThreads(queue);
+    expect(groups.map((group) => group.id)).toEqual(["waiting", "finished"]);
+    expect(groups[0]?.threads.map((thread) => thread.title)).toEqual(["early", "late"]);
   });
 
   test("agents follow the list's order, the rest keep theirs after", () => {
@@ -511,4 +552,30 @@ describe("what each project has open", () => {
     expect(parseViews(["t1"])).toEqual({});
     expect(parseViews(null)).toEqual({});
   });
+});
+
+describe("the sessions that wait on the person", () => {
+  const lead = terminal({ address: "t1", project: "a", role: "orchestrator", status: "blocked", since: 50 });
+  const asked = terminal({ address: "t2", project: "a", heading: "Fix it", status: "blocked", since: 20, reported: "needs-you" });
+  const busy = terminal({ address: "t3", project: "a", heading: "Busy", status: "working" });
+  const away = terminal({ address: "box/t4", project: "b", heading: "Elsewhere", status: "blocked", since: 10 });
+  const done = terminal({ address: "box/t5", project: "b", heading: "Put away", status: "blocked", resolved: true });
+  const all = waits(snapshot({}), projectsOf([lead, asked, busy, away, done]));
+
+  test("are listed across projects, the longest wait first, the orchestrator without a title", () => {
+    expect(all.map((wait) => [wait.terminal, wait.project, wait.title])).toEqual([
+      ["box/t4", "b", "Elsewhere"],
+      ["t2", "a", "Fix it"],
+      ["t1", "a", null],
+    ]);
+  });
+
+  test("the next one comes after the session that has the keyboard, around the end", () => {
+    expect(nextWait(all, null)?.terminal).toBe("box/t4");
+    expect(nextWait(all, "t3")?.terminal).toBe("box/t4");
+    expect(nextWait(all, "box/t4")?.terminal).toBe("t2");
+    expect(nextWait(all, "t1")?.terminal).toBe("box/t4");
+    expect(nextWait([], "t1")).toBeUndefined();
+  });
+
 });

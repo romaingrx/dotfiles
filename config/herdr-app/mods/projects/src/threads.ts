@@ -24,6 +24,7 @@ export interface OwnTab {
 export interface Thread {
   /** Its terminal's address. */
   readonly key: string;
+  readonly project: string;
   readonly title: string;
   readonly status: Status | null;
   readonly agent: boolean;
@@ -107,6 +108,7 @@ export function projectThreads(snapshot: Snapshot, project: Project): Thread[] {
     const seat = seated.get(member.address);
     return {
       key: member.address,
+      project: project.name,
       title: sessionTitle(member, seat),
       status: member.status,
       agent: member.agent || member.status !== null,
@@ -137,9 +139,9 @@ export function projectHome(snapshot: Snapshot, project: Project): string | null
 /** Where a project's sessions are, for ending it. */
 export interface Footprint {
   /**
-   * The space that is the project's own: its orchestrator leads a tab there, and
-   * every tab there is led by one of the project's sessions. Closing it ends
-   * those sessions and nothing else.
+   * The space that is the project's own: its orchestrator sits there, and every
+   * session there is one of the project's. Closing it ends those sessions and
+   * nothing else.
    */
   readonly space: string | null;
   /** The addresses of its sessions that are not in that space. */
@@ -147,22 +149,32 @@ export interface Footprint {
 }
 
 export function projectFootprint(snapshot: Snapshot, project: Project): Footprint {
-  const seated = seats(snapshot);
-  const lead = leadOf(project);
-  const home = lead ? seated.get(lead.address)?.home?.space : null;
-  const owned = new Set(project.members.map((member) => seated.get(member.address)?.home?.tab.id));
-  const space = home?.tabs.every((tab) => owned.has(tab.id)) ? home.id : null;
-  const inside = (address: string) => space !== null && seated.get(address)?.home?.space.id === space;
-  const outside = project.members.map((member) => member.address).filter((address) => !inside(address));
+  const members = new Set(project.members.map((member) => member.address));
+  const spaceOfTab = new Map(snapshot.spaces.flatMap((space) => space.tabs.map((tab) => [tab.id, space] as const)));
+  const sessions = snapshot.panes.filter((pane) => pane.terminal !== null);
+  const spaceOf = (address: string | undefined) =>
+    spaceOfTab.get(sessions.find((pane) => pane.terminal === address)?.tab ?? "");
+  const home = spaceOf(leadOf(project)?.address);
+  const foreign = sessions.some((pane) => spaceOfTab.get(pane.tab) === home && !members.has(pane.terminal ?? ""));
+  const space = home && !foreign ? home.id : null;
+  const outside = [...members].filter((address) => space === null || spaceOf(address)?.id !== space);
   return { space, outside };
 }
 
+/** The one that has been in its state longest comes first; one without a time comes last. */
+export function longestFirst(a: { readonly since: number | null }, b: { readonly since: number | null }): number {
+  return (a.since ?? Number.POSITIVE_INFINITY) - (b.since ?? Number.POSITIVE_INFINITY);
+}
+
+/** The groups whose threads are the person's to act on: they are a queue. */
+const QUEUES: readonly Group[] = ["waiting", "finished"];
+
 /** The groups that have threads, in the order a person acts on them. */
 export function groupThreads(threads: readonly Thread[]): ThreadGroup[] {
-  return GROUPS.map((group) => ({
-    ...group,
-    threads: threads.filter((thread) => groupOf(thread.status, thread.resolved) === group.id),
-  })).filter((group) => group.threads.length > 0);
+  return GROUPS.map((group) => {
+    const members = threads.filter((thread) => groupOf(thread.status, thread.resolved) === group.id);
+    return { ...group, threads: QUEUES.includes(group.id) ? members.sort(longestFirst) : members };
+  }).filter((group) => group.threads.length > 0);
 }
 
 /** Agent addresses in the order the list shows them; agents the list leaves out keep their order after. */

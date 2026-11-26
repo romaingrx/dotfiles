@@ -4,6 +4,7 @@ import { canRename, renameThread, setResolved } from "../actions";
 import type { Drawer } from "../layout-tree";
 import { showThreadList } from "../navigation";
 import { readPanel, toggleDrawer } from "../panel";
+import { threadState } from "../rows";
 import { readScene } from "../snapshot";
 import { threadAt, type Thread } from "../threads";
 import { chromeIcon, iconButton, optional, readTheme, resolveTip, statusMark, type Theme } from "../ui";
@@ -46,7 +47,7 @@ function controls(colors: Theme, thread: Thread): Element[] {
   return canRename(thread) ? [rename, resolve] : [resolve];
 }
 
-/** The strip over an open thread: back to the list, its name, rename and resolve. */
+/** The strip over an open thread: back to the list, its name and state, its drawers, rename and resolve. */
 export const threadHead: Part = {
   render(): Element {
     const colors = readTheme();
@@ -71,7 +72,9 @@ export const threadHead: Part = {
           .child(thread?.title ?? "This thread has ended."),
       );
     return optional(bar, thread, (el, open) =>
-      el.children([...drawerButtons(colors, panel.drawer), ...controls(colors, open)]),
+      el
+        .child(div().flex_none().text_size(11).text_color(colors.muted).child(threadState(open, Date.now())))
+        .children([...drawerButtons(colors, panel.drawer), ...controls(colors, open)]),
     );
   },
 };

@@ -6,7 +6,7 @@ import { dropProject, openProject } from "../navigation";
 import type { Project } from "../projects";
 import { entryRow } from "../rows";
 import type { Scene } from "../scene";
-import { readScene } from "../snapshot";
+import { readOffline, readScene } from "../snapshot";
 import { chromeIcon, heading, readTheme, type Theme } from "../ui";
 import type { Part } from "./part";
 
@@ -18,7 +18,15 @@ export class ProjectList implements Part {
   render(): Element {
     const colors = readTheme();
     const scene = readScene();
-    const rows = scene.projects.map((project) => this.row(colors, scene, project));
+    const offline = readOffline();
+    const rows = scene.projects.map((project) =>
+      this.row(
+        colors,
+        scene,
+        project,
+        project.machines.some((machine) => offline.has(machine)),
+      ),
+    );
     return v_flex()
       .id("project-list")
       .size_full()
@@ -39,12 +47,12 @@ export class ProjectList implements Part {
       )
       .children(rows)
       .when(rows.length === 0, (el) =>
-        el.child(div().px(8).text_size(12).text_color(colors.dim).child("No project yet. Start one with the + above.")),
+        el.child(div().px(8).text_size(12).text_color(colors.muted).child("No project yet. Start one with the + above.")),
       );
   }
 
-  private row(colors: Theme, scene: Scene, project: Project): Element {
-    return entryRow(colors, projectEntry(project, project === scene.shown), {
+  private row(colors: Theme, scene: Scene, project: Project, offline: boolean): Element {
+    return entryRow(colors, projectEntry(project, project === scene.shown, offline), {
       onOpen: () => openProject(scene, project),
       onMenu: () => openProjectMenu(project.name),
       onPress: () => this.press(project.name),

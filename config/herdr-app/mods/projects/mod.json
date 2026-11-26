@@ -1,1 +1,11 @@
-{ "place": "none", "title": "Projects" }
+{
+  "place": "none",
+  "title": "Projects",
+  "palette": [
+    { "title": "New project", "command": "projects.new", "group": "Projects", "words": "start orchestrator" },
+    { "title": "Next waiting session", "command": "projects.next-waiting", "group": "Projects", "words": "needs you blocked thread" },
+    { "title": "Next project", "command": "projects.next", "group": "Projects" },
+    { "title": "Previous project", "command": "projects.prev", "group": "Projects" },
+    { "title": "Thread list", "command": "projects.threads", "group": "Projects", "words": "back all threads" }
+  ]
+}

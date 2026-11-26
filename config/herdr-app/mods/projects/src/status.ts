@@ -1,12 +1,13 @@
 import type { Status } from "herdr";
 
-export type Group = "waiting" | "working" | "idle" | "resolved";
+export type Group = "waiting" | "finished" | "working" | "idle" | "resolved";
 
 /** What a thread last told its orchestrator with `report.sh`. */
-export type Reported = "done" | "needs-you";
+export type Reported = "done" | "review" | "needs-you";
 
 export const GROUPS: readonly { readonly id: Group; readonly label: string }[] = [
   { id: "waiting", label: "Waiting on you" },
+  { id: "finished", label: "Finished" },
   { id: "working", label: "Working" },
   { id: "idle", label: "Idle" },
   { id: "resolved", label: "Resolved" },
@@ -25,7 +26,7 @@ export function parseStatus(word: unknown): Status | null {
 }
 
 export function parseReported(word: unknown): Reported | null {
-  return word === "done" || word === "needs-you" ? word : null;
+  return word === "done" || word === "review" || word === "needs-you" ? word : null;
 }
 
 /**
@@ -53,9 +54,18 @@ export function isBusy(status: Status | null): boolean {
   return status === "working" || status === "blocked";
 }
 
+/**
+ * Whose move it is. "done" is a turn that ended and that the person has not
+ * looked at yet: Herdr calls it idle once they have.
+ */
 export function groupOf(status: Status | null, resolved: boolean): Group {
   if (resolved) return "resolved";
   if (status === "blocked") return "waiting";
+  if (status === "done") return "finished";
   if (status === "working") return "working";
   return "idle";
+}
+
+export function groupLabel(group: Group): string {
+  return GROUPS.find((candidate) => candidate.id === group)?.label ?? group;
 }
