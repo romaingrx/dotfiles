@@ -67,6 +67,12 @@ export function fileTree(files: readonly ReviewFile[], folded: ReadonlySet<strin
   return rowsOf(root, 0, folded);
 }
 
+/** The files whose path has what the person typed in the filter, in any case. All of them for no word. */
+export function filterFiles(files: readonly ReviewFile[], typed: string): ReviewFile[] {
+  const word = typed.trim().toLowerCase();
+  return files.filter((entry) => entry.file.path.toLowerCase().includes(word));
+}
+
 /** The first file of the tree from the top, whatever is folded: the one a review opens on. */
 export function firstFile(files: readonly ReviewFile[]): ReviewFile | undefined {
   const first = fileTree(files, new Set()).find((row) => row.kind === "file");

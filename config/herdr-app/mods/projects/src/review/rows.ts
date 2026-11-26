@@ -1,4 +1,4 @@
-import type { DiffFile, DiffLine } from "./diff";
+import type { DiffFile, DiffLine, Hunk } from "./diff";
 import type { Discussion, Remark } from "./discussions";
 import { anchorKey, anchorOf, linesOf, type Anchor, type Comment, type Posting, type Span } from "./draft";
 
@@ -21,6 +21,7 @@ export interface CardLine {
 
 /** One row of a file's diff, as the list draws it. */
 export type Row =
+  /** Stands for the lines over a hunk that the branch did not change: it says how many they are. */
   | { readonly kind: "hunk"; readonly key: string; readonly text: string }
   | { readonly kind: "note"; readonly key: string; readonly text: string }
   | {
@@ -161,6 +162,26 @@ function discussionCard(discussion: Discussion, index: number, columns: number, 
   return { kind: "card", key: `discussion:${index}`, anchor: discussion, from: "github", lines, stale };
 }
 
+/** The lines of the branch's file that a hunk shows, from its `@@` line: the first one, and how many. */
+const NEW_SIDE = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))?/;
+
+/**
+ * How many lines that the branch did not change lie over each hunk: from the
+ * top of the file for the first one, from the hunk above for the others. The
+ * diff leaves those lines out, and a row says how many they are.
+ */
+export function unchangedBefore(hunks: readonly Hunk[]): number[] {
+  let next = 1;
+  return hunks.map((hunk) => {
+    const [, start = "1", count = "1"] = NEW_SIDE.exec(hunk.header) ?? [];
+    // A hunk that only removes lines names the line over it.
+    const first = Number(count) === 0 ? Number(start) + 1 : Number(start);
+    const gap = Math.max(0, first - next);
+    next = first + Number(count);
+    return gap;
+  });
+}
+
 /** What stands in place of the lines of a file that has none to show. */
 function emptyText(entry: ReviewFile): string | null {
   if (entry.gone) return "This file is no longer in the diff.";
@@ -198,10 +219,13 @@ export function fileRows(entry: ReviewFile, columns: number): Row[] {
   const rows: Row[] = stale.flatMap(([, rowsOfLine]) => rowsOfLine);
   const empty = emptyText(entry);
   if (empty) return [...rows, { kind: "note", key: "note:empty", text: empty }];
+  const gaps = unchangedBefore(file.hunks);
   let drawn = 0;
   for (const [index, hunk] of file.hunks.entries()) {
     if (drawn >= MAX_LINES) break;
-    rows.push({ kind: "hunk", key: `hunk:${index}`, text: hunk.header });
+    const gap = gaps[index] ?? 0;
+    if (gap > 0)
+      rows.push({ kind: "hunk", key: `hunk:${index}`, text: `${gap} unchanged line${gap === 1 ? "" : "s"}` });
     for (const line of hunk.lines.slice(0, MAX_LINES - drawn)) {
       const anchor = anchorOf(file.path, line);
       const under = cards.get(anchorKey(anchor)) ?? [];
@@ -263,5 +287,5 @@ export function quoteOf(lines: readonly LineRow[]): string {
 
 /** The longest line of the rows, in characters: how wide the diff is. */
 export function widest(rows: readonly Row[]): number {
-  return Math.max(0, ...rows.map((row) => (row.kind === "line" || row.kind === "hunk" ? row.text.length : 0)));
+  return Math.max(0, ...rows.map((row) => (row.kind === "line" ? row.text.length : 0)));
 }
