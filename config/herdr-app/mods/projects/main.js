@@ -354,9 +354,13 @@ function stageOf(raw) {
     return "closed";
   if (raw.isDraft === true)
     return "draft";
-  if (raw.reviewDecision === "APPROVED" || isRecord(raw.autoMergeRequest))
+  if (raw.reviewDecision === "CHANGES_REQUESTED")
+    return "changes";
+  if (raw.reviewDecision === "APPROVED")
     return "landing";
-  return raw.reviewDecision === "CHANGES_REQUESTED" ? "changes" : "review";
+  if (raw.reviewDecision === "REVIEW_REQUIRED")
+    return "review";
+  return isRecord(raw.autoMergeRequest) ? "landing" : "review";
 }
 function parsePull(value) {
   if (!isRecord(value) || typeof value.number !== "number" || typeof value.url !== "string")
@@ -511,11 +515,12 @@ function sessionTitle(terminal, seat) {
 function place(pane) {
   return pane.terminal && pane.cwd ? `${machineOf(pane.terminal) ?? ""}:${pane.cwd}` : null;
 }
-function sharedFolders(panes) {
+function sharedFolders(snapshot) {
+  const sessions = new Set(snapshot.terminals.filter((terminal) => terminal.project).map((terminal) => terminal.address));
   const seen = new Set;
   const shared = new Set;
-  for (const pane of panes) {
-    const key = place(pane);
+  for (const pane of snapshot.panes) {
+    const key = sessions.has(pane.terminal ?? "") ? place(pane) : null;
     if (key === null)
       continue;
     (seen.has(key) ? shared : seen).add(key);
@@ -533,7 +538,7 @@ function threadGroup(thread) {
 }
 function projectThreads(snapshot, project) {
   const seated = seats(snapshot);
-  const shared = sharedFolders(snapshot.panes);
+  const shared = sharedFolders(snapshot);
   const spread = project.machines.length > 1;
   const lead = leadOf(project);
   const beside = lead !== undefined && seated.has(lead.address);
@@ -704,15 +709,18 @@ function selectProject(index) {
 // src/pull-reader.ts
 import { exec as exec2, setShared as setShared3 } from "herdr";
 var PULL_TIMEOUT = 20000;
+var NO_PULL = /no pull requests found/;
 async function readPull(thread) {
   if (!thread.checkout)
     return null;
   try {
     const options = { cwd: thread.checkout.folder, on: machineOf(thread.key), timeout: PULL_TIMEOUT };
     const result = await exec2("gh", ["pr", "view", "--json", PULL_FIELDS], options);
-    return result.code === 0 ? parsePull(JSON.parse(result.stdout)) : null;
+    if (result.code === 0)
+      return parsePull(JSON.parse(result.stdout)) ?? thread.pull;
+    return NO_PULL.test(result.stderr) ? null : thread.pull;
   } catch {
-    return null;
+    return thread.pull;
   }
 }
 async function refreshPulls() {

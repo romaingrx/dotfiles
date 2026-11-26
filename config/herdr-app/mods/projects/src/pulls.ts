@@ -25,13 +25,19 @@ const STAGE_WORDS: Readonly<Record<PullStage, string>> = {
   closed: "closed",
 };
 
-/** Landing is approved or set to merge by itself: nothing is left for the person to do. */
+/**
+ * A review that asks for changes, or that is still required, comes before a
+ * merge that is set to happen by itself: someone must act first. Landing is
+ * approved, or set to merge with no review asked: nothing is left to do.
+ */
 function stageOf(raw: Readonly<Record<string, unknown>>): PullStage {
   if (raw.state === "MERGED") return "merged";
   if (raw.state === "CLOSED") return "closed";
   if (raw.isDraft === true) return "draft";
-  if (raw.reviewDecision === "APPROVED" || isRecord(raw.autoMergeRequest)) return "landing";
-  return raw.reviewDecision === "CHANGES_REQUESTED" ? "changes" : "review";
+  if (raw.reviewDecision === "CHANGES_REQUESTED") return "changes";
+  if (raw.reviewDecision === "APPROVED") return "landing";
+  if (raw.reviewDecision === "REVIEW_REQUIRED") return "review";
+  return isRecord(raw.autoMergeRequest) ? "landing" : "review";
 }
 
 /** Reads what `gh pr view --json` prints, or a stored pull request; null for anything else. */

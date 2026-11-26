@@ -7,15 +7,23 @@ import { projectThreads, type Thread } from "./threads";
 /** How long one read of a pull request may take. */
 const PULL_TIMEOUT = 20_000;
 
-/** The pull request of the branch in a thread's folder, read there with `gh`. Null when it has none. */
+/** What `gh` says when a branch has no pull request. Any other failure tells nothing about the branch. */
+const NO_PULL = /no pull requests found/;
+
+/**
+ * The pull request of the branch in a thread's folder, read there with `gh`:
+ * null when the branch has none. A read that fails (the machine is away, `gh`
+ * is signed out) keeps what was known.
+ */
 async function readPull(thread: Thread): Promise<Pull | null> {
   if (!thread.checkout) return null;
   try {
     const options = { cwd: thread.checkout.folder, on: machineOf(thread.key), timeout: PULL_TIMEOUT };
     const result = await exec("gh", ["pr", "view", "--json", PULL_FIELDS], options);
-    return result.code === 0 ? parsePull(JSON.parse(result.stdout)) : null;
+    if (result.code === 0) return parsePull(JSON.parse(result.stdout)) ?? thread.pull;
+    return NO_PULL.test(result.stderr) ? null : thread.pull;
   } catch {
-    return null;
+    return thread.pull;
   }
 }
 

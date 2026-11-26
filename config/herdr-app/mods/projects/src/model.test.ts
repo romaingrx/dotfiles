@@ -591,6 +591,9 @@ describe("a thread's pull request", () => {
     expect(view({ state: "OPEN", reviewDecision: "CHANGES_REQUESTED" })?.stage).toBe("changes");
     expect(view({ state: "OPEN", reviewDecision: "APPROVED" })?.stage).toBe("landing");
     expect(view({ state: "OPEN", reviewDecision: "", autoMergeRequest: { mergeMethod: "SQUASH" } })?.stage).toBe("landing");
+    const auto = { state: "OPEN", autoMergeRequest: { mergeMethod: "SQUASH" } };
+    expect(view({ ...auto, reviewDecision: "CHANGES_REQUESTED" })?.stage).toBe("changes");
+    expect(view({ ...auto, reviewDecision: "REVIEW_REQUIRED" })?.stage).toBe("review");
     expect(view({ state: "MERGED", reviewDecision: "APPROVED" })?.stage).toBe("merged");
     expect(view({ state: "CLOSED" })?.stage).toBe("closed");
     expect(parsePull({ url: "https://example.test/pull/7" })).toBeNull();
@@ -632,13 +635,29 @@ describe("a thread's pull request", () => {
   });
 
   test("is not read for sessions that share a folder: the branch there belongs to none of them", () => {
-    const project = only([terminal({ address: "t1", project: "p" }), terminal({ address: "t2", project: "p" })]);
+    const members = [terminal({ address: "t1", project: "p" }), terminal({ address: "t2", project: "p" })];
+    const project = only(members);
     const scene = snapshot({
+      terminals: members,
       panes: [
         pane({ pane: "p1", tab: "a", terminal: "t1", cwd: "/work", branch: "main" }),
         pane({ pane: "p2", tab: "b", terminal: "t2", cwd: "/work", branch: "main" }),
       ],
     });
     expect(projectThreads(scene, project).map((thread) => thread.checkout)).toEqual([null, null]);
+  });
+
+  test("is read for a session whose folder holds only a plain shell, or the same path on another machine", () => {
+    const members = [terminal({ address: "t1", project: "p" }), terminal({ address: "box/t2", project: "p" })];
+    const scene = snapshot({
+      terminals: members,
+      panes: [
+        pane({ pane: "p1", tab: "a", terminal: "t1", cwd: "/work", branch: "fix" }),
+        pane({ pane: "p2", tab: "b", terminal: "box/t2", cwd: "/work", branch: "fix" }),
+        pane({ pane: "p3", tab: "c", terminal: "t9", cwd: "/work", branch: "fix" }),
+      ],
+    });
+    const checkouts = projectThreads(scene, only(members)).map((thread) => thread.checkout?.folder);
+    expect(checkouts).toEqual(["/work", "/work"]);
   });
 });

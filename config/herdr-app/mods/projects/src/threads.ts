@@ -108,12 +108,17 @@ function place(pane: PaneInfo): string | null {
   return pane.terminal && pane.cwd ? `${machineOf(pane.terminal) ?? ""}:${pane.cwd}` : null;
 }
 
-/** The folders that more than one session works in. The branch there belongs to none of them. */
-function sharedFolders(panes: readonly PaneInfo[]): ReadonlySet<string> {
+/**
+ * The folders that more than one session of a project works in. The branch
+ * there belongs to none of them. A plain shell in a thread's folder is no
+ * such session.
+ */
+function sharedFolders(snapshot: Snapshot): ReadonlySet<string> {
+  const sessions = new Set(snapshot.terminals.filter((terminal) => terminal.project).map((terminal) => terminal.address));
   const seen = new Set<string>();
   const shared = new Set<string>();
-  for (const pane of panes) {
-    const key = place(pane);
+  for (const pane of snapshot.panes) {
+    const key = sessions.has(pane.terminal ?? "") ? place(pane) : null;
     if (key === null) continue;
     (seen.has(key) ? shared : seen).add(key);
   }
@@ -134,7 +139,7 @@ export function threadGroup(thread: Thread): Group {
 /** The threads of a project. Its orchestrator is not one of them: it is the project's own session. */
 export function projectThreads(snapshot: Snapshot, project: Project): Thread[] {
   const seated = seats(snapshot);
-  const shared = sharedFolders(snapshot.panes);
+  const shared = sharedFolders(snapshot);
   const spread = project.machines.length > 1;
   // With the orchestrator in the middle, a thread opens beside it; without one, in its own pane.
   const lead = leadOf(project);
