@@ -5,15 +5,18 @@
 #   bundleId  macOS app id
 #   bin       Linux command
 #   desktop   Linux desktop file
+#   run       macOS AppleScript that runs a command in a new terminal window
 {
   ghostty = {
     category = "terminal";
     bundleId = "com.mitchellh.ghostty";
     bin = "ghostty";
+    run = ./run/ghostty.applescript;
   };
   terminal-app = {
     category = "terminal";
     bundleId = "com.apple.Terminal";
+    run = ./run/terminal-app.applescript;
   };
   cursor = {
     category = "editor";
