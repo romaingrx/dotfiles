@@ -1,4 +1,4 @@
-import { agents, focused, panes, shared, spaces, terminals } from "herdr";
+import { agents, focused, machines, panes, shared, spaces, terminals } from "herdr";
 import type { Status } from "herdr";
 import { parseOrder } from "./projects";
 import { buildScene, type Scene } from "./scene";
@@ -38,6 +38,15 @@ export function readSnapshot(): Snapshot {
       .map((terminal) => shownStatus(terminal, statuses)),
     focused: focused()?.terminal ?? null,
   };
+}
+
+/** The machines that cannot be reached now. Null names this computer. */
+export function readOffline(): ReadonlySet<string | null> {
+  return new Set(
+    machines()
+      .filter((machine) => machine.layout === "unavailable")
+      .map((machine) => machine.name),
+  );
 }
 
 export function readViews(): Views {

@@ -3,12 +3,13 @@
 
 import { View, div, type AsyncContext, type Context, type Element } from "gpui-kit";
 import { props } from "herdr";
+import { startBackground } from "./background";
 import { asRecord, text } from "./parse";
 import { NewProjectDialog } from "./parts/new-project";
 import { panelTabs } from "./parts/panel-tabs";
 import type { Part } from "./parts/part";
 import { ProjectList } from "./parts/project-list";
-import { projectMenu } from "./parts/project-menu";
+import { ProjectMenu } from "./parts/project-menu";
 import { RenameProjectDialog } from "./parts/rename-project";
 import { threadHead } from "./parts/thread-head";
 import { ThreadPanel } from "./parts/thread-panel";
@@ -41,14 +42,17 @@ function need<T>(value: T | null, what: string): T {
 
 const PARTS: Readonly<Record<string, Factory>> = {
   top: () => topBar,
-  projects: () => new ProjectList(),
+  projects: (_given, cx) => {
+    startBackground(cx);
+    return new ProjectList();
+  },
   tabs: () => panelTabs,
   threads: (_given, cx) => new ThreadPanel(cx),
   "thread-head": () => threadHead,
   "new-project": (given, cx) => new NewProjectDialog(need(given.overlay, "its overlay"), cx),
   "rename-project": (given, cx) =>
     new RenameProjectDialog(need(given.overlay, "its overlay"), need(given.project, "a project"), cx),
-  "project-menu": (given) => projectMenu(need(given.overlay, "its overlay"), need(given.project, "a project")),
+  "project-menu": (given) => new ProjectMenu(need(given.overlay, "its overlay"), need(given.project, "a project")),
 };
 
 function createPart(given: Given, cx: AsyncContext): Part {

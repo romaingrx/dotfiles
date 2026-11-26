@@ -4,6 +4,7 @@ import { setAgentOrder } from "herdr";
 import { openThreadMenu, reportFailure, setResolved } from "../actions";
 import { openThread } from "../navigation";
 import { syncLayout } from "../panel";
+import { leadOf, type Project } from "../projects";
 import { threadRow } from "../rows";
 import { readScene } from "../snapshot";
 import { agentOrder, groupThreads, projectThreads, type Thread, type ThreadGroup } from "../threads";
@@ -12,6 +13,13 @@ import type { Part } from "./part";
 
 /** How often the rows' ages are drawn again. */
 const AGE_REFRESH = 60_000;
+
+/** What the panel says in place of a list that has no thread. */
+function emptyText(shown: Project | null): string {
+  if (!shown) return "Pick a project on the left.";
+  if (leadOf(shown)?.status === "blocked") return "No thread yet. The orchestrator waits on you, in the middle.";
+  return "No thread yet. Ask the orchestrator for some work.";
+}
 
 /** The Threads tab of the right panel: the shown project's threads, grouped by whose move it is. */
 export class ThreadPanel implements Part {
@@ -42,12 +50,9 @@ export class ThreadPanel implements Part {
       .text_size(13)
       .overflow_y_scrollbar()
       .children(groups.flatMap((group) => this.group(colors, group, now)))
-      .when(threads.length === 0, (el) => el.child(this.empty(colors, shown !== null)));
-  }
-
-  private empty(colors: Theme, hasProject: boolean): Element {
-    const text = hasProject ? "No thread yet. Ask the orchestrator for some work." : "Pick a project on the left.";
-    return div().px(8).pt(12).text_size(12).text_color(colors.dim).child(text);
+      .when(threads.length === 0, (el) =>
+        el.child(div().px(8).pt(12).text_size(12).text_color(colors.muted).child(emptyText(shown))),
+      );
   }
 
   private group(colors: Theme, group: ThreadGroup, now: number): Element[] {
@@ -56,6 +61,7 @@ export class ThreadPanel implements Part {
       id: group.id,
       label: group.label,
       count: group.threads.length,
+      ...(group.id === "waiting" && { tone: colors.blocked }),
       fold: { open, onToggle: (cx) => this.toggleFold(group.id, cx) },
     });
     return open ? [head, ...group.threads.map((thread) => this.row(colors, thread, now))] : [head];

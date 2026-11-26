@@ -24,6 +24,7 @@ export interface OwnTab {
 export interface Thread {
   /** Its terminal's address. */
   readonly key: string;
+  readonly project: string;
   readonly title: string;
   readonly status: Status | null;
   readonly agent: boolean;
@@ -107,6 +108,7 @@ export function projectThreads(snapshot: Snapshot, project: Project): Thread[] {
     const seat = seated.get(member.address);
     return {
       key: member.address,
+      project: project.name,
       title: sessionTitle(member, seat),
       status: member.status,
       agent: member.agent || member.status !== null,
@@ -157,12 +159,20 @@ export function projectFootprint(snapshot: Snapshot, project: Project): Footprin
   return { space, outside };
 }
 
+/** The one that has been in its state longest comes first; one without a time comes last. */
+export function longestFirst(a: { readonly since: number | null }, b: { readonly since: number | null }): number {
+  return (a.since ?? Number.POSITIVE_INFINITY) - (b.since ?? Number.POSITIVE_INFINITY);
+}
+
+/** The groups whose threads are the person's to act on: they are a queue. */
+const QUEUES: readonly Group[] = ["waiting", "finished"];
+
 /** The groups that have threads, in the order a person acts on them. */
 export function groupThreads(threads: readonly Thread[]): ThreadGroup[] {
-  return GROUPS.map((group) => ({
-    ...group,
-    threads: threads.filter((thread) => groupOf(thread.status, thread.resolved) === group.id),
-  })).filter((group) => group.threads.length > 0);
+  return GROUPS.map((group) => {
+    const members = threads.filter((thread) => groupOf(thread.status, thread.resolved) === group.id);
+    return { ...group, threads: QUEUES.includes(group.id) ? members.sort(longestFirst) : members };
+  }).filter((group) => group.threads.length > 0);
 }
 
 /** Agent addresses in the order the list shows them; agents the list leaves out keep their order after. */

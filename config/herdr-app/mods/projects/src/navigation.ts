@@ -1,15 +1,15 @@
-import { run, setShared } from "herdr";
+import { notify, run, setShared } from "herdr";
 import { reportFailure } from "./actions";
 import { selectPanel, showThreadInPanel } from "./panel";
 import { moveProject, type Project } from "./projects";
 import type { Scene } from "./scene";
 import { ORDER, readScene, readViews, VIEWS } from "./snapshot";
-import { projectHome, projectThreads, type Thread } from "./threads";
+import { projectHome, projectThreads, threadAt, type Thread } from "./threads";
 import { rememberedThread, withView } from "./views";
+import { nextWait, waits } from "./waits";
 
-/** Records what the project on show has open in the panel: a thread, or null for its list. */
-function remember(thread: string | null): void {
-  const project = readScene().shown?.name;
+/** Records what a project has open in the panel: a thread, or null for its list. */
+function remember(project: string | undefined, thread: string | null): void {
   const views = readViews();
   if (project === undefined || (views[project] ?? null) === thread) return;
   setShared(VIEWS, withView(views, project, thread));
@@ -33,13 +33,13 @@ export function openThread(thread: Thread): void {
     focusTerminal(thread.key);
     return;
   }
-  remember(thread.key);
+  remember(thread.project, thread.key);
   showInPanel(thread.key, true);
 }
 
 /** Goes back to the list of threads, and remembers that for the project on show. */
 export function showThreadList(): void {
-  remember(null);
+  remember(readScene().shown?.name, null);
   selectPanel("threads");
 }
 
@@ -76,4 +76,37 @@ export function dropProject(scene: Scene, moved: string, target: string): void {
       target,
     ),
   );
+}
+
+/** Goes to the project after the one on show in the list, or to the one before it; around the ends. */
+export function stepProject(step: 1 | -1): void {
+  const scene = readScene();
+  const count = scene.projects.length;
+  const shown = scene.shown ? scene.projects.indexOf(scene.shown) : null;
+  const from = shown ?? (step === 1 ? -1 : 0);
+  const next = scene.projects[(from + step + count) % count];
+  if (next) openProject(scene, next);
+}
+
+/**
+ * Goes to the session that waits on the person next: its project's
+ * orchestrator in the middle, and the thread that waits in the panel.
+ */
+export function openNextWait(): void {
+  const scene = readScene();
+  const wait = nextWait(waits(scene.snapshot, scene.projects), scene.snapshot.focused);
+  const project = scene.projects.find((candidate) => candidate.name === wait?.project);
+  if (!wait || !project) {
+    notify({ title: "No session waits on you", level: "info" });
+    return;
+  }
+  const thread = threadAt(scene.snapshot, [project], wait.terminal);
+  if (!thread) {
+    // The orchestrator itself waits.
+    openProject(scene, project);
+    return;
+  }
+  const home = projectHome(scene.snapshot, project);
+  if (home && thread.opens === "panel") focusTerminal(home);
+  openThread(thread);
 }

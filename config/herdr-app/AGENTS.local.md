@@ -59,10 +59,17 @@ one machine, so it runs while this computer is off.
   and runs `mods/projects/agent/start.sh orchestrator`. The orchestrator gets
   a space of its own, and the instructions of its role (`orchestrator.md`) as
   an appended system prompt. No skill is installed for it.
-- **Threads:** the orchestrator starts each one with `start.sh thread`, as a
-  tab in the project's space with the instructions in `thread.md`. A click
-  opens the thread in the right panel; its header has rename, resolve, and a
-  drawer with the Files and Changes of that thread's folder.
+- **Threads:** a thread is one task with an end, such as a feature or a pull
+  request to merge. It does its own checks and reviews with sub-agents; the
+  orchestrator starts a thread only for a task that no open thread owns. Each
+  one starts with `start.sh thread`, as a tab in the project's space with the
+  instructions in `thread.md`. A click opens the thread in the right panel;
+  its header has its state, rename, resolve, and a drawer with the Files and
+  Changes of that thread's folder.
+- **Waits:** a session waits on the person when its agent is blocked, or when
+  its thread reported `needs-you`. The mod puts the number of waits on the
+  app's icon and posts a notice for a `needs-you` report, which Herdr does not
+  announce itself. The project row says who waits and who works.
 - **Reports:** a thread reports with `report.sh`. The report is a file, the
   thread's terminal carries `state` and `report` labels, and a short `hc send`
   wakes the orchestrator. `threads.sh` lists every thread with its report.
@@ -75,6 +82,12 @@ one machine, so it runs while this computer is off.
   panel or by the orchestrator. A new report from the thread clears it.
 - **View:** each project remembers the thread it had open in the panel, and
   the projects keep the order the person drags them into.
-- **Rename and delete a project:** right-click it. Delete closes the project's
-  own space, and Herdr asks first. Its sessions elsewhere lose their labels and
-  keep running. Its memory folder stays.
+- **Rename and delete a project:** right-click it. Delete asks once more in
+  the menu and says what it does: it closes the project's own space, which
+  ends the sessions there, or only removes the labels when the project has no
+  space of its own. Its sessions elsewhere lose their labels and keep
+  running. Its memory folder stays.
+- **Commands:** `projects.new`, `projects.next`, `projects.prev`,
+  `projects.next-waiting` and `projects.threads`, in the command palette and
+  for `keys.json`. The copy of the mod in the sidebar runs them, and watches
+  the waits, so they need the sidebar on show.

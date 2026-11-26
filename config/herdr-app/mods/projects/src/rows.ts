@@ -1,9 +1,10 @@
 import { div, svg, type Context, type Element } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import type { Entry } from "./entries";
+import { groupLabel, groupOf } from "./status";
 import type { Thread } from "./threads";
 import { age } from "./time";
-import { chromeIcon, iconButton, optional, resolveTip, statusMark, type Handler, type Theme } from "./ui";
+import { chromeIcon, iconButton, markBox, optional, resolveTip, statusMark, type Handler, type Theme } from "./ui";
 
 /** Opens the row's menu on a right click. */
 function withMenu(row: Element, onMenu: Handler): Element {
@@ -22,12 +23,13 @@ export interface EntryActions {
 }
 
 export function entryRow(colors: Theme, entry: Entry, actions: EntryActions): Element {
+  const needsYou = entry.status === "blocked";
   const row = h_flex()
     .id(entry.id)
     .px(8)
     .py(5)
     .flex_none()
-    .gap(9)
+    .gap(7)
     .items_center()
     .rounded(8)
     .cursor_pointer()
@@ -50,12 +52,13 @@ export function entryRow(colors: Theme, entry: Entry, actions: EntryActions): El
                 .flex_1()
                 .min_w(0)
                 .truncate()
-                .text_color(entry.selected ? colors.foreground : colors.muted)
+                .text_color(entry.selected || needsYou ? colors.foreground : colors.muted)
+                .when(needsYou, (el) => el.font_medium())
                 .child(entry.name),
             )
-            .child(div().flex_none().text_size(10.5).text_color(colors.dim).child(entry.aside)),
+            .child(div().flex_none().text_size(10.5).text_color(colors.muted).child(entry.aside)),
         )
-        .child(div().truncate().text_size(11).text_color(colors.dim).child(entry.detail)),
+        .child(div().truncate().text_size(11).text_color(colors.muted).child(entry.detail)),
     );
   return withMenu(row, actions.onMenu);
 }
@@ -76,13 +79,18 @@ export interface ThreadActions {
 
 function threadMark(colors: Theme, thread: Thread): Element {
   if (thread.agent) return statusMark(colors, thread.status ?? "idle");
-  return svg(chromeIcon("terminal")).size(11).mx(-2).flex_none().text_color(colors.dim);
+  return markBox(svg(chromeIcon("terminal")).size(11).text_color(colors.dim));
 }
 
-/** Where it runs or what it is, then how long it has been in its state. */
+/** Where it runs, then how long it has been in its state. */
 function threadMeta(thread: Thread, now: number): string {
   const since = thread.since === null ? null : age(now - thread.since);
   return [thread.aside, since].filter((part) => part !== null).join(" · ");
+}
+
+/** Whose move it is, in words, with where the thread runs and for how long: for a place that shows one thread. */
+export function threadState(thread: Thread, now: number): string {
+  return [groupLabel(groupOf(thread.status, thread.resolved)), threadMeta(thread, now)].filter(Boolean).join(" · ");
 }
 
 function resolveButton(colors: Theme, thread: Thread, onResolve: Handler): Element {
@@ -99,7 +107,7 @@ export function threadRow(colors: Theme, thread: Thread, view: ThreadView, actio
   const strong = thread.active || thread.status === "blocked";
   const trailing = view.hovered
     ? resolveButton(colors, thread, actions.onResolve)
-    : div().flex_none().text_size(11).text_color(colors.dim).child(threadMeta(thread, view.now));
+    : div().flex_none().text_size(11).text_color(colors.muted).child(threadMeta(thread, view.now));
   const row = v_flex()
     .id(`thread-${thread.key}`)
     .px(10)
@@ -114,8 +122,8 @@ export function threadRow(colors: Theme, thread: Thread, view: ThreadView, actio
     .on_click((_event, cx) => actions.onOpen(cx))
     .child(
       h_flex()
-        .h(18)
-        .gap(10)
+        .h(22)
+        .gap(7)
         .items_center()
         .child(threadMark(colors, thread))
         .child(
@@ -131,10 +139,10 @@ export function threadRow(colors: Theme, thread: Thread, view: ThreadView, actio
   const noted = optional(row, thread.note, (el, note) =>
     el.child(
       div()
-        .pl(17)
+        .pl(21)
         .truncate()
         .text_size(11.5)
-        .text_color(thread.status === "blocked" ? colors.blocked : colors.dim)
+        .text_color(thread.status === "blocked" ? colors.blocked : colors.muted)
         .child(note),
     ),
   );

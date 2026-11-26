@@ -14,8 +14,12 @@ const MOVE_MEMORY = `cd "$HOME/$1" 2>/dev/null || exit 0
 if [ -e "$3" ]; then echo "a memory folder named $3 exists already: remove it or pick another name" >&2; exit 1; fi
 mv -- "$2" "$3"`;
 
+export function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export function reportFailure(title: string, error: unknown): void {
-  notify({ title, body: error instanceof Error ? error.message : String(error), level: "error" });
+  notify({ title, body: messageOf(error), level: "error" });
 }
 
 /** Fails on a non-zero exit, with what the program wrote. */
@@ -89,12 +93,12 @@ export async function renameProject(project: Project, name: string): Promise<voi
 }
 
 /**
- * Ends a project. Its own space is closed: Herdr asks first, then ends the
- * sessions there. `outside` are its sessions elsewhere: they lose their labels
- * and keep running.
+ * Ends a project, once the person confirmed it. Its own space is closed, which
+ * ends the sessions there. `outside` are its sessions elsewhere: they lose
+ * their labels and keep running.
  */
 export async function deleteProject(ownSpace: string | null, outside: readonly string[]): Promise<void> {
-  if (ownSpace) run("space.close", { id: ownSpace });
+  if (ownSpace) run("space.close", { id: ownSpace, confirmed: true });
   const cleared = LABELS.map((label) => `${label}=`);
   await Promise.all(outside.map((address) => core(["label", address, ...cleared])));
 }

@@ -2,20 +2,8 @@
 import { View, div as div8 } from "gpui-kit";
 import { props } from "herdr";
 
-// src/parse.ts
-function isRecord(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function asRecord(value) {
-  return isRecord(value) ? value : {};
-}
-function text(value) {
-  return typeof value === "string" && value !== "" ? value : null;
-}
-
-// src/parts/new-project.ts
-import { h_flex as h_flex3, InputState } from "gpui-base";
-import { closeOverlay, machines } from "herdr";
+// src/background.ts
+import { checking, nextCommand, notify as notify3, setBadge } from "herdr";
 
 // src/actions.ts
 import { appHome, exec, hc, notify, openOverlay, run } from "herdr";
@@ -23,6 +11,7 @@ import { appHome, exec, hc, notify, openOverlay, run } from "herdr";
 // src/status.ts
 var GROUPS = [
   { id: "waiting", label: "Waiting on you" },
+  { id: "finished", label: "Finished" },
   { id: "working", label: "Working" },
   { id: "idle", label: "Idle" },
   { id: "resolved", label: "Resolved" }
@@ -61,9 +50,14 @@ function groupOf(status, resolved) {
     return "resolved";
   if (status === "blocked")
     return "waiting";
+  if (status === "done")
+    return "finished";
   if (status === "working")
     return "working";
   return "idle";
+}
+function groupLabel(group) {
+  return GROUPS.find((candidate) => candidate.id === group)?.label ?? group;
 }
 
 // src/projects.ts
@@ -135,8 +129,11 @@ var MOVE_MEMORY = `cd "$HOME/$1" 2>/dev/null || exit 0
 [ -d "$2" ] || exit 0
 if [ -e "$3" ]; then echo "a memory folder named $3 exists already: remove it or pick another name" >&2; exit 1; fi
 mv -- "$2" "$3"`;
+function messageOf(error) {
+  return error instanceof Error ? error.message : String(error);
+}
 function reportFailure(title, error) {
-  notify({ title, body: error instanceof Error ? error.message : String(error), level: "error" });
+  notify({ title, body: messageOf(error), level: "error" });
 }
 function succeed(result, program) {
   if (result.code !== 0)
@@ -187,109 +184,147 @@ async function renameProject(project, name) {
 }
 async function deleteProject(ownSpace, outside) {
   if (ownSpace)
-    run("space.close", { id: ownSpace });
+    run("space.close", { id: ownSpace, confirmed: true });
   const cleared = LABELS.map((label) => `${label}=`);
   await Promise.all(outside.map((address) => core(["label", address, ...cleared])));
 }
 
-// src/dialog.ts
-import { div as div2 } from "gpui-kit";
-import { h_flex as h_flex2, Input, v_flex } from "gpui-base";
+// src/navigation.ts
+import { notify as notify2, run as run3, setShared as setShared2 } from "herdr";
 
-// src/ui.ts
-import { div, svg } from "gpui-kit";
-import { h_flex } from "gpui-base";
-import { theme } from "herdr";
-var COLOR_NAMES = [
-  "background",
-  "chrome",
-  "popover",
-  "raised",
-  "selected",
-  "hover",
-  "border",
-  "input",
-  "foreground",
-  "muted",
-  "dim",
-  "accent",
-  "solid",
-  "solid_foreground",
-  "blocked",
-  "working",
-  "done"
-];
-function isColor(value) {
-  return typeof value === "string" && value.startsWith("#");
+// src/panel.ts
+import { appHome as appHome2, layout, readTextFile, run as run2, setShared, shared } from "herdr";
+
+// src/layout-tree.ts
+var PANEL = "panel";
+var PANEL_STACK = "panel-body";
+var THREAD = "thread";
+var THREAD_TERMINAL = "thread-terminal";
+var THREAD_DRAWER = "thread-drawer";
+var THREAD_HEAD_HEIGHT = 36;
+function findNode(node, id) {
+  if (!node || node.id === id)
+    return node;
+  for (const child of node.children ?? []) {
+    const found = findNode(child, id);
+    if (found)
+      return found;
+  }
+  return;
 }
-function readTheme() {
-  const all = theme();
-  const colors = COLOR_NAMES.map((name) => {
-    const color = all[name];
-    if (!isColor(color))
-      throw new Error(`the theme has no color "${name}"`);
-    return [name, color];
-  });
-  return Object.fromEntries(colors);
+function threadView(terminal) {
+  return {
+    id: THREAD,
+    type: "column",
+    resizable: false,
+    children: [
+      {
+        id: "thread-head",
+        type: "block",
+        size: { px: THREAD_HEAD_HEIGHT },
+        content: { mod: "projects", props: { part: "thread-head" } }
+      },
+      { id: THREAD_TERMINAL, type: "block", size: { weight: 3 }, content: { terminal } },
+      {
+        id: THREAD_DRAWER,
+        type: "stack",
+        size: { weight: 2 },
+        hidden: true,
+        active: "thread-files",
+        children: [
+          { id: "thread-files", type: "block", content: { mod: "files" } },
+          { id: "thread-changes", type: "block", content: { mod: "changes" } }
+        ]
+      }
+    ]
+  };
 }
-function chromeIcon(name) {
-  return `mods/workspace-chrome/${name}.svg`;
-}
-function statusMark(colors, status) {
-  const dot = div().size(7).flex_none().rounded(4);
-  if (status === null)
-    return dot;
-  if (status === "idle")
-    return dot.border(1.5).border_color(colors.dim);
-  return dot.bg(colors[status]);
-}
-var ICON_BUTTON = { regular: { box: 24, icon: 14, corner: 6 }, small: { box: 18, icon: 13, corner: 4 } };
-function iconButton(colors, button) {
-  const size = ICON_BUTTON[button.small ? "small" : "regular"];
-  return div().id(button.id).size(size.box).flex_none().flex().items_center().justify_center().rounded(size.corner).when(button.active === true, (el) => el.bg(colors.selected)).text_color(button.active ? colors.foreground : colors.muted).hover((style) => style.bg(colors.hover).text_color(colors.foreground)).tooltip(button.tip).on_mouse_down("left", (_event, cx) => cx.stop_propagation()).on_click((_event, cx) => {
-    cx.stop_propagation();
-    button.onClick(cx);
-  }).child(svg(button.icon).size(size.icon));
-}
-function resolveTip(resolved) {
-  return resolved ? "Reopen" : "Mark resolved";
-}
-function heading(colors, props) {
-  const label = props.count === undefined ? props.label : `${props.label} · ${props.count}`;
-  const bar = h_flex().id(props.id).px(8).h(30).flex_none().gap(5).items_center().text_size(11.5).font_medium().text_color(colors.dim).child(label);
-  const folding = optional(bar, props.fold, (el, fold) => el.cursor_pointer().hover((style) => style.text_color(colors.foreground)).on_click((_event, cx) => fold.onToggle(cx)).child(svg(chromeIcon(fold.open ? "chevron-down" : "chevron-right")).size(11).flex_none()));
-  return optional(folding.child(div().flex_1()), props.action, (el, action) => el.child(iconButton(colors, action)));
-}
-function textButton(colors, button) {
-  return h_flex().id(button.id).h(32).px(14).items_center().rounded(8).border_1().border_color(button.primary ? colors.solid : colors.input).bg(button.primary ? colors.solid : colors.raised).text_color(button.primary ? colors.solid_foreground : colors.foreground).text_size(12.5).font_medium().cursor_pointer().hover((style) => style.opacity(0.88)).on_click((_event, cx) => button.onClick(cx)).child(button.label);
-}
-function menuItem(colors, item) {
-  return h_flex().id(item.id).h(31).px(8).gap(9).rounded(7).items_center().text_color(colors.foreground).cursor_pointer().hover((style) => style.bg(colors.hover)).on_click((_event, cx) => item.onClick(cx)).child(svg(item.icon).size(14).flex_none().text_color(colors.muted)).child(div().flex_1().child(item.label));
-}
-function optional(el, value, add) {
-  return value === null || value === undefined ? el : add(el, value);
+function withThread(node, terminal) {
+  if (!node.children)
+    return node;
+  const children = node.children.filter((child) => child.id !== THREAD).map((child) => withThread(child, terminal));
+  if (node.id !== PANEL_STACK || terminal === null)
+    return { ...node, children };
+  return { ...node, children: [...children, threadView(terminal)] };
 }
 
-// src/dialog.ts
-var REFOCUS_AFTER = 600;
-function focusSoon(input, cx) {
-  input.focus();
-  cx.timer.after(REFOCUS_AFTER, () => input.focus());
+// src/parse.ts
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-function label(colors, text) {
-  return div2().pt(4).text_size(11.5).text_color(colors.dim).child(text);
+function asRecord(value) {
+  return isRecord(value) ? value : {};
 }
-function textField(colors, state, invalid) {
-  return Input.new(state).h(36).px(10).rounded(9).border_1().border_color(invalid ? colors.blocked : colors.input).bg(colors.background).text_size(12.8).text_color(colors.foreground);
+function text(value) {
+  return typeof value === "string" && value !== "" ? value : null;
 }
-function line(color, text) {
-  return div2().text_size(11.5).text_color(color).child(text);
+
+// src/panel.ts
+var LAYOUT = "projects";
+var BASE = "mods/projects/layout.json";
+var APPLIED = "projects.layout";
+function asNode(value) {
+  return isRecord(value) ? value : undefined;
 }
-function dialog(colors, props) {
-  const head = v_flex().id(props.id).w_full().p(18).gap(8).bg(colors.popover).text_color(colors.foreground).child(div2().text_size(15).font_semibold().child(props.title));
-  const fields = optional(head, props.hint, (el, hint) => el.child(line(colors.dim, hint))).children([...props.fields]);
-  return optional(fields, props.error, (el, error) => el.child(line(colors.blocked, error))).child(h_flex2().pt(8).gap(8).justify_end().children(props.buttons.map((button) => textButton(colors, button))));
+function shownLayout() {
+  return shared("layout") === LAYOUT ? asNode(layout()) : undefined;
 }
+function isHidden(node) {
+  return node === undefined || node.hidden === true;
+}
+function shownDrawer(drawer) {
+  return isHidden(drawer) ? null : drawer?.active ?? null;
+}
+function readPanel() {
+  const root = shownLayout();
+  return {
+    hidden: isHidden(findNode(root, PANEL)),
+    active: findNode(root, PANEL_STACK)?.active ?? null,
+    thread: findNode(root, THREAD_TERMINAL)?.content?.terminal ?? null,
+    drawer: shownDrawer(findNode(root, THREAD_DRAWER))
+  };
+}
+function selectPanel(panel) {
+  run2("layout.select", { stack: PANEL_STACK, child: panel });
+}
+function togglePanel() {
+  run2("layout.toggle", { id: PANEL });
+}
+function toggleDrawer(drawer) {
+  if (readPanel().drawer === drawer) {
+    run2("layout.hide", { id: THREAD_DRAWER });
+    return;
+  }
+  run2("layout.select", { stack: THREAD_DRAWER, child: drawer });
+  run2("layout.show", { id: THREAD_DRAWER });
+}
+function setLayout(tree, thread) {
+  run2("layout.set", { layout: withThread(tree, thread) });
+}
+function showThreadInPanel(terminal, focus) {
+  const shown = shownLayout();
+  if (!shown)
+    return;
+  setLayout(shown, terminal);
+  selectPanel(THREAD);
+  if (focus)
+    run2("pane.focus", { terminal });
+}
+async function syncLayout() {
+  const base = await readTextFile(`${appHome2()}/${BASE}`);
+  if (base === null)
+    throw new Error(`${BASE} is missing`);
+  if (shared(APPLIED) === base || !shownLayout())
+    return;
+  const tree = asNode(JSON.parse(base));
+  if (!tree)
+    throw new Error(`${BASE} does not hold a layout`);
+  setLayout(tree, readPanel().thread);
+  setShared(APPLIED, base);
+}
+
+// src/snapshot.ts
+import { agents, focused, machines, panes, shared as shared2, spaces, terminals } from "herdr";
 
 // src/scene.ts
 function buildScene(snapshot, order) {
@@ -304,9 +339,6 @@ function usualFolder(snapshot, machine) {
   const live = snapshot.panes.find((pane) => tabs.has(pane.tab) && pane.cwd)?.cwd;
   return live ?? (space.folder || null);
 }
-
-// src/snapshot.ts
-import { agents, focused, panes, shared, spaces, terminals } from "herdr";
 
 // src/terminal.ts
 function currentReport(labels, turn) {
@@ -374,221 +406,14 @@ function readSnapshot() {
     focused: focused()?.terminal ?? null
   };
 }
+function readOffline() {
+  return new Set(machines().filter((machine) => machine.layout === "unavailable").map((machine) => machine.name));
+}
 function readViews() {
-  return parseViews(shared(VIEWS));
+  return parseViews(shared2(VIEWS));
 }
 function readScene() {
-  return buildScene(readSnapshot(), parseOrder(shared(ORDER)));
-}
-
-// src/parts/new-project.ts
-function reachable() {
-  const names = machines().filter((machine) => machine.layout === "ready").map((machine) => machine.name);
-  return [...names.filter((name) => name !== null), ...names.filter((name) => name === null)];
-}
-
-class NewProjectDialog {
-  overlay;
-  name = InputState.new({ placeholder: "billing" });
-  folder = InputState.new({ placeholder: "/path/to/the/repository" });
-  machine;
-  problem = null;
-  constructor(overlay, cx) {
-    this.overlay = overlay;
-    this.machine = reachable()[0] ?? null;
-    this.offerFolder();
-    for (const input of [this.name, this.folder]) {
-      input.on("change", (_event, change) => this.clearError(change));
-      input.on("submit", (_event, submit) => this.create(submit));
-    }
-    focusSoon(this.name, cx);
-  }
-  render() {
-    const colors = readTheme();
-    return dialog(colors, {
-      id: "new-project",
-      title: "New project",
-      hint: "Starts an orchestrator. It runs the project's threads on the same machine.",
-      error: this.problem?.message ?? null,
-      fields: [
-        label(colors, "Name"),
-        textField(colors, this.name, this.problem?.field === "name"),
-        label(colors, "Machine"),
-        this.machinePicker(colors),
-        label(colors, "Folder"),
-        textField(colors, this.folder, this.problem?.field === "folder")
-      ],
-      buttons: [
-        { id: "cancel", label: "Cancel", onClick: () => closeOverlay(this.overlay) },
-        { id: "create", label: "Create", primary: true, onClick: (cx) => this.create(cx) }
-      ]
-    });
-  }
-  machinePicker(colors) {
-    return h_flex3().gap(6).flex_wrap().children(reachable().map((machine) => textButton(colors, {
-      id: `machine-${machine ?? LOCAL}`,
-      label: machine ?? "This computer",
-      primary: machine === this.machine,
-      onClick: (cx) => this.pickMachine(machine, cx)
-    })));
-  }
-  pickMachine(machine, cx) {
-    this.machine = machine;
-    this.offerFolder();
-    this.clearError(cx);
-  }
-  offerFolder() {
-    this.folder.set_value(usualFolder(readScene().snapshot, this.machine) ?? "");
-  }
-  clearError(cx) {
-    this.problem = null;
-    cx.notify();
-  }
-  create(cx) {
-    const name = this.name.value().trim();
-    const folder = this.folder.value().trim();
-    this.problem = this.check(name, folder);
-    if (this.problem) {
-      cx.notify();
-      return;
-    }
-    closeOverlay(this.overlay);
-    startProject(name, this.machine, folder).catch((error) => reportFailure(`Could not start ${name}`, error));
-  }
-  check(name, folder) {
-    const taken = readScene().projects.map((project) => project.name);
-    const wrongName = nameProblem(name, taken);
-    if (wrongName)
-      return { field: "name", message: wrongName };
-    if (!folder.startsWith("/"))
-      return { field: "folder", message: "Give the folder as a full path on that machine." };
-    return null;
-  }
-}
-
-// src/parts/panel-tabs.ts
-import { div as div3 } from "gpui-kit";
-import { h_flex as h_flex4 } from "gpui-base";
-
-// src/layout-tree.ts
-var PANEL = "panel";
-var PANEL_STACK = "panel-body";
-var THREAD = "thread";
-var THREAD_TERMINAL = "thread-terminal";
-var THREAD_DRAWER = "thread-drawer";
-var THREAD_HEAD_HEIGHT = 36;
-function findNode(node, id) {
-  if (!node || node.id === id)
-    return node;
-  for (const child of node.children ?? []) {
-    const found = findNode(child, id);
-    if (found)
-      return found;
-  }
-  return;
-}
-function threadView(terminal) {
-  return {
-    id: THREAD,
-    type: "column",
-    resizable: false,
-    children: [
-      {
-        id: "thread-head",
-        type: "block",
-        size: { px: THREAD_HEAD_HEIGHT },
-        content: { mod: "projects", props: { part: "thread-head" } }
-      },
-      { id: THREAD_TERMINAL, type: "block", size: { weight: 3 }, content: { terminal } },
-      {
-        id: THREAD_DRAWER,
-        type: "stack",
-        size: { weight: 2 },
-        hidden: true,
-        active: "thread-files",
-        children: [
-          { id: "thread-files", type: "block", content: { mod: "files" } },
-          { id: "thread-changes", type: "block", content: { mod: "changes" } }
-        ]
-      }
-    ]
-  };
-}
-function withThread(node, terminal) {
-  if (!node.children)
-    return node;
-  const children = node.children.filter((child) => child.id !== THREAD).map((child) => withThread(child, terminal));
-  if (node.id !== PANEL_STACK || terminal === null)
-    return { ...node, children };
-  return { ...node, children: [...children, threadView(terminal)] };
-}
-
-// src/navigation.ts
-import { run as run3, setShared as setShared2 } from "herdr";
-
-// src/panel.ts
-import { appHome as appHome2, layout, readTextFile, run as run2, setShared, shared as shared2 } from "herdr";
-var LAYOUT = "projects";
-var BASE = "mods/projects/layout.json";
-var APPLIED = "projects.layout";
-function asNode(value) {
-  return isRecord(value) ? value : undefined;
-}
-function shownLayout() {
-  return shared2("layout") === LAYOUT ? asNode(layout()) : undefined;
-}
-function isHidden(node) {
-  return node === undefined || node.hidden === true;
-}
-function shownDrawer(drawer) {
-  return isHidden(drawer) ? null : drawer?.active ?? null;
-}
-function readPanel() {
-  const root = shownLayout();
-  return {
-    hidden: isHidden(findNode(root, PANEL)),
-    active: findNode(root, PANEL_STACK)?.active ?? null,
-    thread: findNode(root, THREAD_TERMINAL)?.content?.terminal ?? null,
-    drawer: shownDrawer(findNode(root, THREAD_DRAWER))
-  };
-}
-function selectPanel(panel) {
-  run2("layout.select", { stack: PANEL_STACK, child: panel });
-}
-function togglePanel() {
-  run2("layout.toggle", { id: PANEL });
-}
-function toggleDrawer(drawer) {
-  if (readPanel().drawer === drawer) {
-    run2("layout.hide", { id: THREAD_DRAWER });
-    return;
-  }
-  run2("layout.select", { stack: THREAD_DRAWER, child: drawer });
-  run2("layout.show", { id: THREAD_DRAWER });
-}
-function setLayout(tree, thread) {
-  run2("layout.set", { layout: withThread(tree, thread) });
-}
-function showThreadInPanel(terminal, focus) {
-  const shown = shownLayout();
-  if (!shown)
-    return;
-  setLayout(shown, terminal);
-  selectPanel(THREAD);
-  if (focus)
-    run2("pane.focus", { terminal });
-}
-async function syncLayout() {
-  const base = await readTextFile(`${appHome2()}/${BASE}`);
-  if (base === null)
-    throw new Error(`${BASE} is missing`);
-  if (shared2(APPLIED) === base || !shownLayout())
-    return;
-  const tree = asNode(JSON.parse(base));
-  if (!tree)
-    throw new Error(`${BASE} does not hold a layout`);
-  setLayout(tree, readPanel().thread);
-  setShared(APPLIED, base);
+  return buildScene(readSnapshot(), parseOrder(shared2(ORDER)));
 }
 
 // src/text.ts
@@ -642,6 +467,7 @@ function projectThreads(snapshot, project) {
     const seat = seated.get(member.address);
     return {
       key: member.address,
+      project: project.name,
       title: sessionTitle(member, seat),
       status: member.status,
       agent: member.agent || member.status !== null,
@@ -674,11 +500,15 @@ function projectFootprint(snapshot, project) {
   const outside = project.members.map((member) => member.address).filter((address) => !inside(address));
   return { space, outside };
 }
+function longestFirst(a, b) {
+  return (a.since ?? Number.POSITIVE_INFINITY) - (b.since ?? Number.POSITIVE_INFINITY);
+}
+var QUEUES = ["waiting", "finished"];
 function groupThreads(threads) {
-  return GROUPS.map((group) => ({
-    ...group,
-    threads: threads.filter((thread) => groupOf(thread.status, thread.resolved) === group.id)
-  })).filter((group) => group.threads.length > 0);
+  return GROUPS.map((group) => {
+    const members = threads.filter((thread) => groupOf(thread.status, thread.resolved) === group.id);
+    return { ...group, threads: QUEUES.includes(group.id) ? members.sort(longestFirst) : members };
+  }).filter((group) => group.threads.length > 0);
 }
 function agentOrder(agents, shown) {
   const place = new Map(shown.map((thread, index) => [thread.key, index]));
@@ -686,9 +516,35 @@ function agentOrder(agents, shown) {
   return [...agents].sort((a, b) => rank(a) - rank(b)).map((agent) => agent.address);
 }
 
+// src/waits.ts
+function isWaiting(member) {
+  return groupOf(member.status, member.resolved) === "waiting";
+}
+function waits(snapshot, projects) {
+  return projects.flatMap((project) => {
+    const waiting = project.members.filter(isWaiting);
+    if (waiting.length === 0)
+      return [];
+    const titles = new Map(projectThreads(snapshot, project).map((thread) => [thread.key, thread.title]));
+    return waiting.map((member) => ({
+      terminal: member.address,
+      project: project.name,
+      title: titles.get(member.address) ?? null,
+      since: member.since,
+      asked: member.reported === "needs-you"
+    }));
+  }).sort(longestFirst);
+}
+function nextWait(all, focused) {
+  const at = all.findIndex((wait) => wait.terminal === focused);
+  return all[(at + 1) % all.length];
+}
+function waitsToAnnounce(before, all, focused) {
+  return all.filter((wait) => wait.asked && !before.has(wait.terminal) && wait.terminal !== focused);
+}
+
 // src/navigation.ts
-function remember(thread) {
-  const project = readScene().shown?.name;
+function remember(project, thread) {
   const views = readViews();
   if (project === undefined || (views[project] ?? null) === thread)
     return;
@@ -709,11 +565,11 @@ function openThread(thread) {
     focusTerminal(thread.key);
     return;
   }
-  remember(thread.key);
+  remember(thread.project, thread.key);
   showInPanel(thread.key, true);
 }
 function showThreadList() {
-  remember(null);
+  remember(readScene().shown?.name, null);
   selectPanel("threads");
 }
 function openProject(scene, project) {
@@ -735,8 +591,313 @@ function openProject(scene, project) {
 function dropProject(scene, moved, target) {
   setShared2(ORDER, moveProject(scene.projects.map((project) => project.name), moved, target));
 }
+function stepProject(step) {
+  const scene = readScene();
+  const count = scene.projects.length;
+  const shown = scene.shown ? scene.projects.indexOf(scene.shown) : null;
+  const from = shown ?? (step === 1 ? -1 : 0);
+  const next = scene.projects[(from + step + count) % count];
+  if (next)
+    openProject(scene, next);
+}
+function openNextWait() {
+  const scene = readScene();
+  const wait = nextWait(waits(scene.snapshot, scene.projects), scene.snapshot.focused);
+  const project = scene.projects.find((candidate) => candidate.name === wait?.project);
+  if (!wait || !project) {
+    notify2({ title: "No session waits on you", level: "info" });
+    return;
+  }
+  const thread = threadAt(scene.snapshot, [project], wait.terminal);
+  if (!thread) {
+    openProject(scene, project);
+    return;
+  }
+  const home = projectHome(scene.snapshot, project);
+  if (home && thread.opens === "panel")
+    focusTerminal(home);
+  openThread(thread);
+}
+
+// src/background.ts
+var MOD2 = "projects";
+var LOOK_EVERY = 5000;
+var COMMANDS = {
+  new: openNewProjectDialog,
+  next: () => stepProject(1),
+  prev: () => stepProject(-1),
+  "next-waiting": openNextWait,
+  threads: showThreadList
+};
+async function runCommands() {
+  for (;; ) {
+    const name = await nextCommand();
+    try {
+      COMMANDS[name]?.();
+    } catch (error) {
+      reportFailure(`Could not run ${MOD2}.${name}`, error);
+    }
+  }
+}
+function announce(wait) {
+  notify3({
+    title: `${wait.title ?? "The orchestrator"} needs you`,
+    body: wait.project,
+    level: "warning",
+    action: { name: `${MOD2}.next-waiting` }
+  });
+}
+function watchWaits(cx) {
+  let badge;
+  let known = null;
+  const look = () => {
+    const { snapshot, projects } = readScene();
+    const all = waits(snapshot, projects);
+    const count = all.length > 0 ? String(all.length) : null;
+    if (count !== badge)
+      setBadge(count);
+    badge = count;
+    if (known)
+      waitsToAnnounce(known, all, snapshot.focused).forEach(announce);
+    known = new Set(all.map((wait) => wait.terminal));
+  };
+  look();
+  cx.timer.every(LOOK_EVERY, look);
+}
+function startBackground(cx) {
+  if (checking())
+    return;
+  cx.spawn(runCommands);
+  watchWaits(cx);
+}
+
+// src/parts/new-project.ts
+import { h_flex as h_flex3, InputState } from "gpui-base";
+import { closeOverlay, machines as machines2 } from "herdr";
+
+// src/dialog.ts
+import { div as div2 } from "gpui-kit";
+import { h_flex as h_flex2, Input, v_flex } from "gpui-base";
+
+// src/ui.ts
+import { div, svg } from "gpui-kit";
+import { h_flex } from "gpui-base";
+import { theme } from "herdr";
+var COLOR_NAMES = [
+  "background",
+  "chrome",
+  "popover",
+  "raised",
+  "selected",
+  "hover",
+  "border",
+  "input",
+  "foreground",
+  "muted",
+  "dim",
+  "accent",
+  "solid",
+  "solid_foreground",
+  "blocked",
+  "working",
+  "done"
+];
+function isColor(value) {
+  return typeof value === "string" && value.startsWith("#");
+}
+function readTheme() {
+  const all = theme();
+  const colors = COLOR_NAMES.map((name) => {
+    const color = all[name];
+    if (!isColor(color))
+      throw new Error(`the theme has no color "${name}"`);
+    return [name, color];
+  });
+  return Object.fromEntries(colors);
+}
+function chromeIcon(name) {
+  return `mods/workspace-chrome/${name}.svg`;
+}
+var MARK = 14;
+function markBox(mark) {
+  const box = div().size(MARK).flex_none().flex().items_center().justify_center();
+  return mark ? box.child(mark) : box;
+}
+function statusMark(colors, status) {
+  if (status === null)
+    return markBox();
+  if (status === "working")
+    return markBox(svg(chromeIcon("spinner")).size(12).text_color(colors.working).spin(900));
+  if (status === "blocked") {
+    return markBox().rounded(4).bg(`${colors.blocked}26`).text_size(10.5).font_bold().text_color(colors.blocked).child("!");
+  }
+  const dot = div().size(7).rounded(4);
+  return markBox(status === "idle" ? dot.border(1.5).border_color(colors.dim) : dot.bg(colors.done));
+}
+var ICON_BUTTON = { regular: { box: 24, icon: 14, corner: 6 }, small: { box: 22, icon: 13, corner: 5 } };
+function iconButton(colors, button) {
+  const size = ICON_BUTTON[button.small ? "small" : "regular"];
+  return div().id(button.id).size(size.box).flex_none().flex().items_center().justify_center().rounded(size.corner).when(button.active === true, (el) => el.bg(colors.selected)).text_color(button.active ? colors.foreground : colors.muted).hover((style) => style.bg(colors.hover).text_color(colors.foreground)).tooltip(button.tip).on_mouse_down("left", (_event, cx) => cx.stop_propagation()).on_click((_event, cx) => {
+    cx.stop_propagation();
+    button.onClick(cx);
+  }).child(svg(button.icon).size(size.icon));
+}
+function resolveTip(resolved) {
+  return resolved ? "Reopen" : "Mark resolved";
+}
+function heading(colors, props) {
+  const label = props.count === undefined ? props.label : `${props.label} · ${props.count}`;
+  const bar = h_flex().id(props.id).px(8).h(30).flex_none().gap(5).items_center().text_size(11.5).font_medium().text_color(props.tone ?? colors.dim).child(label);
+  const folding = optional(bar, props.fold, (el, fold) => el.cursor_pointer().hover((style) => style.text_color(colors.foreground)).on_click((_event, cx) => fold.onToggle(cx)).child(svg(chromeIcon(fold.open ? "chevron-down" : "chevron-right")).size(11).flex_none()));
+  return optional(folding.child(div().flex_1()), props.action, (el, action) => el.child(iconButton(colors, action)));
+}
+function textButton(colors, button) {
+  const face = h_flex().id(button.id).h(32).px(14).items_center().rounded(8).border_1().border_color(button.primary ? colors.solid : colors.input).bg(button.primary ? colors.solid : colors.raised).text_color(button.primary ? colors.solid_foreground : colors.foreground).text_size(12.5).font_medium().child(button.label);
+  if (button.disabled)
+    return face.opacity(0.45);
+  return face.cursor_pointer().hover((style) => style.opacity(0.88)).on_click((_event, cx) => button.onClick(cx));
+}
+function menuItem(colors, item) {
+  return h_flex().id(item.id).h(31).px(8).gap(9).rounded(7).items_center().text_color(colors.foreground).cursor_pointer().hover((style) => style.bg(colors.hover)).on_click((_event, cx) => item.onClick(cx)).child(svg(item.icon).size(14).flex_none().text_color(colors.muted)).child(div().flex_1().child(item.label));
+}
+function optional(el, value, add) {
+  return value === null || value === undefined ? el : add(el, value);
+}
+
+// src/dialog.ts
+var REFOCUS_AFTER = 600;
+function focusSoon(input, cx) {
+  input.focus();
+  cx.timer.after(REFOCUS_AFTER, () => input.focus());
+}
+function label(colors, text) {
+  return div2().pt(4).text_size(11.5).text_color(colors.dim).child(text);
+}
+function textField(colors, state, invalid) {
+  return Input.new(state).h(36).px(10).rounded(9).border_1().border_color(invalid ? colors.blocked : colors.input).bg(colors.background).text_size(12.8).text_color(colors.foreground);
+}
+function line(color, text) {
+  return div2().text_size(11.5).text_color(color).child(text);
+}
+function dialog(colors, props) {
+  const head = v_flex().id(props.id).w_full().p(18).gap(8).bg(colors.popover).text_color(colors.foreground).child(div2().text_size(15).font_semibold().child(props.title));
+  const fields = optional(head, props.hint, (el, hint) => el.child(line(colors.dim, hint))).children([...props.fields]);
+  return optional(fields, props.error, (el, error) => el.child(line(colors.blocked, error))).child(h_flex2().pt(8).gap(8).justify_end().children(props.buttons.map((button) => textButton(colors, button))));
+}
+
+// src/parts/new-project.ts
+function choices() {
+  const known = machines2().filter((machine) => machine.layout !== "loading").map((machine) => ({ name: machine.name, offline: machine.layout === "unavailable" }));
+  return [...known.filter((choice) => choice.name !== null), ...known.filter((choice) => choice.name === null)];
+}
+function machineLabel(choice) {
+  const name = choice.name ?? "This computer";
+  return choice.offline ? `${name} (offline)` : name;
+}
+
+class NewProjectDialog {
+  overlay;
+  name = InputState.new({ placeholder: "billing" });
+  folder = InputState.new({ placeholder: "/path/to/the/repository" });
+  machine;
+  problem = null;
+  starting = false;
+  constructor(overlay, cx) {
+    this.overlay = overlay;
+    this.machine = choices().find((choice) => !choice.offline)?.name ?? null;
+    this.offerFolder();
+    for (const input of [this.name, this.folder]) {
+      input.on("change", (_event, change) => this.clearError(change));
+      input.on("submit", (_event, submit) => this.create(submit));
+    }
+    focusSoon(this.name, cx);
+  }
+  render() {
+    const colors = readTheme();
+    return dialog(colors, {
+      id: "new-project",
+      title: "New project",
+      hint: this.starting ? `Starting the orchestrator on ${this.machine ?? "this computer"}. This can take a minute.` : "Starts an orchestrator. It runs the project's threads on the same machine.",
+      error: this.problem?.message ?? null,
+      fields: [
+        label(colors, "Name"),
+        textField(colors, this.name, this.problem?.field === "name"),
+        label(colors, "Machine"),
+        this.machinePicker(colors),
+        label(colors, "Folder"),
+        textField(colors, this.folder, this.problem?.field === "folder")
+      ],
+      buttons: [
+        { id: "cancel", label: this.starting ? "Hide" : "Cancel", onClick: () => closeOverlay(this.overlay) },
+        {
+          id: "create",
+          label: this.starting ? "Starting…" : "Create",
+          primary: true,
+          disabled: this.starting,
+          onClick: (cx) => this.create(cx)
+        }
+      ]
+    });
+  }
+  machinePicker(colors) {
+    return h_flex3().gap(6).flex_wrap().children(choices().map((choice) => textButton(colors, {
+      id: `machine-${choice.name ?? LOCAL}`,
+      label: machineLabel(choice),
+      primary: choice.name === this.machine,
+      disabled: choice.offline || this.starting,
+      onClick: (cx) => this.pickMachine(choice.name, cx)
+    })));
+  }
+  pickMachine(machine, cx) {
+    this.machine = machine;
+    this.offerFolder();
+    this.clearError(cx);
+  }
+  offerFolder() {
+    this.folder.set_value(usualFolder(readScene().snapshot, this.machine) ?? "");
+  }
+  clearError(cx) {
+    this.problem = null;
+    cx.notify();
+  }
+  create(cx) {
+    if (this.starting)
+      return;
+    const name = this.name.value().trim();
+    const folder = this.folder.value().trim();
+    this.problem = this.check(name, folder);
+    this.starting = this.problem === null;
+    cx.notify();
+    if (!this.starting)
+      return;
+    const start = startProject(name, this.machine, folder);
+    start.catch((error) => reportFailure(`Could not start ${name}`, error));
+    cx.spawn((task) => this.follow(start, task));
+  }
+  async follow(start, cx) {
+    try {
+      await start;
+      closeOverlay(this.overlay);
+    } catch (error) {
+      this.starting = false;
+      this.problem = { field: null, message: messageOf(error) };
+      cx.notify();
+    }
+  }
+  check(name, folder) {
+    const taken = readScene().projects.map((project) => project.name);
+    const wrongName = nameProblem(name, taken);
+    if (wrongName)
+      return { field: "name", message: wrongName };
+    if (!folder.startsWith("/"))
+      return { field: "folder", message: "Give the folder as a full path on that machine." };
+    return null;
+  }
+}
 
 // src/parts/panel-tabs.ts
+import { div as div3 } from "gpui-kit";
+import { h_flex as h_flex4 } from "gpui-base";
 var TABS = [
   { id: "threads", label: "Threads" },
   { id: "files", label: "Files" },
@@ -775,14 +936,31 @@ import { v_flex as v_flex3 } from "gpui-base";
 function count(amount, noun) {
   return `${amount} ${noun}${amount === 1 ? "" : "s"}`;
 }
-function projectEntry(project, selected) {
+function place(project, offline) {
   const [machine] = project.machines;
-  const spread = project.machines.length > 1;
+  const where = project.machines.length > 1 ? count(project.machines.length, "machine") : machine ?? LOCAL;
+  return offline ? `${where} · offline` : where;
+}
+function detail(project) {
+  const lead = leadOf(project);
+  const open = threadsOf(project).filter((thread) => !thread.resolved);
+  const amount = (group) => open.filter((thread) => groupOf(thread.status, false) === group).length;
+  const moves = [
+    lead && groupOf(lead.status, lead.resolved) === "waiting" ? "orchestrator waits" : null,
+    amount("waiting") > 0 ? `${amount("waiting")} waiting` : null,
+    amount("finished") > 0 ? `${amount("finished")} finished` : null,
+    amount("working") > 0 ? `${amount("working")} working` : null
+  ].filter((move) => move !== null);
+  if (moves.length > 0)
+    return moves.join(" · ");
+  return open.length > 0 ? count(open.length, "thread") : "No thread";
+}
+function projectEntry(project, selected, offline) {
   return {
     id: `project-${project.name}`,
     name: project.name,
-    aside: spread ? count(project.machines.length, "machine") : machine ?? LOCAL,
-    detail: count(threadsOf(project).length, "thread"),
+    aside: place(project, offline),
+    detail: detail(project),
     status: attention(mostUrgent(project.members.map((member) => member.status))),
     selected
   };
@@ -812,17 +990,21 @@ function withMenu(row, onMenu) {
   });
 }
 function entryRow(colors, entry, actions) {
-  const row = h_flex5().id(entry.id).px(8).py(5).flex_none().gap(9).items_center().rounded(8).cursor_pointer().when(entry.selected, (el) => el.bg(colors.selected)).hover((style) => style.bg(colors.hover)).on_click((_event, cx) => actions.onOpen(cx)).on_mouse_down("left", (_event, cx) => actions.onPress(cx)).on_mouse_up("left", (_event, cx) => actions.onDrop(cx)).child(statusMark(colors, entry.status)).child(v_flex2().flex_1().min_w(0).child(h_flex5().gap(6).items_center().child(div4().flex_1().min_w(0).truncate().text_color(entry.selected ? colors.foreground : colors.muted).child(entry.name)).child(div4().flex_none().text_size(10.5).text_color(colors.dim).child(entry.aside))).child(div4().truncate().text_size(11).text_color(colors.dim).child(entry.detail)));
+  const needsYou = entry.status === "blocked";
+  const row = h_flex5().id(entry.id).px(8).py(5).flex_none().gap(7).items_center().rounded(8).cursor_pointer().when(entry.selected, (el) => el.bg(colors.selected)).hover((style) => style.bg(colors.hover)).on_click((_event, cx) => actions.onOpen(cx)).on_mouse_down("left", (_event, cx) => actions.onPress(cx)).on_mouse_up("left", (_event, cx) => actions.onDrop(cx)).child(statusMark(colors, entry.status)).child(v_flex2().flex_1().min_w(0).child(h_flex5().gap(6).items_center().child(div4().flex_1().min_w(0).truncate().text_color(entry.selected || needsYou ? colors.foreground : colors.muted).when(needsYou, (el) => el.font_medium()).child(entry.name)).child(div4().flex_none().text_size(10.5).text_color(colors.muted).child(entry.aside))).child(div4().truncate().text_size(11).text_color(colors.muted).child(entry.detail)));
   return withMenu(row, actions.onMenu);
 }
 function threadMark(colors, thread) {
   if (thread.agent)
     return statusMark(colors, thread.status ?? "idle");
-  return svg2(chromeIcon("terminal")).size(11).mx(-2).flex_none().text_color(colors.dim);
+  return markBox(svg2(chromeIcon("terminal")).size(11).text_color(colors.dim));
 }
 function threadMeta(thread, now) {
   const since = thread.since === null ? null : age(now - thread.since);
   return [thread.aside, since].filter((part) => part !== null).join(" · ");
+}
+function threadState(thread, now) {
+  return [groupLabel(groupOf(thread.status, thread.resolved)), threadMeta(thread, now)].filter(Boolean).join(" · ");
 }
 function resolveButton(colors, thread, onResolve) {
   return iconButton(colors, {
@@ -835,9 +1017,9 @@ function resolveButton(colors, thread, onResolve) {
 }
 function threadRow(colors, thread, view, actions) {
   const strong = thread.active || thread.status === "blocked";
-  const trailing = view.hovered ? resolveButton(colors, thread, actions.onResolve) : div4().flex_none().text_size(11).text_color(colors.dim).child(threadMeta(thread, view.now));
-  const row = v_flex2().id(`thread-${thread.key}`).px(10).py(7).flex_none().gap(2).rounded(8).cursor_pointer().when(thread.active, (el) => el.bg(colors.selected)).hover((style) => style.bg(colors.hover)).on_hover((on, cx) => actions.onHover(on, cx)).on_click((_event, cx) => actions.onOpen(cx)).child(h_flex5().h(18).gap(10).items_center().child(threadMark(colors, thread)).child(div4().flex_1().min_w(0).truncate().text_color(strong ? colors.foreground : colors.muted).child(thread.title)).child(trailing));
-  const noted = optional(row, thread.note, (el, note) => el.child(div4().pl(17).truncate().text_size(11.5).text_color(thread.status === "blocked" ? colors.blocked : colors.dim).child(note)));
+  const trailing = view.hovered ? resolveButton(colors, thread, actions.onResolve) : div4().flex_none().text_size(11).text_color(colors.muted).child(threadMeta(thread, view.now));
+  const row = v_flex2().id(`thread-${thread.key}`).px(10).py(7).flex_none().gap(2).rounded(8).cursor_pointer().when(thread.active, (el) => el.bg(colors.selected)).hover((style) => style.bg(colors.hover)).on_hover((on, cx) => actions.onHover(on, cx)).on_click((_event, cx) => actions.onOpen(cx)).child(h_flex5().h(22).gap(7).items_center().child(threadMark(colors, thread)).child(div4().flex_1().min_w(0).truncate().text_color(strong ? colors.foreground : colors.muted).child(thread.title)).child(trailing));
+  const noted = optional(row, thread.note, (el, note) => el.child(div4().pl(21).truncate().text_size(11.5).text_color(thread.status === "blocked" ? colors.blocked : colors.muted).child(note)));
   return optional(noted, actions.onMenu, withMenu);
 }
 
@@ -847,15 +1029,16 @@ class ProjectList {
   render() {
     const colors = readTheme();
     const scene = readScene();
-    const rows = scene.projects.map((project) => this.row(colors, scene, project));
+    const offline = readOffline();
+    const rows = scene.projects.map((project) => this.row(colors, scene, project, project.machines.some((machine) => offline.has(machine))));
     return v_flex3().id("project-list").size_full().min_h(0).px(8).pb(8).gap(1).bg(colors.chrome).text_size(13).overflow_y_scrollbar().on_mouse_up("left", () => this.release()).child(heading(colors, {
       id: "projects",
       label: "Projects",
       action: { id: "new-project", icon: chromeIcon("plus"), tip: "New project", onClick: openNewProjectDialog }
-    })).children(rows).when(rows.length === 0, (el) => el.child(div5().px(8).text_size(12).text_color(colors.dim).child("No project yet. Start one with the + above.")));
+    })).children(rows).when(rows.length === 0, (el) => el.child(div5().px(8).text_size(12).text_color(colors.muted).child("No project yet. Start one with the + above.")));
   }
-  row(colors, scene, project) {
-    return entryRow(colors, projectEntry(project, project === scene.shown), {
+  row(colors, scene, project, offline) {
+    return entryRow(colors, projectEntry(project, project === scene.shown, offline), {
       onOpen: () => openProject(scene, project),
       onMenu: () => openProjectMenu(project.name),
       onPress: () => this.press(project.name),
@@ -881,26 +1064,52 @@ class ProjectList {
 // src/parts/project-menu.ts
 import { v_flex as v_flex4 } from "gpui-base";
 import { closeOverlay as closeOverlay2 } from "herdr";
-function projectMenu(overlay, name) {
-  const rename = () => {
-    closeOverlay2(overlay);
-    openRenameProjectDialog(name);
-  };
-  const remove = () => {
-    closeOverlay2(overlay);
+function sessions(amount) {
+  return `${amount} session${amount === 1 ? "" : "s"}`;
+}
+function consequence(project, footprint) {
+  const inside = project.members.length - footprint.outside.length;
+  return footprint.space ? `End ${sessions(inside)}` : `Ungroup ${sessions(project.members.length)}`;
+}
+
+class ProjectMenu {
+  overlay;
+  name;
+  confirming = false;
+  constructor(overlay, name) {
+    this.overlay = overlay;
+    this.name = name;
+  }
+  render() {
+    const colors = readTheme();
     const scene = readScene();
-    const project = scene.projects.find((candidate) => candidate.name === name);
-    if (!project)
-      return;
-    const { space, outside } = projectFootprint(scene.snapshot, project);
-    deleteProject(space, outside).catch((error) => reportFailure(`Could not delete ${name}`, error));
-  };
-  return {
-    render() {
-      const colors = readTheme();
-      return v_flex4().id("project-menu").w_full().p(5).bg(colors.popover).text_size(12.8).child(menuItem(colors, { id: "rename-project", icon: chromeIcon("square-pen"), label: "Rename", onClick: rename })).child(menuItem(colors, { id: "delete-project", icon: chromeIcon("x"), label: "Delete", onClick: remove }));
-    }
-  };
+    const project = scene.projects.find((candidate) => candidate.name === this.name);
+    const footprint = project ? projectFootprint(scene.snapshot, project) : null;
+    const remove = this.confirming && project && footprint ? {
+      id: "confirm-delete",
+      icon: chromeIcon("check"),
+      label: consequence(project, footprint),
+      onClick: () => this.remove(footprint)
+    } : { id: "delete-project", icon: chromeIcon("x"), label: "Delete", onClick: (cx) => this.ask(cx) };
+    return v_flex4().id("project-menu").w_full().p(5).bg(colors.popover).text_size(12.8).child(menuItem(colors, {
+      id: "rename-project",
+      icon: chromeIcon("square-pen"),
+      label: "Rename",
+      onClick: () => this.rename()
+    })).child(menuItem(colors, remove));
+  }
+  rename() {
+    closeOverlay2(this.overlay);
+    openRenameProjectDialog(this.name);
+  }
+  ask(cx) {
+    this.confirming = true;
+    cx.notify();
+  }
+  remove(footprint) {
+    closeOverlay2(this.overlay);
+    deleteProject(footprint.space, footprint.outside).catch((error) => reportFailure(`Could not delete ${this.name}`, error));
+  }
 }
 
 // src/parts/rename-project.ts
@@ -995,7 +1204,7 @@ var threadHead = {
     const { snapshot, projects } = readScene();
     const thread = threadAt(snapshot, projects, panel.thread);
     const bar = h_flex6().size_full().px(8).gap(6).items_center().bg(colors.chrome).text_size(12.5).child(iconButton(colors, { id: "back", icon: chromeIcon("chevron-left"), tip: "All threads", onClick: showThreadList })).child(statusMark(colors, thread?.status ?? null)).child(div6().flex_1().min_w(0).truncate().text_color(thread ? colors.foreground : colors.dim).child(thread?.title ?? "This thread has ended."));
-    return optional(bar, thread, (el, open) => el.children([...drawerButtons(colors, panel.drawer), ...controls(colors, open)]));
+    return optional(bar, thread, (el, open) => el.child(div6().flex_none().text_size(11).text_color(colors.muted).child(threadState(open, Date.now()))).children([...drawerButtons(colors, panel.drawer), ...controls(colors, open)]));
   }
 };
 
@@ -1004,6 +1213,13 @@ import { div as div7 } from "gpui-kit";
 import { v_flex as v_flex5 } from "gpui-base";
 import { setAgentOrder } from "herdr";
 var AGE_REFRESH = 60000;
+function emptyText(shown) {
+  if (!shown)
+    return "Pick a project on the left.";
+  if (leadOf(shown)?.status === "blocked")
+    return "No thread yet. The orchestrator waits on you, in the middle.";
+  return "No thread yet. Ask the orchestrator for some work.";
+}
 
 class ThreadPanel {
   folded = new Set(["resolved"]);
@@ -1020,11 +1236,7 @@ class ThreadPanel {
     const groups = groupThreads(shown ? projectThreads(snapshot, shown) : []);
     const threads = groups.flatMap((group) => group.threads);
     this.publishOrder(agentOrder(snapshot.agents, threads));
-    return v_flex5().id("threads").size_full().min_h(0).px(8).pb(8).bg(colors.chrome).text_size(13).overflow_y_scrollbar().children(groups.flatMap((group) => this.group(colors, group, now))).when(threads.length === 0, (el) => el.child(this.empty(colors, shown !== null)));
-  }
-  empty(colors, hasProject) {
-    const text = hasProject ? "No thread yet. Ask the orchestrator for some work." : "Pick a project on the left.";
-    return div7().px(8).pt(12).text_size(12).text_color(colors.dim).child(text);
+    return v_flex5().id("threads").size_full().min_h(0).px(8).pb(8).bg(colors.chrome).text_size(13).overflow_y_scrollbar().children(groups.flatMap((group) => this.group(colors, group, now))).when(threads.length === 0, (el) => el.child(div7().px(8).pt(12).text_size(12).text_color(colors.muted).child(emptyText(shown))));
   }
   group(colors, group, now) {
     const open = !this.folded.has(group.id);
@@ -1032,6 +1244,7 @@ class ThreadPanel {
       id: group.id,
       label: group.label,
       count: group.threads.length,
+      ...group.id === "waiting" && { tone: colors.blocked },
       fold: { open, onToggle: (cx) => this.toggleFold(group.id, cx) }
     });
     return open ? [head, ...group.threads.map((thread) => this.row(colors, thread, now))] : [head];
@@ -1102,13 +1315,16 @@ function need(value, what) {
 }
 var PARTS = {
   top: () => topBar,
-  projects: () => new ProjectList,
+  projects: (_given, cx) => {
+    startBackground(cx);
+    return new ProjectList;
+  },
   tabs: () => panelTabs,
   threads: (_given, cx) => new ThreadPanel(cx),
   "thread-head": () => threadHead,
   "new-project": (given, cx) => new NewProjectDialog(need(given.overlay, "its overlay"), cx),
   "rename-project": (given, cx) => new RenameProjectDialog(need(given.overlay, "its overlay"), need(given.project, "a project"), cx),
-  "project-menu": (given) => projectMenu(need(given.overlay, "its overlay"), need(given.project, "a project"))
+  "project-menu": (given) => new ProjectMenu(need(given.overlay, "its overlay"), need(given.project, "a project"))
 };
 function createPart(given, cx) {
   const factory = PARTS[given.part];

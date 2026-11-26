@@ -47,12 +47,33 @@ export function chromeIcon(name: string): string {
   return `mods/workspace-chrome/${name}.svg`;
 }
 
-/** A dot for a state that asks for attention, a ring for idle, a blank for none. */
+const MARK = 14;
+
+/** The room every mark of a row takes, so that the rows' texts line up. */
+export function markBox(mark?: Element): Element {
+  const box = div().size(MARK).flex_none().flex().items_center().justify_center();
+  return mark ? box.child(mark) : box;
+}
+
+/**
+ * A session's state, in the shapes of Herdr's own agent list, so that no state
+ * is told by its color alone: a spinner while it works, "!" when it needs the
+ * person, a dot for a turn that ended unseen, a ring for idle, a blank for none.
+ */
 export function statusMark(colors: Theme, status: Status | null): Element {
-  const dot = div().size(7).flex_none().rounded(4);
-  if (status === null) return dot;
-  if (status === "idle") return dot.border(1.5).border_color(colors.dim);
-  return dot.bg(colors[status]);
+  if (status === null) return markBox();
+  if (status === "working") return markBox(svg(chromeIcon("spinner")).size(12).text_color(colors.working).spin(900));
+  if (status === "blocked") {
+    return markBox()
+      .rounded(4)
+      .bg(`${colors.blocked}26`)
+      .text_size(10.5)
+      .font_bold()
+      .text_color(colors.blocked)
+      .child("!");
+  }
+  const dot = div().size(7).rounded(4);
+  return markBox(status === "idle" ? dot.border(1.5).border_color(colors.dim) : dot.bg(colors.done));
 }
 
 export interface IconButton {
@@ -65,7 +86,7 @@ export interface IconButton {
   readonly onClick: Handler;
 }
 
-const ICON_BUTTON = { regular: { box: 24, icon: 14, corner: 6 }, small: { box: 18, icon: 13, corner: 4 } } as const;
+const ICON_BUTTON = { regular: { box: 24, icon: 14, corner: 6 }, small: { box: 22, icon: 13, corner: 5 } } as const;
 
 export function iconButton(colors: Theme, button: IconButton): Element {
   const size = ICON_BUTTON[button.small ? "small" : "regular"];
@@ -98,6 +119,8 @@ export interface Heading {
   readonly id: string;
   readonly label: string;
   readonly count?: number;
+  /** The color of a heading that stands out. */
+  readonly tone?: Color;
   /** Set for a heading that folds its section. */
   readonly fold?: { readonly open: boolean; readonly onToggle: Handler };
   /** A button at the right end, such as "new". */
@@ -115,7 +138,7 @@ export function heading(colors: Theme, props: Heading): Element {
     .items_center()
     .text_size(11.5)
     .font_medium()
-    .text_color(colors.dim)
+    .text_color(props.tone ?? colors.dim)
     .child(label);
   const folding = optional(bar, props.fold, (el, fold) =>
     el
@@ -131,11 +154,13 @@ export interface TextButton {
   readonly id: string;
   readonly label: string;
   readonly primary?: boolean;
+  /** Set for a choice that cannot be taken now: it is drawn faint and takes no click. */
+  readonly disabled?: boolean;
   readonly onClick: Handler;
 }
 
 export function textButton(colors: Theme, button: TextButton): Element {
-  return h_flex()
+  const face = h_flex()
     .id(button.id)
     .h(32)
     .px(14)
@@ -147,10 +172,12 @@ export function textButton(colors: Theme, button: TextButton): Element {
     .text_color(button.primary ? colors.solid_foreground : colors.foreground)
     .text_size(12.5)
     .font_medium()
+    .child(button.label);
+  if (button.disabled) return face.opacity(0.45);
+  return face
     .cursor_pointer()
     .hover((style) => style.opacity(0.88))
-    .on_click((_event, cx) => button.onClick(cx))
-    .child(button.label);
+    .on_click((_event, cx) => button.onClick(cx));
 }
 
 export interface MenuItem {
