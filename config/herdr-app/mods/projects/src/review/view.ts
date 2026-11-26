@@ -195,7 +195,7 @@ function plainRow(colors: Theme, type: Type, text: string): Element {
 export interface DiffPane {
   readonly rows: readonly Row[];
   /** How high each row is, from `rowHeights`. */
-  readonly heights: readonly number[];
+  readonly heights: number[];
   /** The longest line of the rows, in characters. */
   readonly widest: number;
   readonly type: Type;
@@ -226,7 +226,7 @@ export function diffPane(colors: Theme, props: DiffPane): Element {
   const list = v_virtual_list(
     "review-diff",
     rows.length,
-    [...props.heights],
+    props.heights,
     (index) => rows[index]?.key ?? String(index),
     (range) => rows.slice(range.start, range.end).map(draw),
   )
@@ -518,7 +518,7 @@ function cardHead(colors: Theme, type: Type, file: DiffFile): Element {
   const head = optional(bar, file.from, (el, from) =>
     el.child(div().min_w(0).truncate().text_color(colors.dim).child(`from ${from}`)),
   )
-    .child(div().flex_1())
+    // The counts follow the name: a row is as wide as the diff's longest line, so its right end can be off the screen.
     .children(counts(colors, file.added, file.removed));
   // The gap over the head sets a file's card apart from the one over it.
   return div()

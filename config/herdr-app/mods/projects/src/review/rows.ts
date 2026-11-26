@@ -311,36 +311,3 @@ export function widest(rows: readonly Row[]): number {
 export function fileKey(path: string): string {
   return `file:${path}`;
 }
-
-/** The rows of a whole review: each file's opening row, then its own rows, one file after the other. */
-export function reviewRows(files: readonly ReviewFile[], columns: number): Row[] {
-  return files.flatMap((entry): Row[] => [
-    { kind: "file", key: fileKey(entry.file.path), entry },
-    ...fileRows(entry, columns),
-  ]);
-}
-
-/** Where each row starts in the list, from the rows' heights. */
-export function offsets(heights: readonly number[]): number[] {
-  let top = 0;
-  return heights.map((height) => {
-    const start = top;
-    top += height;
-    return start;
-  });
-}
-
-/**
- * The file that is on show when the list is scrolled down by `scrolled`: the
- * last one that opens at or over that point. The first file before any scroll;
- * null for a review without a file.
- */
-export function fileAt(rows: readonly Row[], tops: readonly number[], scrolled: number): string | null {
-  let path: string | null = null;
-  for (const [index, row] of rows.entries()) {
-    if (row.kind !== "file") continue;
-    if (path !== null && (tops[index] ?? 0) > scrolled) break;
-    path = row.entry.file.path;
-  }
-  return path;
-}

@@ -26,13 +26,21 @@ import {
 } from "../review/draft";
 import { postReply, readBranchDiff, readDiscussions } from "../review/reader";
 import {
+  assemble,
+  builtFrom,
   fileAt,
-  fileKey,
-  lineKey,
+  fileStarts,
   offsets,
+  staleFiles,
+  type Built,
+  type FileStart,
+} from "../review/layout";
+import {
+  fileKey,
+  fileRows,
+  lineKey,
   quoteOf,
   reviewFiles,
-  reviewRows,
   spanBetween,
   spanRows,
   widest,
@@ -71,17 +79,20 @@ interface Target {
   readonly about: About | null;
 }
 
-/** The rows of the whole review, kept until its files, its comments, the width or the type change. */
+/** The list of the whole review as it is drawn, kept until a file is built, a file comes or goes, or the type changes. */
 interface Drawn {
   readonly signature: string;
   readonly rows: readonly Row[];
-  /** How many characters of a card fit on one line, as the rows were cut. */
+  /** How many characters of a card fit on one line. */
   readonly columns: number;
-  readonly heights: readonly number[];
-  /** Where each row starts in the list. */
-  readonly tops: readonly number[];
+  readonly heights: number[];
+  /** Where each file opens in the list. */
+  readonly starts: readonly FileStart[];
   readonly widest: number;
 }
+
+/** How often the list shows what is built so far, while files are still being built, in ms. */
+const SHOW_EVERY = 150;
 
 /** The width the diff is taken to have before the app says how wide it is. */
 const FIRST_WIDTH = 900;
@@ -139,6 +150,12 @@ export class ReviewDialog implements Part {
   /** Whether Shift was held at the last press on the diff. */
   private shift = false;
   private width = FIRST_WIDTH;
+  /** The rows of the files that are built so far, by path. They are built in a task, never in a render. */
+  private readonly built = new Map<string, Built>();
+  /** Counts the changes of what is built: the list is put together again when it moves. */
+  private version = 0;
+  /** Set while a task builds rows. */
+  private building = false;
   private drawn: Drawn | null = null;
 
   constructor(
@@ -164,9 +181,13 @@ export class ReviewDialog implements Part {
     if (thread && !this.asked) this.load(cx);
     const draft = readDraft(this.key());
     const files = reviewFiles(this.diff?.files ?? [], draft.comments, this.discussions);
-    const drawn = this.rowsOf(inTreeOrder(files), commentColumns(this.width, type), type);
+    const ordered = inTreeOrder(files);
+    const columns = commentColumns(this.width, type);
+    // A render only puts together what is built: building the rows of a long branch here is what the app stops.
+    this.build(ordered, columns, cx);
+    const drawn = this.drawnOf(ordered, columns, type);
     // The file on show is the one the diff is scrolled to: the first one before any scroll.
-    const open = files.some((entry) => entry.file.path === this.open) ? this.open : fileAt(drawn.rows, drawn.tops, 0);
+    const open = files.some((entry) => entry.file.path === this.open) ? this.open : fileAt(drawn.starts, 0);
     const branch = thread?.checkout?.branch;
     const tip = branch && (reviewRange(this.subject, branch).tip ?? branch);
     const range = tip && this.diff ? `${tip} → ${this.diff.base}` : null;
@@ -246,7 +267,8 @@ export class ReviewDialog implements Part {
     this.discussions = [];
     this.open = null;
     this.target = null;
-    this.drawn = null;
+    this.built.clear();
+    this.version++;
     this.scroll.scroll_to_item(0);
     this.field.set_value("");
     this.note.set_value(readDraft(this.key()).note);
@@ -279,7 +301,7 @@ export class ReviewDialog implements Part {
         columns: drawn.columns,
         scroll: this.scroll,
         onScroll: (cx) => this.follow(drawn, cx),
-        active: new Set(target ? spanRows(drawn.rows, target.anchor).map((row) => row.key) : []),
+        active: new Set(target ? spanRows(this.rowsIn(target.anchor.path), target.anchor).map((row) => row.key) : []),
         onPress: (shift) => {
           this.shift = shift;
         },
@@ -348,20 +370,61 @@ export class ReviewDialog implements Part {
     };
   }
 
-  private rowsOf(files: readonly ReviewFile[], columns: number, type: Type): Drawn {
-    const said = files.flatMap((entry) => entry.comments);
-    const words = said.map((comment) => `${anchorKey(comment)} ${comment.about?.post} ${comment.body}`);
-    const signature = JSON.stringify([files.length, columns, type.size, words]);
+  /** The rows of one file that are built so far. */
+  private rowsIn(path: string): readonly Row[] {
+    return this.built.get(path)?.rows ?? [];
+  }
+
+  /**
+   * Builds the rows of the files that have none yet, or whose comments or
+   * width changed, in a task of its own: one file a step, with a pause after
+   * each, so that no step is long enough for the app to stop it. The list
+   * shows what is built so far a few times a second.
+   */
+  private build(files: readonly ReviewFile[], columns: number, cx: Context): void {
+    const { round } = this;
+    const stale = this.building ? [] : staleFiles(files, this.built, columns, round);
+    if (stale.length === 0) return;
+    this.building = true;
+    cx.spawn(async (task) => {
+      let shown = Date.now();
+      try {
+        for (const entry of stale) {
+          // Another pull request or a fresh read: these files are of a diff that is no longer on show.
+          if (round !== this.round) break;
+          this.built.set(entry.file.path, {
+            signature: builtFrom(entry, columns, round),
+            rows: fileRows(entry, columns),
+          });
+          this.version++;
+          if (Date.now() - shown >= SHOW_EVERY) {
+            shown = Date.now();
+            task.notify();
+          }
+          await task.sleep(1);
+        }
+      } finally {
+        this.building = false;
+        // The next render looks again: the width or a comment may have changed meanwhile.
+        task.notify();
+      }
+    });
+  }
+
+  /** Puts the list together from what is built. It is kept until a file is built or the files or the type change. */
+  private drawnOf(files: readonly ReviewFile[], columns: number, type: Type): Drawn {
+    const signature = `${this.version} ${files.length} ${type.size} ${columns}`;
     if (this.drawn?.signature === signature) return this.drawn;
-    const rows = reviewRows(files, columns);
+    const rows = assemble(files, this.built);
     const heights = rowHeights(rows, type);
-    this.drawn = { signature, rows, columns, heights, tops: offsets(heights), widest: widest(rows) };
+    const starts = fileStarts(rows, offsets(heights));
+    this.drawn = { signature, rows, columns, heights, starts, widest: widest(rows) };
     return this.drawn;
   }
 
   /** After a turn of the wheel, the tree marks the file the diff is scrolled to. */
   private follow(drawn: Drawn, cx: Context): void {
-    const path = fileAt(drawn.rows, drawn.tops, this.scroll.offset().y);
+    const path = fileAt(drawn.starts, this.scroll.offset().y);
     if (path === this.open) return;
     this.open = path;
     cx.notify();
@@ -380,10 +443,8 @@ export class ReviewDialog implements Part {
     this.loading = true;
     this.error = null;
     cx.spawn(async (task) => {
-      const show = (): void => {
-        this.drawn = null;
-        task.notify();
-      };
+      // What is read is of this round: the rows of the files are built again from it, in the background.
+      const show = (): void => task.notify();
       await Promise.all([
         this.read(readBranchDiff(thread, range), (diff) => (this.diff = diff), latest).then(show),
         this.read(readDiscussions(thread, subject), (discussions) => (this.discussions = discussions), latest).then(
@@ -428,10 +489,12 @@ export class ReviewDialog implements Part {
   private pick(rows: readonly Row[], key: string, cx: Context): void {
     const row = rows.find((candidate) => candidate.key === key);
     if (row?.kind !== "line" && row?.kind !== "card") return;
-    if (this.shift && row.kind === "line" && this.extend(rows, row.anchor, cx)) return;
+    // What follows is about the lines of one file: its rows are enough, and far fewer than the whole list.
+    const own = this.rowsIn(row.anchor.path);
+    if (this.shift && row.kind === "line" && this.extend(own, row.anchor, cx)) return;
     this.keepTyped();
     const written = commentAt(readDraft(this.key()), row.anchor);
-    const line = rows.find((candidate) => candidate.key === lineKey(row.anchor));
+    const line = own.find((candidate) => candidate.key === lineKey(row.anchor));
     this.target = {
       anchor: written ?? { path: row.anchor.path, side: row.anchor.side, line: row.anchor.line, start: null },
       pivot: row.anchor,
