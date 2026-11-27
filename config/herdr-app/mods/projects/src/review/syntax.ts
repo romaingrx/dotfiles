@@ -155,3 +155,23 @@ export function tokens(line: string, grammar: Grammar | null): Token[] {
   if (last) last.text += rest;
   return last ? pieces : [{ kind: "plain", text: line }];
 }
+
+/** The marks a font may draw joined with the mark beside them, as in `=>`, `!==` or `->`. */
+const JOINING = "-=<>!|&+*/:.#~_?%^\\";
+
+/**
+ * Cuts a text into pieces so that no two marks that a font could join are in
+ * one piece. A ligature forms inside one piece of text only, so pieces drawn
+ * side by side show each mark as it is. Used when the terminals' ligatures
+ * are off: text of the app has no such switch.
+ */
+export function apart(text: string): string[] {
+  const pieces: string[] = [];
+  let from = 0;
+  for (let at = 1; at < text.length; at++) {
+    if (!JOINING.includes(text.charAt(at)) || !JOINING.includes(text.charAt(at - 1))) continue;
+    pieces.push(text.slice(from, at));
+    from = at;
+  }
+  return [...pieces, text.slice(from)];
+}

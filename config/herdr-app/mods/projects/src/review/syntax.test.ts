@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { grammarOf, tokens } from "./syntax";
+import { apart, grammarOf, tokens } from "./syntax";
 
 /** The pieces of a line of a file, as `kind:text` words; a plain piece is its text alone. */
 function pieces(path: string, line: string): string[] {
@@ -90,6 +90,18 @@ describe("the colors of a line of code", () => {
       ":",
       "constant: true",
     ]);
+  });
+
+  test("cut a text so that marks a font could join are apart, and nothing else is", () => {
+    expect(apart("a === b")).toEqual(["a =", "=", "= b"]);
+    expect(apart("(x) => x !== y")).toEqual(["(x) =", "> x !", "=", "= y"]);
+    expect(apart("a->b")).toEqual(["a-", ">b"]);
+    expect(apart("plain words, no marks side by side")).toEqual(["plain words, no marks side by side"]);
+    expect(apart("a = b - c")).toEqual(["a = b - c"]);
+    expect(apart("")).toEqual([""]);
+    for (const line of ["x <= y && z || !w", "// https://example.test/a#b", "::..__"]) {
+      expect(apart(line).join("")).toBe(line);
+    }
   });
 
   test("leave a file they do not know, and a very long line, plain", () => {
