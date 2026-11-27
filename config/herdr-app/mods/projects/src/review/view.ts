@@ -16,23 +16,52 @@ import { stageLabel, type Pull, type Stack } from "../pulls";
 import { chromeIcon, iconButton, optional, textButton, type Handler, type TextButton, type Theme } from "../ui";
 import type { DiffFile, DiffLine } from "./diff";
 import type { Card, ReviewFile, Row } from "./rows";
+import { apart, grammarOf, tokens, type TokenKind } from "./syntax";
 import type { TreeRow } from "./tree";
 
 /** The type the diff is set in: the terminals' font, and the room one character and one row take. */
 export interface Type {
   readonly family: string;
   readonly size: number;
+  readonly weight: number;
+  /** Whether marks such as `=>` are drawn joined, as the terminals' setting says. */
+  readonly ligatures: boolean;
   readonly row: number;
   readonly char: number;
 }
 
 const FALLBACK_FONT = "JetBrains Mono";
 const FALLBACK_SIZE = 13;
+/** The weight of a terminal's text when no setting gives one. */
+const FALLBACK_WEIGHT = 500;
+/**
+ * How high a line of the terminals' usual font, JetBrains Mono, is, in font
+ * sizes. A terminal's row is the font's own line; the kit does not say what
+ * that is for a font, so another font can be a pixel off.
+ */
+const FONT_LINE = 1.32;
 
+function numberOr(value: unknown, fallback: number): number {
+  return typeof value === "number" && value > 0 ? value : fallback;
+}
+
+/**
+ * The type of the terminals, from the settings they follow: family, size,
+ * weight, the height of a row (`terminal_line_height`) and ligatures
+ * (`font_ligatures`). Code in the diff then reads as it does in a terminal.
+ */
 export function readType(): Type {
   const all = settings();
-  const size = typeof all.font_size === "number" ? all.font_size : FALLBACK_SIZE;
-  return { family: text(all.font_family) ?? FALLBACK_FONT, size, row: Math.ceil(size * 1.8), char: size * 0.64 };
+  const size = numberOr(all.font_size, FALLBACK_SIZE);
+  return {
+    family: text(all.font_family) ?? FALLBACK_FONT,
+    size,
+    weight: numberOr(all.font_weight, FALLBACK_WEIGHT),
+    ligatures: all.font_ligatures === true,
+    // To the half pixel: a terminal's row is a whole number of the screen's pixels, two to one on most screens.
+    row: Math.round(2 * size * FONT_LINE * numberOr(all.terminal_line_height, 1)) / 2,
+    char: size * 0.64,
+  };
 }
 
 /** How many times a px of the window is a px of a mod. */
@@ -108,16 +137,38 @@ function lineRow(colors: Theme, type: Type, row: Extract<Row, { kind: "line" }>,
         // One number, as the file has it now; a line the branch removes keeps the number it had.
         .child(lineNumber(colors, type, line.now ?? line.old)),
     )
-    .child(
-      div()
-        .flex_1()
-        .min_w(0)
-        .whitespace_nowrap()
-        .child(row.text || " "),
-    );
+    .child(codeText(colors, type, row));
   // The lines a comment is being written on stand out from the lines the branch adds.
   if (active) return face.bg(`${colors.accent}26`);
   return optional(face, tint(colors, line), (el, color) => el.bg(color));
+}
+
+/** The colors of the pieces of a line of code: the ones Herdr's Files gives them in its own code view. */
+const SYNTAX: Readonly<Record<TokenKind, keyof Theme | null>> = {
+  plain: null,
+  keyword: "ansi5",
+  string: "ansi2",
+  comment: "dim",
+  number: "ansi1",
+  function: "ansi4",
+  type: "ansi3",
+  constant: "ansi6",
+};
+
+/** The text of a line, each piece in the color of what it is. */
+function codeText(colors: Theme, type: Type, row: Extract<Row, { kind: "line" }>): Element {
+  const pieces = tokens(row.text, grammarOf(row.anchor.path)).flatMap((piece) => {
+    const color = SYNTAX[piece.kind];
+    // App text joins marks such as `=>` and has no switch for it: drawn apart, they stay as the terminal shows them.
+    return (type.ligatures ? [piece.text] : apart(piece.text)).map((part) => {
+      const span = div()
+        .flex_none()
+        .whitespace_nowrap()
+        .child(part || " ");
+      return color ? span.text_color(colors[color]) : span;
+    });
+  });
+  return h_flex().flex_1().min_w(0).children(pieces);
 }
 
 /**
@@ -243,6 +294,7 @@ export function diffPane(colors: Theme, props: DiffPane): Element {
       .relative()
       .font_family(type.family)
       .text_size(type.size)
+      .font_weight(type.weight)
       .on_size_change((size, cx) => props.onWidth(size.width / readZoom(), cx))
       // A click on a row of the list says which row, not which keys are held: the press before it does.
       .on_mouse_down("left", (event) => props.onPress(event.modifiers.shift))

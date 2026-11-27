@@ -920,7 +920,11 @@ var COLOR_NAMES = [
   "working",
   "done",
   "ansi1",
-  "ansi2"
+  "ansi2",
+  "ansi3",
+  "ansi4",
+  "ansi5",
+  "ansi6"
 ];
 function isColor(value) {
   return typeof value === "string" && value.startsWith("#");
@@ -2081,12 +2085,142 @@ import {
   v_virtual_list
 } from "gpui-base";
 import { settings } from "herdr";
+
+// src/review/syntax.ts
+function words(list) {
+  return new Set(list.split(" "));
+}
+var CONSTANTS = words("true false null undefined nil None True False NaN Infinity");
+var BRACES = {
+  lineComment: "//",
+  blockStarts: ["/*", "*"],
+  quotes: "\"'`",
+  keywords: words("as async await break case catch class const continue default defer delete do dyn else enum export extends " + "finally fn for from func function go if impl implements import in instanceof interface let loop match mod mut " + "new of package private protected pub public readonly return static struct super switch this throw trait try " + "type typeof use var void where while yield"),
+  constants: CONSTANTS
+};
+var HASHES = {
+  lineComment: "#",
+  blockStarts: [],
+  quotes: `"'`,
+  keywords: words("and as assert async await break case class continue def del do done elif else end esac except export fi " + "finally for from function global if import in inherit is lambda let local module not or pass raise rec " + "require return then try while with yield"),
+  constants: CONSTANTS
+};
+var DATA = { lineComment: "", blockStarts: [], quotes: '"', keywords: new Set, constants: CONSTANTS };
+var FAMILIES = [
+  [BRACES, "ts tsx mts cts js jsx mjs cjs rs go swift java kt c h cc cpp hpp cs css scss"],
+  [HASHES, "py sh bash zsh fish rb nix yaml yml toml"],
+  [DATA, "json jsonc"]
+];
+var BY_EXTENSION = new Map(FAMILIES.flatMap(([grammar, extensions]) => extensions.split(" ").map((extension) => [extension, grammar])));
+function grammarOf(path) {
+  return BY_EXTENSION.get(path.slice(path.lastIndexOf(".") + 1).toLowerCase()) ?? null;
+}
+var LONGEST = 400;
+var isSpace = (char) => char === " " || char === "\t";
+var isDigit = (char) => char >= "0" && char <= "9";
+var isUpper = (char) => char >= "A" && char <= "Z";
+var startsWord = (char) => char >= "a" && char <= "z" || isUpper(char) || char === "_" || char === "$";
+var inWord = (char) => startsWord(char) || isDigit(char);
+function runEnd(line, from, keeps) {
+  let end = from;
+  while (end < line.length && keeps(line.charAt(end)))
+    end++;
+  return end;
+}
+function stringEnd(line, from) {
+  const quote = line.charAt(from);
+  let at = from + 1;
+  while (at < line.length && line.charAt(at) !== quote)
+    at += line.charAt(at) === "\\" ? 2 : 1;
+  return Math.min(at + 1, line.length);
+}
+function startsComment(line, at, grammar) {
+  if (grammar.lineComment === "" || !line.startsWith(grammar.lineComment, at))
+    return false;
+  return grammar.lineComment !== "#" || at === 0 || isSpace(line.charAt(at - 1));
+}
+function wordKind(word, next, grammar) {
+  if (grammar.keywords.has(word))
+    return "keyword";
+  if (grammar.constants.has(word))
+    return "constant";
+  if (next === "(")
+    return "function";
+  return isUpper(word.charAt(0)) ? "type" : "plain";
+}
+function pieceAt(line, at, grammar) {
+  const char = line.charAt(at);
+  if (startsComment(line, at, grammar))
+    return { kind: "comment", end: line.length };
+  if (grammar.quotes.includes(char))
+    return { kind: "string", end: stringEnd(line, at) };
+  if (isDigit(char))
+    return { kind: "number", end: runEnd(line, at, (next) => inWord(next) || next === ".") };
+  if (!startsWord(char))
+    return { kind: "plain", end: at + 1 };
+  const end = runEnd(line, at, inWord);
+  return { kind: wordKind(line.slice(at, end), line.charAt(end), grammar), end };
+}
+function tokens(line, grammar) {
+  if (!grammar || line.length > LONGEST)
+    return [{ kind: "plain", text: line }];
+  const start = line.trimStart();
+  if (grammar.blockStarts.some((open) => start.startsWith(open)))
+    return [{ kind: "comment", text: line }];
+  const pieces = [];
+  let at = 0;
+  while (at < line.length) {
+    const from = at;
+    at = runEnd(line, at, isSpace);
+    if (at === line.length)
+      break;
+    const { kind, end } = pieceAt(line, at, grammar);
+    const text = line.slice(from, end);
+    const last = pieces[pieces.length - 1];
+    if (last?.kind === kind)
+      last.text += text;
+    else
+      pieces.push({ kind, text });
+    at = end;
+  }
+  const rest = line.slice(pieces.reduce((length, piece) => length + piece.text.length, 0));
+  const last = pieces[pieces.length - 1];
+  if (last)
+    last.text += rest;
+  return last ? pieces : [{ kind: "plain", text: line }];
+}
+var JOINING = "-=<>!|&+*/:.#~_?%^\\";
+function apart(text) {
+  const pieces = [];
+  let from = 0;
+  for (let at = 1;at < text.length; at++) {
+    if (!JOINING.includes(text.charAt(at)) || !JOINING.includes(text.charAt(at - 1)))
+      continue;
+    pieces.push(text.slice(from, at));
+    from = at;
+  }
+  return [...pieces, text.slice(from)];
+}
+
+// src/review/view.ts
 var FALLBACK_FONT = "JetBrains Mono";
 var FALLBACK_SIZE = 13;
+var FALLBACK_WEIGHT = 500;
+var FONT_LINE = 1.32;
+function numberOr(value, fallback) {
+  return typeof value === "number" && value > 0 ? value : fallback;
+}
 function readType() {
   const all = settings();
-  const size = typeof all.font_size === "number" ? all.font_size : FALLBACK_SIZE;
-  return { family: text(all.font_family) ?? FALLBACK_FONT, size, row: Math.ceil(size * 1.8), char: size * 0.64 };
+  const size = numberOr(all.font_size, FALLBACK_SIZE);
+  return {
+    family: text(all.font_family) ?? FALLBACK_FONT,
+    size,
+    weight: numberOr(all.font_weight, FALLBACK_WEIGHT),
+    ligatures: all.font_ligatures === true,
+    row: Math.round(2 * size * FONT_LINE * numberOr(all.terminal_line_height, 1)) / 2,
+    char: size * 0.64
+  };
 }
 function readZoom() {
   const { zoom } = settings();
@@ -2127,10 +2261,30 @@ function lineNumber(colors, type, number) {
 }
 function lineRow(colors, type, row, active) {
   const { line } = row;
-  const face = h_flex6().w_full().h(type.row).flex_none().gap(Math.ceil(2 * type.char)).cursor_pointer().hover((style) => style.bg(colors.hover)).child(h_flex6().h_full().flex_none().child(optional(div6().w(MARK2).h_full().flex_none(), edgeOf(colors, row, active), (el, color) => el.bg(color))).child(lineNumber(colors, type, line.now ?? line.old))).child(div6().flex_1().min_w(0).whitespace_nowrap().child(row.text || " "));
+  const face = h_flex6().w_full().h(type.row).flex_none().gap(Math.ceil(2 * type.char)).cursor_pointer().hover((style) => style.bg(colors.hover)).child(h_flex6().h_full().flex_none().child(optional(div6().w(MARK2).h_full().flex_none(), edgeOf(colors, row, active), (el, color) => el.bg(color))).child(lineNumber(colors, type, line.now ?? line.old))).child(codeText(colors, type, row));
   if (active)
     return face.bg(`${colors.accent}26`);
   return optional(face, tint(colors, line), (el, color) => el.bg(color));
+}
+var SYNTAX = {
+  plain: null,
+  keyword: "ansi5",
+  string: "ansi2",
+  comment: "dim",
+  number: "ansi1",
+  function: "ansi4",
+  type: "ansi3",
+  constant: "ansi6"
+};
+function codeText(colors, type, row) {
+  const pieces = tokens(row.text, grammarOf(row.anchor.path)).flatMap((piece) => {
+    const color = SYNTAX[piece.kind];
+    return (type.ligatures ? [piece.text] : apart(piece.text)).map((part) => {
+      const span = div6().flex_none().whitespace_nowrap().child(part || " ");
+      return color ? span.text_color(colors[color]) : span;
+    });
+  });
+  return h_flex6().flex_1().min_w(0).children(pieces);
 }
 function edgeOf(colors, row, active) {
   if (row.commented || active)
@@ -2167,7 +2321,7 @@ function diffPane(colors, props) {
     return row.kind === "hunk" ? foldRow(colors, type, row.text) : plainRow(colors, type, row.text);
   };
   const list = v_virtual_list("review-diff", rows.length, props.heights, (index) => rows[index]?.key ?? String(index), (range) => rows.slice(range.start, range.end).map(draw)).track_scroll(props.scroll).on_item_click(props.onPick).size_full();
-  return div6().id("review-diff-box").flex_1().min_h(0).relative().font_family(type.family).text_size(type.size).on_size_change((size, cx) => props.onWidth(size.width / readZoom(), cx)).on_mouse_down("left", (event) => props.onPress(event.modifiers.shift)).on_scroll_wheel((_event, cx) => props.onScroll(cx)).child(div6().id("review-diff-x").size_full().overflow_x_scrollbar().child(div6().w_full().min_w(Math.ceil(props.widest * type.char) + gutter(type) + DIFF_END).h_full().child(list))).child(Scrollbar.vertical("review-diff").viewport_from_layout().absolute().inset_0()).children(props.shown ? [stickyHead(colors, type, props.shown)] : []);
+  return div6().id("review-diff-box").flex_1().min_h(0).relative().font_family(type.family).text_size(type.size).font_weight(type.weight).on_size_change((size, cx) => props.onWidth(size.width / readZoom(), cx)).on_mouse_down("left", (event) => props.onPress(event.modifiers.shift)).on_scroll_wheel((_event, cx) => props.onScroll(cx)).child(div6().id("review-diff-x").size_full().overflow_x_scrollbar().child(div6().w_full().min_w(Math.ceil(props.widest * type.char) + gutter(type) + DIFF_END).h_full().child(list))).child(Scrollbar.vertical("review-diff").viewport_from_layout().absolute().inset_0()).children(props.shown ? [stickyHead(colors, type, props.shown)] : []);
 }
 function stickyHead(colors, type, file) {
   return div6().absolute().top(0).left(0).right(0).bg(colors.popover).child(cardHead(colors, type, file));
