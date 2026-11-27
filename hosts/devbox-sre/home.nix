@@ -8,6 +8,7 @@ in
     ../devcontainer/home.nix
     ../../modules/home/tl.nix
     ../../modules/home/envoy.nix
+    ../../modules/home/herdr-projects.nix
     ../../modules/home/programs/tmux-ctrl-a.nix
   ];
 
