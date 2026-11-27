@@ -1,6 +1,8 @@
 # Baton in the Herdr app of this machine. The app loads Baton's layouts and
 # mods from a clone of its repository, so a build there applies at once.
-# Baton's own installer puts them into the app: what Baton ships is not named here.
+# Baton's own installer puts them into the app: what Baton ships is not named
+# here. This setup says where the app's Baton comes from, so a link of a mod
+# that leads to another folder is pointed to the clone (--relink).
 {
   config,
   lib,
@@ -26,7 +28,7 @@ in
       ]
       ''
         if [ -e ${lib.escapeShellArg installer} ]; then
-          run ${lib.getExe pkgs.bash} ${lib.escapeShellArg installer} ||
+          run ${lib.getExe pkgs.bash} ${lib.escapeShellArg installer} --relink ||
             warnEcho "Baton is not installed into the Herdr app: its install.sh failed"
         fi
       '';
