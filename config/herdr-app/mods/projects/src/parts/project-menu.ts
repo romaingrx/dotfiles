@@ -72,7 +72,12 @@ export class ProjectMenu implements Part {
   }
 
   private choices(all: readonly Ending[]): MenuItem[] {
-    const rename = { id: "rename-project", icon: chromeIcon("square-pen"), label: "Rename", onClick: () => this.rename() };
+    const rename = {
+      id: "rename-project",
+      icon: chromeIcon("square-pen"),
+      label: "Rename",
+      onClick: () => this.rename(),
+    };
     return [rename, ...all.map((ending) => ({ ...ending, onClick: (cx: Context) => this.ask(ending.id, cx) }))];
   }
 

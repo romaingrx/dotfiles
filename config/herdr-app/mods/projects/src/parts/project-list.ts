@@ -48,7 +48,9 @@ export class ProjectList implements Part {
       )
       .children(rows)
       .when(rows.length === 0, (el) =>
-        el.child(div().px(8).text_size(12).text_color(colors.muted).child("No project yet. Start one with the + above.")),
+        el.child(
+          div().px(8).text_size(12).text_color(colors.muted).child("No project yet. Start one with the + above."),
+        ),
       );
   }
 
