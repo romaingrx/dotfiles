@@ -31,6 +31,7 @@ import {
   fileAt,
   fileStarts,
   offsets,
+  rowToReveal,
   staleFiles,
   type Built,
   type FileStart,
@@ -86,6 +87,8 @@ interface Drawn {
   /** How many characters of a card fit on one line. */
   readonly columns: number;
   readonly heights: number[];
+  /** Where each row starts in the list. */
+  readonly tops: readonly number[];
   /** Where each file opens in the list. */
   readonly starts: readonly FileStart[];
   readonly widest: number;
@@ -226,7 +229,7 @@ export class ReviewDialog implements Part {
               onFold: (path, cx) => this.fold(path, cx),
               open,
               empty: this.emptyText(),
-              onOpen: (path, cx) => this.show(drawn.rows, path, cx),
+              onOpen: (path, cx) => this.show(drawn, path, cx),
             }),
           )
           .child(this.diffSide(colors, type, drawn, files.find((entry) => entry.file.path === open)?.file ?? null)),
@@ -418,14 +421,15 @@ export class ReviewDialog implements Part {
     if (this.drawn?.signature === signature) return this.drawn;
     const rows = assemble(files, this.built);
     const heights = rowHeights(rows, type);
-    const starts = fileStarts(rows, offsets(heights));
-    this.drawn = { signature, rows, columns, heights, starts, widest: widest(rows) };
+    const tops = offsets(heights);
+    this.drawn = { signature, rows, columns, heights, tops, starts: fileStarts(rows, tops), widest: widest(rows) };
     return this.drawn;
   }
 
   /** After a turn of the wheel, the tree marks the file the diff is scrolled to. */
   private follow(drawn: Drawn, cx: Context): void {
-    const path = fileAt(drawn.starts, this.scroll.offset().y);
+    // A file is on show once its head is under the head that stays at the top, which is as high as a head's row.
+    const path = fileAt(drawn.starts, this.scroll.offset().y + (drawn.heights[0] ?? 0));
     if (path === this.open) return;
     this.open = path;
     cx.notify();
@@ -471,12 +475,14 @@ export class ReviewDialog implements Part {
     }
   }
 
-  /** A click on a file in the tree: the diff goes to that file's card. */
-  private show(rows: readonly Row[], path: string, cx: Context): void {
-    const at = rows.findIndex((row) => row.key === fileKey(path));
-    if (at < 0) return;
+  /** A click on a file in the tree: the diff goes to that file's head. */
+  private show(drawn: Drawn, path: string, cx: Context): void {
+    const head = drawn.rows.findIndex((row) => row.key === fileKey(path));
+    if (head < 0) return;
     this.open = path;
-    this.scroll.scroll_to_item(at, "top");
+    const scrolled = this.scroll.offset().y;
+    const screen = this.scroll.viewport_size().height;
+    this.scroll.scroll_to_item(rowToReveal(drawn.tops, drawn.heights, head, scrolled, screen), "top");
     cx.notify();
   }
 

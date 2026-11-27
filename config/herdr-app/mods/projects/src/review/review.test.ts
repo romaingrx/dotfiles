@@ -40,7 +40,7 @@ import {
   type ReviewFile,
   type Row,
 } from "./rows";
-import { assemble, builtFrom, fileAt, fileStarts, offsets, staleFiles } from "./layout";
+import { assemble, builtFrom, fileAt, fileStarts, offsets, rowToReveal, staleFiles } from "./layout";
 import { fileTree, filterFiles, inTreeOrder } from "./tree";
 
 const MODIFIED = `diff --git a/src/app.ts b/src/app.ts
@@ -770,6 +770,22 @@ describe("the review's files in one scroll", () => {
     const withCard = build([said], 60, 1);
     expect(staleFiles([said], withCard, 60, 1)).toEqual([]);
     expect(staleFiles([said], withCard, 90, 1)).toEqual([said]);
+  });
+
+  test("ask the list for the row that brings a file's head to the top", () => {
+    // Ten rows of 20: a screen of 60 shows three of them.
+    const heights = Array.from({ length: 10 }, () => 20);
+    const tops = offsets(heights);
+    const row = (head: number, scrolled: number) => rowToReveal(tops, heights, head, scrolled, 60);
+    // A head over the screen comes to the top by itself.
+    expect(row(2, 100)).toBe(2);
+    expect(row(2, 40)).toBe(2);
+    // A head on screen or under it: the last row of the screen that starts at the head.
+    expect(row(2, 0)).toBe(4);
+    expect(row(5, 0)).toBe(7);
+    // Near the end there are fewer rows than a screen.
+    expect(row(8, 0)).toBe(9);
+    expect(row(9, 0)).toBe(9);
   });
 
   test("say which file is on show for how far the list is scrolled", () => {

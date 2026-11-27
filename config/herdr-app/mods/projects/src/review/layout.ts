@@ -80,3 +80,26 @@ export function fileAt(starts: readonly FileStart[], scrolled: number): string |
   const over = starts.filter((start) => start.top <= scrolled);
   return (over[over.length - 1] ?? first).path;
 }
+
+/**
+ * The row to ask the list for, to bring the row `head` to its top. The list
+ * moves a row only as far as it must to show it: to its top edge when the row
+ * is over what is on screen, to its bottom edge when it is under it, and not
+ * at all when it is on screen. So for a head that is not over the screen, ask
+ * for the last row that fits in one screen from the head's top: that row comes
+ * to the bottom edge, and the head to the top.
+ */
+export function rowToReveal(
+  tops: readonly number[],
+  heights: readonly number[],
+  head: number,
+  scrolled: number,
+  screen: number,
+): number {
+  const top = tops[head] ?? 0;
+  if (top <= scrolled) return head;
+  const fits = (row: number): boolean => (tops[row] ?? 0) + (heights[row] ?? 0) <= top + screen;
+  let last = head;
+  while (last + 1 < tops.length && fits(last + 1)) last++;
+  return last;
+}

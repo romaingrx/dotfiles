@@ -2003,6 +2003,16 @@ function fileAt(starts, scrolled) {
   const over = starts.filter((start) => start.top <= scrolled);
   return (over[over.length - 1] ?? first).path;
 }
+function rowToReveal(tops, heights, head, scrolled, screen) {
+  const top = tops[head] ?? 0;
+  if (top <= scrolled)
+    return head;
+  const fits = (row) => (tops[row] ?? 0) + (heights[row] ?? 0) <= top + screen;
+  let last = head;
+  while (last + 1 < tops.length && fits(last + 1))
+    last++;
+  return last;
+}
 
 // src/review/tree.ts
 function folder(path, name) {
@@ -2326,7 +2336,7 @@ class ReviewDialog {
       onFold: (path, cx) => this.fold(path, cx),
       open,
       empty: this.emptyText(),
-      onOpen: (path, cx) => this.show(drawn.rows, path, cx)
+      onOpen: (path, cx) => this.show(drawn, path, cx)
     })).child(this.diffSide(colors, type, drawn, files.find((entry) => entry.file.path === open)?.file ?? null))).child(reviewFoot(colors, {
       note: this.note,
       error: this.diff ? this.error : null,
@@ -2489,12 +2499,12 @@ class ReviewDialog {
       return this.drawn;
     const rows = assemble(files, this.built);
     const heights = rowHeights(rows, type);
-    const starts = fileStarts(rows, offsets(heights));
-    this.drawn = { signature, rows, columns, heights, starts, widest: widest(rows) };
+    const tops = offsets(heights);
+    this.drawn = { signature, rows, columns, heights, tops, starts: fileStarts(rows, tops), widest: widest(rows) };
     return this.drawn;
   }
   follow(drawn, cx) {
-    const path = fileAt(drawn.starts, this.scroll.offset().y);
+    const path = fileAt(drawn.starts, this.scroll.offset().y + (drawn.heights[0] ?? 0));
     if (path === this.open)
       return;
     this.open = path;
@@ -2534,12 +2544,14 @@ class ReviewDialog {
         this.error = messageOf(error);
     }
   }
-  show(rows, path, cx) {
-    const at = rows.findIndex((row) => row.key === fileKey(path));
-    if (at < 0)
+  show(drawn, path, cx) {
+    const head = drawn.rows.findIndex((row) => row.key === fileKey(path));
+    if (head < 0)
       return;
     this.open = path;
-    this.scroll.scroll_to_item(at, "top");
+    const scrolled = this.scroll.offset().y;
+    const screen = this.scroll.viewport_size().height;
+    this.scroll.scroll_to_item(rowToReveal(drawn.tops, drawn.heights, head, scrolled, screen), "top");
     cx.notify();
   }
   resize(width, cx) {
