@@ -596,12 +596,14 @@ describe("a thread's pull request", () => {
     expect(view({ ...auto, reviewDecision: "REVIEW_REQUIRED" })?.stage).toBe("review");
     expect(view({ state: "MERGED", reviewDecision: "APPROVED" })?.stage).toBe("merged");
     expect(view({ state: "CLOSED" })?.stage).toBe("closed");
+    expect(view({ state: "OPEN", baseRefName: "main" })?.base).toBe("main");
+    expect(view({ state: "OPEN" })?.base).toBeNull();
     expect(parsePull({ url: "https://example.test/pull/7" })).toBeNull();
-    expect(pullLabel({ number: 7, url: "", stage: "review" })).toBe("#7 in review");
+    expect(pullLabel({ number: 7, url: "", stage: "review", base: null })).toBe("#7 in review");
   });
 
   test("is stored and read back, anything else is dropped", () => {
-    const pull = { number: 7, url: "https://example.test/pull/7", stage: "landing" };
+    const pull = { number: 7, url: "https://example.test/pull/7", stage: "landing", base: "main" };
     expect(parsePulls({ t1: pull, t2: "oops", t3: { number: "7" } })).toEqual({ t1: pull });
     expect(parsePulls(null)).toEqual({});
   });
@@ -619,7 +621,7 @@ describe("a thread's pull request", () => {
     const lead = terminal({ address: "t1", project: "p", role: "orchestrator" });
     const thread = terminal({ address: "t2", project: "p", heading: "Fix it", status: "idle" });
     const project = only([lead, thread]);
-    const pulls = { t2: { number: 7, url: "https://example.test/pull/7", stage: "review" as const } };
+    const pulls = { t2: { number: 7, url: "https://example.test/pull/7", stage: "review" as const, base: null } };
     const scene = snapshot({
       spaces: [space({ id: "s1" }, [tab({ id: "a" }), tab({ id: "b" })])],
       panes: [

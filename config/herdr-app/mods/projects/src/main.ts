@@ -11,6 +11,7 @@ import type { Part } from "./parts/part";
 import { ProjectList } from "./parts/project-list";
 import { ProjectMenu } from "./parts/project-menu";
 import { RenameProjectDialog } from "./parts/rename-project";
+import { ReviewDialog } from "./parts/review";
 import { threadHead } from "./parts/thread-head";
 import { ThreadPanel } from "./parts/thread-panel";
 import { topBar } from "./parts/top-bar";
@@ -22,6 +23,8 @@ interface Given {
   readonly overlay: string | null;
   /** The project a menu or a dialog is about. */
   readonly project: string | null;
+  /** The thread a review is of, by its terminal's address. */
+  readonly thread: string | null;
 }
 
 type Factory = (given: Given, cx: AsyncContext) => Part;
@@ -31,7 +34,12 @@ const MAIN = "projects";
 
 function readGiven(): Given {
   const given = asRecord(props());
-  return { part: text(given.part) ?? MAIN, overlay: text(given.overlay), project: text(given.project) };
+  return {
+    part: text(given.part) ?? MAIN,
+    overlay: text(given.overlay),
+    project: text(given.project),
+    thread: text(given.thread),
+  };
 }
 
 /** A part that needs something the layout or the opener did not give. */
@@ -53,6 +61,7 @@ const PARTS: Readonly<Record<string, Factory>> = {
   "rename-project": (given, cx) =>
     new RenameProjectDialog(need(given.overlay, "its overlay"), need(given.project, "a project"), cx),
   "project-menu": (given) => new ProjectMenu(need(given.overlay, "its overlay"), need(given.project, "a project")),
+  review: (given, cx) => new ReviewDialog(need(given.overlay, "its overlay"), need(given.thread, "a thread"), cx),
 };
 
 function createPart(given: Given, cx: AsyncContext): Part {
@@ -70,5 +79,9 @@ export default class Projects extends View {
 
   render(cx: Context): Element {
     return this.part?.render(cx) ?? div();
+  }
+
+  override close(): void {
+    this.part?.close?.();
   }
 }

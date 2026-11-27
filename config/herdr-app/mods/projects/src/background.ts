@@ -1,7 +1,8 @@
 import type { AsyncContext } from "gpui-kit";
 import { checking, nextCommand, setBadge, window } from "herdr";
-import { openNewProjectDialog, reportFailure } from "./actions";
+import { openNewProjectDialog, openReview, reportFailure } from "./actions";
 import { openNextWait, selectProject, showThreadList, stepProject } from "./navigation";
+import { readPanel } from "./panel";
 import { refreshPulls } from "./pull-reader";
 import { readScene } from "./snapshot";
 import { waits } from "./waits";
@@ -17,6 +18,12 @@ const SELECT = Object.fromEntries(
   Array.from({ length: 9 }, (_, index) => [`select-${index + 1}`, () => selectProject(index)] as const),
 );
 
+/** Opens the review of the thread that is open in the panel. */
+function reviewOpenThread(): void {
+  const { thread } = readPanel();
+  if (thread) openReview(thread);
+}
+
 /** The mod's commands, for keys.json (`projects.<name>`) and the command palette. */
 const COMMANDS: Readonly<Record<string, () => void>> = {
   ...SELECT,
@@ -25,6 +32,7 @@ const COMMANDS: Readonly<Record<string, () => void>> = {
   prev: () => stepProject(-1),
   "next-waiting": openNextWait,
   threads: showThreadList,
+  review: reviewOpenThread,
 };
 
 /**

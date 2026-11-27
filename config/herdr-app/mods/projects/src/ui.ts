@@ -21,6 +21,8 @@ const COLOR_NAMES = [
   "blocked",
   "working",
   "done",
+  "ansi1",
+  "ansi2",
 ] as const;
 
 export type Theme = Readonly<Record<(typeof COLOR_NAMES)[number], Color>>;
