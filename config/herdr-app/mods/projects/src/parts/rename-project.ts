@@ -1,7 +1,7 @@
 import type { AsyncContext, Context, Element } from "gpui-kit";
 import { InputState } from "gpui-base";
 import { closeOverlay } from "herdr";
-import { renameProject, reportFailure } from "../actions";
+import { renameProject, reportFailureOf } from "../actions";
 import { dialog, focusSoon, textField } from "../dialog";
 import { nameProblem } from "../projects";
 import { readScene } from "../snapshot";
@@ -54,6 +54,6 @@ export class RenameProjectDialog implements Part {
     }
     closeOverlay(this.overlay);
     if (name === this.project) return;
-    renameProject(project, name).catch((error: unknown) => reportFailure(`Could not rename ${this.project}`, error));
+    reportFailureOf(`Could not rename ${this.project}`, () => renameProject(project, name));
   }
 }

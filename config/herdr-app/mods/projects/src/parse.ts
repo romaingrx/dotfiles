@@ -1,3 +1,5 @@
+import { attemptSync, type Result } from "./result";
+
 /** A value the app or the core gave, before its fields are read. */
 export type Raw = Readonly<Record<string, unknown>>;
 
@@ -14,4 +16,9 @@ export function asRecord(value: unknown): Raw {
 /** A string that is not empty, else null. */
 export function text(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
+}
+
+/** Reads the JSON a program printed or a file holds. What it holds is still to be read, field by field. */
+export function parseJson(json: string): Result<unknown> {
+  return attemptSync((): unknown => JSON.parse(json));
 }

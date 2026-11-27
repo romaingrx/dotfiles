@@ -6,7 +6,77 @@ import { props } from "herdr";
 import { checking, nextCommand, setBadge, window as window2 } from "herdr";
 
 // src/actions.ts
-import { appHome, exec, hc, notify, openOverlay, run, window } from "herdr";
+import { appHome, notify, openOverlay, window } from "herdr";
+
+// src/host.ts
+import { exec, hc, readTextFile, run } from "herdr";
+
+// src/result.ts
+function ok(value) {
+  return { ok: true, value };
+}
+function fail(error) {
+  return { ok: false, error };
+}
+var DONE = ok(null);
+function messageOf(thrown) {
+  return thrown instanceof Error ? thrown.message : String(thrown);
+}
+async function attempt(work) {
+  try {
+    return ok(await work());
+  } catch (thrown) {
+    return fail(messageOf(thrown));
+  }
+}
+function attemptSync(step) {
+  try {
+    return ok(step());
+  } catch (thrown) {
+    return fail(messageOf(thrown));
+  }
+}
+function flat(nested) {
+  return nested.ok ? nested.value : nested;
+}
+async function settle(step) {
+  return flat(await attempt(async () => step()));
+}
+function settleSync(step) {
+  return flat(attemptSync(step));
+}
+async function all(steps) {
+  const values = [];
+  for (const result of await Promise.all(steps)) {
+    if (!result.ok)
+      return result;
+    values.push(result.value);
+  }
+  return ok(values);
+}
+
+// src/exit.ts
+function outputOf(ran, name) {
+  if (!ran.ok)
+    return fail(ran.error || `${name} could not start`);
+  const { code, stdout, stderr } = ran.value;
+  return code === 0 ? ok(stdout) : fail(stderr.trim() || `${name} ended with code ${code}`);
+}
+
+// src/host.ts
+async function runProgram(program, args, options = {}) {
+  const { name = program, ...where } = options;
+  return outputOf(await attempt(() => exec(program, args, where)), name);
+}
+async function core(args) {
+  return outputOf(await attempt(() => hc(args)), `hc ${args[0]}`);
+}
+function readText(path) {
+  return attempt(() => readTextFile(path));
+}
+function runCommand(name, args) {
+  return attemptSync(() => run(name, args));
+}
 
 // src/status.ts
 var GROUPS = [
@@ -133,18 +203,12 @@ var MOVE_MEMORY = `cd "$HOME/$1" 2>/dev/null || exit 0
 [ -d "$2" ] || exit 0
 if [ -e "$3" ]; then echo "a memory folder named $3 exists already: remove it or pick another name" >&2; exit 1; fi
 mv -- "$2" "$3"`;
-function messageOf(error) {
-  return error instanceof Error ? error.message : String(error);
+function reportFailure(title, outcome) {
+  if (!outcome.ok)
+    notify({ title, body: outcome.error, level: "error" });
 }
-function reportFailure(title, error) {
-  notify({ title, body: messageOf(error), level: "error" });
-}
-function succeed(result, program) {
-  if (result.code !== 0)
-    throw new Error(result.stderr.trim() || `${program} ended with code ${result.code}`);
-}
-async function core(args) {
-  succeed(await hc(args), `hc ${args[0]}`);
+function reportFailureOf(title, work) {
+  settle(work).then((outcome) => reportFailure(title, outcome));
 }
 function askName(title, value, command, args) {
   openOverlay({ mod: "prompt", kind: "dialog", width: 420, props: { title, value, command: { name: command, args } } });
@@ -161,8 +225,11 @@ function renameThread(thread) {
 function openThreadMenu(tab) {
   openOverlay({ mod: "menu", kind: "popup", width: 200, props: { tab: "tab", target: tab } });
 }
+function label(address, labels) {
+  return core(["label", address, ...labels]);
+}
 function setResolved(thread, resolved) {
-  core(["label", thread.key, `resolved=${resolved ? "true" : ""}`]).catch((error) => reportFailure("Could not change the thread", error));
+  reportFailureOf("Could not change the thread", () => label(thread.key, [`resolved=${resolved ? "true" : ""}`]));
 }
 function openNewProjectDialog() {
   openOverlay({ mod: MOD, kind: "dialog", width: 440, props: { part: "new-project" } });
@@ -176,45 +243,49 @@ function openProjectMenu(project) {
 function openReview(thread) {
   openOverlay({ mod: MOD, kind: "dialog", modal: true, width: 0.92, height: 0.9, props: { part: "review", thread } });
 }
-async function sendToThread(thread, message) {
-  await core(["send", thread, message]);
+function sendToThread(thread, message) {
+  return core(["send", thread, message]);
 }
-async function startProject(name, machine, cwd) {
+function startProject(name, machine, cwd) {
   const args = ["orchestrator", name, "--cwd", cwd, ...machine ? ["--on", machine] : []];
-  succeed(await exec(`${appHome()}/mods/${MOD}/agent/start.sh`, args, { timeout: START_TIMEOUT }), "start.sh");
+  return runProgram(`${appHome()}/mods/${MOD}/agent/start.sh`, args, { timeout: START_TIMEOUT, name: "start.sh" });
+}
+function moveMemory(on, from, to) {
+  const args = ["-c", MOVE_MEMORY, "sh", MEMORY, from, to];
+  return runProgram("sh", args, { on, name: "the move of the memory folder" });
 }
 async function renameProject(project, name) {
-  const moves = await Promise.all(project.machines.map((on) => exec("sh", ["-c", MOVE_MEMORY, "sh", MEMORY, project.name, name], { on })));
-  for (const move of moves)
-    succeed(move, "the move of the memory folder");
-  await Promise.all(project.members.map((member) => core(["label", member.address, `project=${name}`])));
+  const moved = await all(project.machines.map((on) => moveMemory(on, project.name, name)));
+  if (!moved.ok)
+    return moved;
+  const labelled = await all(project.members.map((member) => label(member.address, [`project=${name}`])));
+  if (!labelled.ok)
+    return labelled;
   const lead = leadOf(project);
-  if (lead)
-    await core([
-      "send",
-      lead.address,
-      `The person renamed this project to "${name}". Its memory folder has that name now.`
-    ]);
+  if (!lead)
+    return DONE;
+  return sendToThread(lead.address, `The person renamed this project to "${name}". Its memory folder has that name now.`);
 }
 async function closeProject(ownSpace, outside) {
-  if (ownSpace)
-    run("space.close", { id: ownSpace, confirmed: true });
-  await Promise.all(outside.map((address) => core(["kill", address])));
+  const closed = ownSpace ? runCommand("space.close", { id: ownSpace, confirmed: true }) : DONE;
+  if (!closed.ok)
+    return closed;
+  return all(outside.map((address) => core(["kill", address])));
 }
-async function ungroupProject(project) {
-  const cleared = LABELS.map((label) => `${label}=`);
-  await Promise.all(project.members.map((member) => core(["label", member.address, ...cleared])));
+function ungroupProject(project) {
+  const cleared = LABELS.map((name) => `${name}=`);
+  return all(project.members.map((member) => label(member.address, cleared)));
 }
 function openLink(url) {
   const opener = window()?.platform === "macos" ? "open" : "xdg-open";
-  exec(opener, [url]).then((result) => succeed(result, opener)).catch((error) => reportFailure("Could not open the link", error));
+  reportFailureOf("Could not open the link", () => runProgram(opener, [url]));
 }
 
 // src/navigation.ts
 import { notify as notify2, run as run3, setShared as setShared2 } from "herdr";
 
 // src/panel.ts
-import { appHome as appHome2, layout, readTextFile, run as run2, setShared, shared } from "herdr";
+import { appHome as appHome2, layout, run as run2, setShared, shared } from "herdr";
 
 // src/layout-tree.ts
 var PANEL = "panel";
@@ -279,6 +350,9 @@ function asRecord(value) {
 function text(value) {
   return typeof value === "string" && value !== "" ? value : null;
 }
+function parseJson(json) {
+  return attemptSync(() => JSON.parse(json));
+}
 
 // src/panel.ts
 var LAYOUT = "projects";
@@ -320,28 +394,40 @@ function toggleDrawer(drawer) {
   run2("layout.show", { id: THREAD_DRAWER });
 }
 function setLayout(tree, thread) {
-  run2("layout.set", { layout: withThread(tree, thread) });
+  return runCommand("layout.set", { layout: withThread(tree, thread) });
 }
 function showThreadInPanel(terminal, focus) {
   const shown = shownLayout();
   if (!shown)
-    return;
-  setLayout(shown, terminal);
+    return DONE;
+  const set = setLayout(shown, terminal);
+  if (!set.ok)
+    return set;
   selectPanel(THREAD);
-  if (focus)
-    run2("pane.focus", { terminal });
+  return focus ? runCommand("pane.focus", { terminal }) : DONE;
+}
+function parseBase(base) {
+  const read = parseJson(base);
+  if (!read.ok)
+    return read;
+  const tree = asNode(read.value);
+  return tree ? ok(tree) : fail(`${BASE} does not hold a layout`);
 }
 async function syncLayout() {
-  const base = await readTextFile(`${appHome2()}/${BASE}`);
-  if (base === null)
-    throw new Error(`${BASE} is missing`);
-  if (shared(APPLIED) === base || !shownLayout())
-    return;
-  const tree = asNode(JSON.parse(base));
-  if (!tree)
-    throw new Error(`${BASE} does not hold a layout`);
-  setLayout(tree, readPanel().thread);
-  setShared(APPLIED, base);
+  const base = await readText(`${appHome2()}/${BASE}`);
+  if (!base.ok)
+    return base;
+  if (base.value === null)
+    return fail(`${BASE} is missing`);
+  if (shared(APPLIED) === base.value || !shownLayout())
+    return DONE;
+  const tree = parseBase(base.value);
+  if (!tree.ok)
+    return tree;
+  const set = setLayout(tree.value, readPanel().thread);
+  if (set.ok)
+    setShared(APPLIED, base.value);
+  return set;
 }
 
 // src/snapshot.ts
@@ -590,13 +676,24 @@ function seats(snapshot) {
   }
   return seated;
 }
-function sessionTitle(terminal, seat) {
-  if (seat?.pane.name)
+function givenName(seat) {
+  if (seat.pane.name)
     return seat.pane.name;
-  const tab = seat?.home?.tab;
-  if (tab?.named && tab.name !== seat?.pane.program.name)
-    return tab.name;
+  const tab = seat.home?.tab;
+  return tab?.named && tab.name !== seat.pane.program.name ? tab.name : null;
+}
+function ownName(terminal) {
   return terminal.heading ?? terminal.name ?? (stripGlyph(terminal.title) || terminal.address);
+}
+function sessionTitle(terminal, seat) {
+  return (seat && givenName(seat)) ?? ownName(terminal);
+}
+function ownTab(seat) {
+  const home = seat?.home;
+  return home ? { id: home.tab.id, space: home.space.id } : null;
+}
+function changedAt(terminal, seat) {
+  return seat?.home?.tab.changed_at ?? terminal.since;
 }
 function place(pane) {
   return pane.terminal && pane.cwd ? `${machineOf(pane.terminal) ?? ""}:${pane.cwd}` : null;
@@ -640,10 +737,10 @@ function projectThreads(snapshot, project) {
       active: member.address === snapshot.focused,
       resolved: member.resolved,
       pane: seat?.pane.pane ?? null,
-      tab: seat?.home ? { id: seat.home.tab.id, space: seat.home.space.id } : null,
+      tab: ownTab(seat),
       note: note(member),
       aside: spread ? member.machine ?? LOCAL : null,
-      since: seat?.home?.tab.changed_at ?? member.since,
+      since: changedAt(member, seat),
       checkout: checkout(seat, shared),
       refs,
       pulls: stackOf(refs, snapshot.pulls),
@@ -723,11 +820,7 @@ function focusTerminal(terminal) {
   run3("pane.focus", { terminal });
 }
 function showInPanel(terminal, focus) {
-  try {
-    showThreadInPanel(terminal, focus);
-  } catch (error) {
-    reportFailure("Could not open the thread", error);
-  }
+  reportFailure("Could not open the thread", settleSync(() => showThreadInPanel(terminal, focus)));
 }
 function openThread(thread) {
   if (thread.opens === "pane") {
@@ -795,9 +888,10 @@ function selectProject(index) {
 }
 
 // src/pull-reader.ts
-import { exec as exec2, setShared as setShared3 } from "herdr";
+import { setShared as setShared3 } from "herdr";
 
 // src/pull-asks.ts
+var NO_PULL = /no pull requests found|Could not resolve to a PullRequest/;
 function askOf(thread, ref) {
   const on = machineOf(thread.key);
   if (ref.kind === "declared")
@@ -809,21 +903,23 @@ function pullAsks(threads) {
   const byKey = new Map(asks.filter((ask) => ask !== null).map((ask) => [ask.key, ask]));
   return [...byKey.values()];
 }
+function pullAnswer(printed, known) {
+  if (!printed.ok)
+    return NO_PULL.test(printed.error) ? null : known;
+  const read = parseJson(printed.value);
+  return (read.ok ? parsePull(read.value) : null) ?? known;
+}
 
 // src/pull-reader.ts
 var PULL_TIMEOUT = 20000;
-var NO_PULL = /no pull requests found|Could not resolve to a PullRequest/;
 async function readPull(ask, known) {
-  const before = known[ask.key] ?? null;
-  try {
+  const kept = known[ask.key] ?? null;
+  const read = await attempt(async () => {
     const options = { ...ask.cwd !== null && { cwd: ask.cwd }, on: ask.on, timeout: PULL_TIMEOUT };
-    const result = await exec2("gh", ["pr", "view", ...ask.args, "--json", PULL_FIELDS], options);
-    if (result.code === 0)
-      return parsePull(JSON.parse(result.stdout)) ?? before;
-    return NO_PULL.test(result.stderr) ? null : before;
-  } catch {
-    return before;
-  }
+    const printed = await runProgram("gh", ["pr", "view", ...ask.args, "--json", PULL_FIELDS], options);
+    return pullAnswer(printed, kept);
+  });
+  return read.ok ? read.value : kept;
 }
 async function refreshPulls() {
   const { snapshot, projects } = readScene();
@@ -857,11 +953,7 @@ async function runCommands(cx) {
   for (;; ) {
     const name = await nextCommand();
     cx.notify();
-    try {
-      COMMANDS[name]?.();
-    } catch (error) {
-      reportFailure(`Could not run ${MOD2}.${name}`, error);
-    }
+    reportFailure(`Could not run ${MOD2}.${name}`, attemptSync(() => COMMANDS[name]?.()));
   }
 }
 function watchWaits(cx) {
@@ -998,7 +1090,7 @@ function focusSoon(input, cx) {
   input.focus();
   cx.timer.after(REFOCUS_AFTER, () => input.focus());
 }
-function label(colors, text) {
+function label2(colors, text) {
   return div2().pt(4).text_size(11.5).text_color(colors.dim).child(text);
 }
 function textField(colors, state, invalid) {
@@ -1048,11 +1140,11 @@ class NewProjectDialog {
       hint: this.starting ? `Starting the orchestrator on ${this.machine ?? "this computer"}. This can take a minute.` : "Starts an orchestrator. It runs the project's threads on the same machine.",
       error: this.problem?.message ?? null,
       fields: [
-        label(colors, "Name"),
+        label2(colors, "Name"),
         textField(colors, this.name, this.problem?.field === "name"),
-        label(colors, "Machine"),
+        label2(colors, "Machine"),
         this.machinePicker(colors),
-        label(colors, "Folder"),
+        label2(colors, "Folder"),
         textField(colors, this.folder, this.problem?.field === "folder")
       ],
       buttons: [
@@ -1098,19 +1190,22 @@ class NewProjectDialog {
     cx.notify();
     if (!this.starting)
       return;
-    const start = startProject(name, this.machine, folder);
-    start.catch((error) => reportFailure(`Could not start ${name}`, error));
+    const start = settle(() => startProject(name, this.machine, folder));
+    reportFailureOf(`Could not start ${name}`, () => start);
     cx.spawn((task) => this.follow(start, task));
   }
   async follow(start, cx) {
-    try {
-      await start;
-      closeOverlay(this.overlay);
-    } catch (error) {
-      this.starting = false;
-      this.problem = { field: null, message: messageOf(error) };
-      cx.notify();
-    }
+    const started = await settle(async () => {
+      const outcome = await start;
+      if (outcome.ok)
+        closeOverlay(this.overlay);
+      return outcome;
+    });
+    if (started.ok)
+      return;
+    this.starting = false;
+    this.problem = { field: null, message: started.error };
+    cx.notify();
   }
   check(name, folder) {
     const taken = readScene().projects.map((project) => project.name);
@@ -1366,7 +1461,7 @@ class ProjectMenu {
   }
   end(ending) {
     closeOverlay2(this.overlay);
-    ending.run().catch((error) => reportFailure(`Could not end ${this.name}`, error));
+    reportFailureOf(`Could not end ${this.name}`, ending.run);
   }
 }
 
@@ -1416,7 +1511,7 @@ class RenameProjectDialog {
     closeOverlay3(this.overlay);
     if (name === this.project)
       return;
-    renameProject(project, name).catch((error) => reportFailure(`Could not rename ${this.project}`, error));
+    reportFailureOf(`Could not rename ${this.project}`, () => renameProject(project, name));
   }
 }
 
@@ -1433,6 +1528,11 @@ function baseRefs(pullBase) {
 function reviewRange(pull, branch) {
   const tip = pull && pull.head !== branch ? pull.head : null;
   return { bases: baseRefs(pull?.base ?? null), tip };
+}
+function rangeLabel(pull, branch, base) {
+  if (!branch || base === undefined)
+    return null;
+  return `${reviewRange(pull, branch).tip ?? branch} → ${base}`;
 }
 var NO_FILE = "/dev/null";
 var FILE = "diff --git ";
@@ -1734,7 +1834,6 @@ function discussionsAt(discussions, anchor) {
 }
 
 // src/review/reader.ts
-import { exec as exec3 } from "herdr";
 var DIFF_TIMEOUT = 60000;
 var FOLDER = "-";
 var DIFF = `cd "$(git rev-parse --show-toplevel)" || exit 1
@@ -1755,11 +1854,8 @@ exit 1`;
 var GITHUB_TIMEOUT = 30000;
 async function inFolder(thread, program, args, timeout) {
   if (!thread.checkout)
-    throw new Error("this thread has no folder of its own to review");
-  const result = await exec3(program, args, { cwd: thread.checkout.folder, on: machineOf(thread.key), timeout });
-  if (result.code !== 0)
-    throw new Error(result.stderr.trim() || `${program} ended with code ${result.code}`);
-  return result.stdout;
+    return fail("this thread has no folder of its own to review");
+  return runProgram(program, args, { cwd: thread.checkout.folder, on: machineOf(thread.key), timeout });
 }
 function askGitHub(thread, host, query, fields) {
   const args = ["api", "graphql", "--hostname", host, "-f", `query=${query}`, ...fields];
@@ -1767,27 +1863,27 @@ function askGitHub(thread, host, query, fields) {
 }
 async function readBranchDiff(thread, range) {
   const args = ["-c", DIFF, "sh", range.tip ?? FOLDER, ...range.bases];
-  return parseBranchDiff(await inFolder(thread, "sh", args, DIFF_TIMEOUT));
+  const printed = await inFolder(thread, "sh", args, DIFF_TIMEOUT);
+  return printed.ok ? ok(parseBranchDiff(printed.value)) : printed;
 }
 async function readDiscussions(thread, pull) {
   const place = pull && placeOf(pull.url);
   if (!place)
-    return [];
+    return ok([]);
   const fields = [`owner=${place.owner}`, `name=${place.name}`, `number=${place.number}`];
   const answer = await askGitHub(thread, place.host, DISCUSSIONS_QUERY, fields.flatMap((field) => ["-F", field]));
-  return parseDiscussions(JSON.parse(answer));
+  if (!answer.ok)
+    return answer;
+  const read = parseJson(answer.value);
+  return read.ok ? ok(parseDiscussions(read.value)) : read;
 }
 async function postReply(thread, pull, about, body) {
   const place = placeOf(pull.url);
   if (!place)
-    throw new Error(`${pull.url} is not the URL of a pull request`);
+    return fail(`${pull.url} is not the URL of a pull request`);
   const fields = [`discussion=${about.discussion}`, `body=${body}`].flatMap((field) => ["-f", field]);
-  try {
-    await askGitHub(thread, place.host, REPLY_MUTATION, fields);
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(`GitHub did not take the reply to @${about.author}: ${reason}`);
-  }
+  const posted = await askGitHub(thread, place.host, REPLY_MUTATION, fields);
+  return posted.ok ? posted : fail(`GitHub did not take the reply to @${about.author}: ${posted.error}`);
 }
 
 // src/review/rows.ts
@@ -1909,47 +2005,59 @@ function cardsOf(entry, columns, stale) {
     add(comment, commentCard(comment, columns, stale));
   return cards;
 }
-function fileRows(entry, columns) {
+function staleCards(entry, columns) {
   const { file } = entry;
   const lines = file.hunks.flatMap((hunk) => hunk.lines);
   const shown = new Set(lines.map((line) => anchorKey(anchorOf(file.path, line))));
-  const cards = cardsOf(entry, columns, false);
-  const stale = [...cardsOf(entry, columns, true)].filter(([key]) => !shown.has(key));
-  const rows = stale.flatMap(([, rowsOfLine]) => rowsOfLine);
-  const empty = emptyText(entry);
-  if (empty)
-    return [...rows, { kind: "note", key: `note:empty:${file.path}`, text: empty }];
+  return [...cardsOf(entry, columns, true)].filter(([key]) => !shown.has(key)).flatMap(([, cards]) => cards);
+}
+function gapRows(path, index, gap) {
+  if (gap <= 0)
+    return [];
+  return [{ kind: "hunk", key: `hunk:${path}:${index}`, text: `${gap} unchanged line${gap === 1 ? "" : "s"}` }];
+}
+function linesWithCards(path, lines, cards) {
+  return lines.flatMap((line) => {
+    const anchor = anchorOf(path, line);
+    const under = cards.get(anchorKey(anchor)) ?? [];
+    const mark = { commented: false, discussed: false };
+    return [{ kind: "line", key: lineKey(anchor), anchor, line, text: untab(line.text), ...mark }, ...under];
+  });
+}
+function hunkRows(file, cards) {
   const gaps = unchangedBefore(file.hunks);
+  const rows = [];
   let drawn = 0;
   for (const [index, hunk] of file.hunks.entries()) {
     if (drawn >= MAX_LINES)
       break;
-    const gap = gaps[index] ?? 0;
-    if (gap > 0)
-      rows.push({
-        kind: "hunk",
-        key: `hunk:${file.path}:${index}`,
-        text: `${gap} unchanged line${gap === 1 ? "" : "s"}`
-      });
-    for (const line of hunk.lines.slice(0, MAX_LINES - drawn)) {
-      const anchor = anchorOf(file.path, line);
-      const under = cards.get(anchorKey(anchor)) ?? [];
-      const mark = { commented: false, discussed: false };
-      rows.push({ kind: "line", key: lineKey(anchor), anchor, line, text: untab(line.text), ...mark }, ...under);
-    }
+    rows.push(gapRows(file.path, index, gaps[index] ?? 0));
+    rows.push(linesWithCards(file.path, hunk.lines.slice(0, MAX_LINES - drawn), cards));
     drawn += hunk.lines.length;
   }
-  if (lines.length > MAX_LINES) {
-    rows.push({
-      kind: "note",
-      key: `note:cut:${file.path}`,
-      text: `This diff is long: only its first ${MAX_LINES} lines show.`
-    });
-  }
+  return rows.flat();
+}
+function cutNote(file) {
+  const lines = file.hunks.reduce((sum, hunk) => sum + hunk.lines.length, 0);
+  if (lines <= MAX_LINES)
+    return [];
+  const text = `This diff is long: only its first ${MAX_LINES} lines show.`;
+  return [{ kind: "note", key: `note:cut:${file.path}`, text }];
+}
+function marked(rows, entry) {
   const covered = (spans) => new Set(spans.flatMap((span) => spanRows(rows, span).map((row) => row.key)));
   const commented = covered(entry.comments);
   const discussed = covered(entry.discussions);
   return rows.map((row) => row.kind === "line" ? { ...row, commented: commented.has(row.key), discussed: discussed.has(row.key) } : row);
+}
+function fileRows(entry, columns) {
+  const { file } = entry;
+  const stale = staleCards(entry, columns);
+  const empty = emptyText(entry);
+  if (empty)
+    return [...stale, { kind: "note", key: `note:empty:${file.path}`, text: empty }];
+  const cards = cardsOf(entry, columns, false);
+  return marked([...stale, ...hunkRows(file, cards), ...cutNote(file)], entry);
 }
 function lineRows(rows) {
   return rows.filter((row) => row.kind === "line");
@@ -2081,6 +2189,37 @@ function readDraft(key) {
 }
 function saveDraft(key, draft) {
   setShared4(REVIEWS, withDraft(parseDrafts(shared3(REVIEWS)), key, draft));
+}
+
+// src/review/target.ts
+function isPickable(row) {
+  return row?.kind === "line" || row?.kind === "card";
+}
+function codeAt(rows, anchor) {
+  const row = rows.find((candidate) => candidate.key === lineKey(anchor));
+  return row?.kind === "line" ? row.line.text : "";
+}
+function targetAt(rows, anchor, written, about) {
+  if (written)
+    return { anchor: written, pivot: anchor, code: written.code, written: true, about };
+  const { path, side, line } = anchor;
+  return {
+    anchor: { path, side, line, start: null },
+    pivot: anchor,
+    code: codeAt(rows, anchor),
+    written: false,
+    about
+  };
+}
+function linesWord(span) {
+  if (span.start)
+    return `Lines ${linesOf(span)}`;
+  return span.side === "old" ? `Line ${span.line}, which the branch removes` : `Line ${span.line}`;
+}
+function whereOf(target) {
+  const { path } = target.anchor;
+  const lines = `${path.slice(path.lastIndexOf("/") + 1)} · ${linesWord(target.anchor)}`;
+  return target.about ? `${lines} · in answer to @${target.about.author} on GitHub` : lines;
 }
 
 // src/review/view.ts
@@ -2413,16 +2552,6 @@ function reviewFoot(colors, props) {
 var SHOW_EVERY = 150;
 var FIRST_WIDTH = 900;
 var ADDRESS = "Address this comment.";
-function linesWord(span) {
-  if (span.start)
-    return `Lines ${linesOf(span)}`;
-  return span.side === "old" ? `Line ${span.line}, which the branch removes` : `Line ${span.line}`;
-}
-function whereOf(target) {
-  const { path } = target.anchor;
-  const lines = `${path.slice(path.lastIndexOf("/") + 1)} · ${linesWord(target.anchor)}`;
-  return target.about ? `${lines} · in answer to @${target.about.author} on GitHub` : lines;
-}
 
 class ReviewDialog {
   overlay;
@@ -2473,38 +2602,11 @@ class ReviewDialog {
     if (thread && !this.asked)
       this.load(cx);
     const draft = readDraft(this.key());
-    const files = reviewFiles(this.diff?.files ?? [], draft.comments, this.discussions);
-    const ordered = inTreeOrder(files);
-    const columns = commentColumns(this.width, type);
-    this.build(ordered, columns, cx);
-    const drawn = this.drawnOf(ordered, columns, type);
+    const files = reviewFiles(this.changed(), draft.comments, this.discussions);
+    const drawn = this.draw(inTreeOrder(files), type, cx);
     const open = files.some((entry) => entry.file.path === this.open) ? this.open : fileAt(drawn.starts, 0);
-    const branch = thread?.checkout?.branch;
-    const tip = branch && (reviewRange(this.subject, branch).tip ?? branch);
-    const range = tip && this.diff ? `${tip} → ${this.diff.base}` : null;
-    return v_flex6().id("review").size_full().bg(colors.popover).text_color(colors.foreground).track_focus(this.handle).child(reviewHead(colors, {
-      title: thread?.title ?? "This thread has ended.",
-      range,
-      files: this.diff?.files ?? [],
-      loading: this.loading,
-      onRefresh: (cx) => this.load(cx),
-      onClose: () => closeOverlay4(this.overlay)
-    })).children(pullStrip(colors, {
-      choices: openPulls(thread?.pulls ?? []),
-      shown: this.subject,
-      onPick: (pull, cx) => this.turn(pull, cx)
-    })).child(h_flex7().flex_1().min_h(0).items_start().child(fileList(colors, {
-      rows: fileTree(filterFiles(files, this.filter.value()), this.folded),
-      filter: this.filter,
-      onFold: (path, cx) => this.fold(path, cx),
-      open,
-      empty: this.emptyText(),
-      onOpen: (path, cx) => this.show(drawn, path, cx)
-    })).child(this.diffSide(colors, type, drawn, files.find((entry) => entry.file.path === open)?.file ?? null))).child(reviewFoot(colors, {
-      note: this.note,
-      error: this.diff ? this.error : null,
-      send: this.sendButton(thread, draft)
-    }));
+    const shown = files.find((entry) => entry.file.path === open)?.file ?? null;
+    return v_flex6().id("review").size_full().bg(colors.popover).text_color(colors.foreground).track_focus(this.handle).child(this.head(colors, thread)).children(this.strip(colors, thread)).child(h_flex7().flex_1().min_h(0).items_start().child(this.tree(colors, files, drawn, open)).child(this.diffSide(colors, type, drawn, shown))).child(this.foot(colors, thread, draft));
   }
   close() {
     if (this.sent)
@@ -2515,6 +2617,48 @@ class ReviewDialog {
   find() {
     const { snapshot, projects } = readScene();
     return threadAt(snapshot, projects, this.thread);
+  }
+  changed() {
+    return this.diff?.files ?? [];
+  }
+  head(colors, thread) {
+    return reviewHead(colors, {
+      title: thread?.title ?? "This thread has ended.",
+      range: rangeLabel(this.subject, thread?.checkout?.branch, this.diff?.base),
+      files: this.changed(),
+      loading: this.loading,
+      onRefresh: (cx) => this.load(cx),
+      onClose: () => closeOverlay4(this.overlay)
+    });
+  }
+  strip(colors, thread) {
+    return pullStrip(colors, {
+      choices: openPulls(thread?.pulls ?? []),
+      shown: this.subject,
+      onPick: (pull, cx) => this.turn(pull, cx)
+    });
+  }
+  tree(colors, files, drawn, open) {
+    return fileList(colors, {
+      rows: fileTree(filterFiles(files, this.filter.value()), this.folded),
+      filter: this.filter,
+      onFold: (path, cx) => this.fold(path, cx),
+      open,
+      empty: this.emptyText(),
+      onOpen: (path, cx) => this.show(drawn, path, cx)
+    });
+  }
+  foot(colors, thread, draft) {
+    return reviewFoot(colors, {
+      note: this.note,
+      error: this.diff ? this.error : null,
+      send: this.sendButton(thread, draft)
+    });
+  }
+  draw(files, type, cx) {
+    const columns = commentColumns(this.width, type);
+    this.build(files, columns, cx);
+    return this.drawnOf(files, columns, type);
   }
   key() {
     return draftKey(this.thread, this.subject);
@@ -2639,9 +2783,12 @@ class ReviewDialog {
         for (const entry of stale) {
           if (round !== this.round)
             break;
+          const rows = attemptSync(() => fileRows(entry, columns));
+          if (!rows.ok)
+            this.error = `${entry.file.path}: ${rows.error}`;
           this.built.set(entry.file.path, {
             signature: builtFrom(entry, columns, round),
-            rows: fileRows(entry, columns)
+            rows: rows.ok ? rows.value : []
           });
           this.version++;
           if (Date.now() - shown >= SHOW_EVERY) {
@@ -2689,8 +2836,8 @@ class ReviewDialog {
     cx.spawn(async (task) => {
       const show = () => task.notify();
       await Promise.all([
-        this.read(readBranchDiff(thread, range), (diff) => this.diff = diff, latest).then(show),
-        this.read(readDiscussions(thread, subject), (discussions) => this.discussions = discussions, latest).then(show)
+        this.read(() => readBranchDiff(thread, range), (diff) => this.diff = diff, latest).then(show),
+        this.read(() => readDiscussions(thread, subject), (discussions) => this.discussions = discussions, latest).then(show)
       ]);
       if (latest())
         this.loading = false;
@@ -2698,14 +2845,13 @@ class ReviewDialog {
     });
   }
   async read(reading, keep, latest) {
-    try {
-      const value = await reading;
-      if (latest())
-        keep(value);
-    } catch (error) {
-      if (latest())
-        this.error = messageOf(error);
-    }
+    const read = await settle(reading);
+    if (!latest())
+      return;
+    if (read.ok)
+      keep(read.value);
+    else
+      this.error = read.error;
   }
   show(drawn, path, cx) {
     const head = drawn.rows.findIndex((row) => row.key === fileKey(path));
@@ -2725,21 +2871,14 @@ class ReviewDialog {
   }
   pick(rows, key, cx) {
     const row = rows.find((candidate) => candidate.key === key);
-    if (row?.kind !== "line" && row?.kind !== "card")
+    if (!isPickable(row))
       return;
     const own = this.rowsIn(row.anchor.path);
     if (this.shift && row.kind === "line" && this.extend(own, row.anchor, cx))
       return;
     this.keepTyped();
     const written = commentAt(readDraft(this.key()), row.anchor);
-    const line = own.find((candidate) => candidate.key === lineKey(row.anchor));
-    this.target = {
-      anchor: written ?? { path: row.anchor.path, side: row.anchor.side, line: row.anchor.line, start: null },
-      pivot: row.anchor,
-      code: written?.code ?? (line?.kind === "line" ? line.line.text : ""),
-      written: Boolean(written),
-      about: this.aboutAt(row.anchor)
-    };
+    this.target = targetAt(own, row.anchor, written, this.aboutAt(row.anchor));
     this.field.set_value(written?.body ?? "");
     this.field.focus();
     cx.notify();
@@ -2801,9 +2940,19 @@ class ReviewDialog {
     for (const comment of duePosts(readDraft(key))) {
       if (!comment.about || !pull)
         continue;
-      await postReply(thread, pull, comment.about, comment.body);
+      const posted = await postReply(thread, pull, comment.about, comment.body);
+      if (!posted.ok)
+        return posted;
       saveDraft(key, withPosted(readDraft(key), comment));
     }
+    return DONE;
+  }
+  async deliver(thread, key, pull, paths) {
+    const posted = await this.postReplies(thread, key, pull);
+    if (!posted.ok) {
+      return fail(`${posted.error}. Nothing went to the thread: send again, or keep that answer for the thread only.`);
+    }
+    return sendToThread(this.thread, reviewMessage(readDraft(key), paths, pull));
   }
   removeComment(anchor, cx) {
     saveDraft(this.key(), withoutComment(readDraft(this.key()), anchor));
@@ -2825,28 +2974,20 @@ class ReviewDialog {
     const { subject } = this;
     if (!thread || isEmpty(readDraft(key)))
       return;
-    const paths = (this.diff?.files ?? []).map((file) => file.path);
+    const paths = this.changed().map((file) => file.path);
     this.sending = true;
     this.error = null;
     cx.spawn(async (task) => {
-      const fail = (message) => {
-        this.error = message;
-        this.sending = false;
-        task.notify();
-      };
-      try {
-        await this.postReplies(thread, key, subject);
-      } catch (error) {
-        return fail(`${messageOf(error)}. Nothing went to the thread: send again, or keep that answer for the thread only.`);
+      const delivered = await settle(() => this.deliver(thread, key, subject, paths));
+      if (delivered.ok) {
+        this.sent = true;
+        saveDraft(key, NO_DRAFT);
+        closeOverlay4(this.overlay);
+        return;
       }
-      try {
-        await sendToThread(this.thread, reviewMessage(readDraft(key), paths, subject));
-      } catch (error) {
-        return fail(messageOf(error));
-      }
-      this.sent = true;
-      saveDraft(key, NO_DRAFT);
-      closeOverlay4(this.overlay);
+      this.error = delivered.error;
+      this.sending = false;
+      task.notify();
     });
     cx.notify();
   }
@@ -2937,7 +3078,7 @@ class ThreadPanel {
   order = "";
   constructor(cx) {
     cx.timer.every(AGE_REFRESH, (tick) => tick.notify());
-    syncLayout().catch((error) => reportFailure("Could not update the layout", error));
+    reportFailureOf("Could not update the layout", syncLayout);
   }
   render() {
     const colors = readTheme();

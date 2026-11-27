@@ -214,47 +214,54 @@ function cardsOf(entry: ReviewFile, columns: number, stale: boolean): Map<string
   return cards;
 }
 
-/**
- * The rows of one file: each hunk's header and lines, with the cards of a line
- * under it. The cards of a line the diff does not show come first. `columns`
- * is how many characters of a card fit on one line.
- */
-export function fileRows(entry: ReviewFile, columns: number): Row[] {
+/** The cards of the lines that the diff does not show. */
+function staleCards(entry: ReviewFile, columns: number): Card[] {
   const { file } = entry;
   const lines = file.hunks.flatMap((hunk) => hunk.lines);
   const shown = new Set(lines.map((line) => anchorKey(anchorOf(file.path, line))));
-  const cards = cardsOf(entry, columns, false);
-  const stale = [...cardsOf(entry, columns, true)].filter(([key]) => !shown.has(key));
-  const rows: Row[] = stale.flatMap(([, rowsOfLine]) => rowsOfLine);
-  const empty = emptyText(entry);
-  if (empty) return [...rows, { kind: "note", key: `note:empty:${file.path}`, text: empty }];
+  return [...cardsOf(entry, columns, true)].filter(([key]) => !shown.has(key)).flatMap(([, cards]) => cards);
+}
+
+/** The row that stands for the unchanged lines over a hunk. None for a hunk with no such line over it. */
+function gapRows(path: string, index: number, gap: number): Row[] {
+  if (gap <= 0) return [];
+  return [{ kind: "hunk", key: `hunk:${path}:${index}`, text: `${gap} unchanged line${gap === 1 ? "" : "s"}` }];
+}
+
+/** The rows of some lines of a file, each with its cards under it. No line is marked yet. */
+function linesWithCards(path: string, lines: readonly DiffLine[], cards: ReadonlyMap<string, Card[]>): Row[] {
+  return lines.flatMap((line): Row[] => {
+    const anchor = anchorOf(path, line);
+    const under = cards.get(anchorKey(anchor)) ?? [];
+    const mark = { commented: false, discussed: false };
+    return [{ kind: "line", key: lineKey(anchor), anchor, line, text: untab(line.text), ...mark }, ...under];
+  });
+}
+
+/** The rows of a file's hunks, up to `MAX_LINES` lines in all. */
+function hunkRows(file: DiffFile, cards: ReadonlyMap<string, Card[]>): Row[] {
   const gaps = unchangedBefore(file.hunks);
+  const rows: Row[][] = [];
   let drawn = 0;
   for (const [index, hunk] of file.hunks.entries()) {
     if (drawn >= MAX_LINES) break;
-    const gap = gaps[index] ?? 0;
-    if (gap > 0)
-      rows.push({
-        kind: "hunk",
-        key: `hunk:${file.path}:${index}`,
-        text: `${gap} unchanged line${gap === 1 ? "" : "s"}`,
-      });
-    for (const line of hunk.lines.slice(0, MAX_LINES - drawn)) {
-      const anchor = anchorOf(file.path, line);
-      const under = cards.get(anchorKey(anchor)) ?? [];
-      const mark = { commented: false, discussed: false };
-      rows.push({ kind: "line", key: lineKey(anchor), anchor, line, text: untab(line.text), ...mark }, ...under);
-    }
+    rows.push(gapRows(file.path, index, gaps[index] ?? 0));
+    rows.push(linesWithCards(file.path, hunk.lines.slice(0, MAX_LINES - drawn), cards));
     drawn += hunk.lines.length;
   }
-  if (lines.length > MAX_LINES) {
-    rows.push({
-      kind: "note",
-      key: `note:cut:${file.path}`,
-      text: `This diff is long: only its first ${MAX_LINES} lines show.`,
-    });
-  }
-  // What is said about several lines marks each of them, not only the last one.
+  return rows.flat();
+}
+
+/** Says that a diff is longer than what is drawn of it. */
+function cutNote(file: DiffFile): Row[] {
+  const lines = file.hunks.reduce((sum, hunk) => sum + hunk.lines.length, 0);
+  if (lines <= MAX_LINES) return [];
+  const text = `This diff is long: only its first ${MAX_LINES} lines show.`;
+  return [{ kind: "note", key: `note:cut:${file.path}`, text }];
+}
+
+/** Marks the lines that something is said about. A span of several lines marks each of them, not only the last one. */
+function marked(rows: readonly Row[], entry: ReviewFile): Row[] {
   const covered = (spans: readonly Span[]) =>
     new Set(spans.flatMap((span) => spanRows(rows, span).map((row) => row.key)));
   const commented = covered(entry.comments);
@@ -262,6 +269,20 @@ export function fileRows(entry: ReviewFile, columns: number): Row[] {
   return rows.map((row) =>
     row.kind === "line" ? { ...row, commented: commented.has(row.key), discussed: discussed.has(row.key) } : row,
   );
+}
+
+/**
+ * The rows of one file: each hunk's header and lines, with the cards of a line
+ * under it. The cards of a line the diff does not show come first. `columns`
+ * is how many characters of a card fit on one line.
+ */
+export function fileRows(entry: ReviewFile, columns: number): Row[] {
+  const { file } = entry;
+  const stale = staleCards(entry, columns);
+  const empty = emptyText(entry);
+  if (empty) return [...stale, { kind: "note", key: `note:empty:${file.path}`, text: empty }];
+  const cards = cardsOf(entry, columns, false);
+  return marked([...stale, ...hunkRows(file, cards), ...cutNote(file)], entry);
 }
 
 export type LineRow = Extract<Row, { kind: "line" }>;

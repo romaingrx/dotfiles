@@ -1,7 +1,7 @@
 import { div, type AsyncContext, type Context, type Element } from "gpui-kit";
 import { v_flex } from "gpui-base";
 import { setAgentOrder } from "herdr";
-import { openThreadMenu, reportFailure, setResolved } from "../actions";
+import { openThreadMenu, reportFailureOf, setResolved } from "../actions";
 import { openThread } from "../navigation";
 import { syncLayout } from "../panel";
 import { leadOf, type Project } from "../projects";
@@ -30,7 +30,7 @@ export class ThreadPanel implements Part {
 
   constructor(cx: AsyncContext) {
     cx.timer.every(AGE_REFRESH, (tick) => tick.notify());
-    syncLayout().catch((error: unknown) => reportFailure("Could not update the layout", error));
+    reportFailureOf("Could not update the layout", syncLayout);
   }
 
   render(): Element {

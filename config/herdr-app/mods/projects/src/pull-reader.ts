@@ -1,29 +1,27 @@
-import { exec, setShared } from "herdr";
-import { pullAsks, type PullAsk } from "./pull-asks";
-import { parsePull, PULL_FIELDS, type Pull, type Pulls } from "./pulls";
+import { setShared } from "herdr";
+import { runProgram } from "./host";
+import { pullAnswer, pullAsks, type PullAsk } from "./pull-asks";
+import { PULL_FIELDS, type Pull, type Pulls } from "./pulls";
+import { attempt } from "./result";
 import { PULLS, readScene } from "./snapshot";
 import { projectThreads } from "./threads";
 
 /** How long one read of a pull request may take. */
 const PULL_TIMEOUT = 20_000;
 
-/** What `gh` says when there is no such pull request. Any other failure tells nothing about it. */
-const NO_PULL = /no pull requests found|Could not resolve to a PullRequest/;
-
 /**
  * One pull request, read with `gh`: null when there is none. A read that
- * fails (the machine is away, `gh` is signed out) keeps what was known.
+ * fails keeps what was known, and so does a bug in the reading of one: the
+ * other pull requests of the round are still stored.
  */
 async function readPull(ask: PullAsk, known: Pulls): Promise<Pull | null> {
-  const before = known[ask.key] ?? null;
-  try {
+  const kept = known[ask.key] ?? null;
+  const read = await attempt(async () => {
     const options = { ...(ask.cwd !== null && { cwd: ask.cwd }), on: ask.on, timeout: PULL_TIMEOUT };
-    const result = await exec("gh", ["pr", "view", ...ask.args, "--json", PULL_FIELDS], options);
-    if (result.code === 0) return parsePull(JSON.parse(result.stdout)) ?? before;
-    return NO_PULL.test(result.stderr) ? null : before;
-  } catch {
-    return before;
-  }
+    const printed = await runProgram("gh", ["pr", "view", ...ask.args, "--json", PULL_FIELDS], options);
+    return pullAnswer(printed, kept);
+  });
+  return read.ok ? read.value : kept;
 }
 
 /**

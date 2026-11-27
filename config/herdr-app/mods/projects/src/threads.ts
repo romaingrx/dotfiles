@@ -92,17 +92,33 @@ function seats(snapshot: Snapshot): Map<string, Seat> {
   return seated;
 }
 
-/**
- * The name of a session, for every place that shows one. Names given in Herdr
- * win: the pane's name, then the name of the tab it owns. Then the title its
- * orchestrator gave it, then what the terminal itself says.
- */
-function sessionTitle(terminal: Terminal, seat: Seat | undefined): string {
-  if (seat?.pane.name) return seat.pane.name;
+/** The name someone gave a session in Herdr: its pane's name, else the name of the tab it owns. */
+function givenName(seat: Seat): string | null {
+  if (seat.pane.name) return seat.pane.name;
   // Herdr names a new tab after the program it starts: that is not a name someone gave.
-  const tab = seat?.home?.tab;
-  if (tab?.named && tab.name !== seat?.pane.program.name) return tab.name;
+  const tab = seat.home?.tab;
+  return tab?.named && tab.name !== seat.pane.program.name ? tab.name : null;
+}
+
+/** The name a session has by itself: the title its orchestrator gave it, then what the terminal says. */
+function ownName(terminal: Terminal): string {
   return terminal.heading ?? terminal.name ?? (stripGlyph(terminal.title) || terminal.address);
+}
+
+/** The name of a session, for every place that shows one. A name given in Herdr wins. */
+function sessionTitle(terminal: Terminal, seat: Seat | undefined): string {
+  return (seat && givenName(seat)) ?? ownName(terminal);
+}
+
+/** The tab a session owns, as Herdr's commands name it. */
+function ownTab(seat: Seat | undefined): OwnTab | null {
+  const home = seat?.home;
+  return home ? { id: home.tab.id, space: home.space.id } : null;
+}
+
+/** When a session's status last changed: the tab it owns knows, else its terminal. */
+function changedAt(terminal: Terminal, seat: Seat | undefined): number | null {
+  return seat?.home?.tab.changed_at ?? terminal.since;
 }
 
 /** A folder on a machine, as one word. */
@@ -160,10 +176,10 @@ export function projectThreads(snapshot: Snapshot, project: Project): Thread[] {
       active: member.address === snapshot.focused,
       resolved: member.resolved,
       pane: seat?.pane.pane ?? null,
-      tab: seat?.home ? { id: seat.home.tab.id, space: seat.home.space.id } : null,
+      tab: ownTab(seat),
       note: note(member),
       aside: spread ? (member.machine ?? LOCAL) : null,
-      since: seat?.home?.tab.changed_at ?? member.since,
+      since: changedAt(member, seat),
       checkout: checkout(seat, shared),
       refs,
       pulls: stackOf(refs, snapshot.pulls),

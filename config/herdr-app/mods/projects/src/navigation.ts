@@ -2,6 +2,7 @@ import { notify, run, setShared } from "herdr";
 import { reportFailure } from "./actions";
 import { selectPanel, showThreadInPanel } from "./panel";
 import { moveProject, type Project } from "./projects";
+import { settleSync } from "./result";
 import type { Scene } from "./scene";
 import { ORDER, readScene, readViews, VIEWS } from "./snapshot";
 import { projectHome, projectThreads, threadAt, type Thread } from "./threads";
@@ -20,11 +21,10 @@ function focusTerminal(terminal: string): void {
 }
 
 function showInPanel(terminal: string, focus: boolean): void {
-  try {
-    showThreadInPanel(terminal, focus);
-  } catch (error) {
-    reportFailure("Could not open the thread", error);
-  }
+  reportFailure(
+    "Could not open the thread",
+    settleSync(() => showThreadInPanel(terminal, focus)),
+  );
 }
 
 /** Opens a thread where it shows. One that opens in the panel is what its project has open from then on. */

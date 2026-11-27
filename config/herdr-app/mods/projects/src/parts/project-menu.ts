@@ -1,8 +1,9 @@
 import type { Context, Element } from "gpui-kit";
 import { v_flex } from "gpui-base";
 import { closeOverlay } from "herdr";
-import { closeProject, openRenameProjectDialog, reportFailure, ungroupProject } from "../actions";
+import { closeProject, openRenameProjectDialog, reportFailureOf, ungroupProject } from "../actions";
 import type { Project } from "../projects";
+import type { Outcome } from "../result";
 import { readScene } from "../snapshot";
 import { projectFootprint } from "../threads";
 import { chromeIcon, menuItem, readTheme, type MenuItem } from "../ui";
@@ -14,7 +15,7 @@ interface Ending {
   readonly icon: string;
   readonly label: string;
   readonly consequence: string;
-  readonly run: () => Promise<void>;
+  readonly run: () => Promise<Outcome>;
 }
 
 function sessions(amount: number): string {
@@ -109,6 +110,6 @@ export class ProjectMenu implements Part {
 
   private end(ending: Ending): void {
     closeOverlay(this.overlay);
-    ending.run().catch((error: unknown) => reportFailure(`Could not end ${this.name}`, error));
+    reportFailureOf(`Could not end ${this.name}`, ending.run);
   }
 }

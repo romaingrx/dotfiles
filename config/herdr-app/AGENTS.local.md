@@ -31,10 +31,22 @@ changes in a few seconds.
 
 The linter is oxlint (`.oxlintrc.json`) and the formatter is oxfmt
 (`.oxfmtrc.json`), both run from nixpkgs as the type check is. `bun run format`
-formats `src`.
+formats `src`. The linter refuses a function with a cyclomatic complexity over
+10: split it by what it does.
 
 Keep the code in small modules: data logic with no Herdr import and with tests,
 view functions that take a props object, and one `View` class that wires them.
+
+A step that can fail for a reason that is no bug (a program is not installed, a
+machine is away, GitHub refuses) returns a `Result` (`src/result.ts`), and the
+caller decides once what the person sees. `src/host.ts` is the boundary: it runs
+programs, `hc` and the app commands that Herdr can refuse, and each of its
+functions returns a `Result`. `result.ts` alone catches. Only a bug or a broken
+setup throws.
+
+Work that nothing waits for (a `cx.spawn` task, a notice after a click) runs
+its step through `settle` or `settleSync`: a bug there has nobody above to show
+it, so it becomes a failure, and no "Reading…" or "Sending…" stays for good.
 
 ## Layout
 

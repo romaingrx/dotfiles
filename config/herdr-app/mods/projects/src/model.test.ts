@@ -14,7 +14,7 @@ import {
   waitingOn,
   type Project,
 } from "./projects";
-import { pullAsks } from "./pull-asks";
+import { pullAnswer, pullAsks } from "./pull-asks";
 import {
   leadPull,
   MAX_DECLARED,
@@ -33,6 +33,7 @@ import {
   type Pull,
   type PullStage,
 } from "./pulls";
+import { fail, ok } from "./result";
 import { buildScene, usualFolder } from "./scene";
 import { groupOf, mostUrgent, parseReported, parseStatus, withReport, type Group } from "./status";
 import { machineOf, parseTerminal, type Terminal } from "./terminal";
@@ -678,6 +679,18 @@ describe("a thread's pull request", () => {
     expect(parsePulls({ t1: stored, t2: "oops", t3: { number: "7" }, t4: old })).toEqual({ t1: stored });
     expect(parsePulls({ t1: { ...stored, stage: "soon", state: "MERGED" } }).t1?.stage).toBe("merged");
     expect(parsePulls(null)).toEqual({});
+  });
+
+  test("is the one gh printed; a read that fails keeps what was known, unless gh says there is none", () => {
+    const known = pull(7, "review");
+    const printed = JSON.stringify({ ...known, stage: undefined, state: "MERGED" });
+    expect(pullAnswer(ok(printed), known)?.stage).toBe("merged");
+    expect(pullAnswer(ok("<html>"), known)).toBe(known);
+    expect(pullAnswer(ok('{"number": "7"}'), known)).toBe(known);
+    expect(pullAnswer(fail("the machine is away"), known)).toBe(known);
+    expect(pullAnswer(fail("the machine is away"), null)).toBeNull();
+    expect(pullAnswer(fail('no pull requests found for branch "b7"'), known)).toBeNull();
+    expect(pullAnswer(fail("GraphQL: Could not resolve to a PullRequest with the number of 7."), known)).toBeNull();
   });
 
   test("moves a thread that rests to Ready for review or Landing; an agent at work says more", () => {
