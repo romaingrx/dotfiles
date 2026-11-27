@@ -1,5 +1,7 @@
-import { appHome, exec, hc, notify, openOverlay, run, window, type ExecResult } from "herdr";
+import { appHome, notify, openOverlay, window } from "herdr";
+import { core, runCommand, runProgram } from "./host";
 import { leadOf, type Project } from "./projects";
+import { all, DONE, type Outcome } from "./result";
 import type { OwnTab, Thread } from "./threads";
 
 const MOD = "projects";
@@ -14,21 +16,14 @@ const MOVE_MEMORY = `cd "$HOME/$1" 2>/dev/null || exit 0
 if [ -e "$3" ]; then echo "a memory folder named $3 exists already: remove it or pick another name" >&2; exit 1; fi
 mv -- "$2" "$3"`;
 
-export function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+/** Tells the person of a failure, with a notice. A step that worked says nothing. */
+export function reportFailure(title: string, outcome: Outcome): void {
+  if (!outcome.ok) notify({ title, body: outcome.error, level: "error" });
 }
 
-export function reportFailure(title: string, error: unknown): void {
-  notify({ title, body: messageOf(error), level: "error" });
-}
-
-/** Fails on a non-zero exit, with what the program wrote. */
-function succeed(result: ExecResult, program: string): void {
-  if (result.code !== 0) throw new Error(result.stderr.trim() || `${program} ended with code ${result.code}`);
-}
-
-async function core(args: string[]): Promise<void> {
-  succeed(await hc(args), `hc ${args[0]}`);
+/** Tells the person when work that goes on behind what they see fails. */
+export function reportFailureOf(title: string, work: Promise<Outcome>): void {
+  void work.then((outcome) => reportFailure(title, outcome));
 }
 
 /** Herdr's own rename dialog, for a name that Herdr holds. */
@@ -51,15 +46,18 @@ export function openThreadMenu(tab: OwnTab): void {
   openOverlay({ mod: "menu", kind: "popup", width: 200, props: { tab: "tab", target: tab } });
 }
 
+/** Sets labels on a terminal: `name=value` each, and `name=` to remove one. */
+function label(address: string, labels: readonly string[]): Promise<Outcome> {
+  return core(["label", address, ...labels]);
+}
+
 /**
  * Puts a thread away, or brings it back. The `resolved` label on its terminal
  * is the one record: the orchestrator sets the same label, and `threads.sh`
  * reads it.
  */
 export function setResolved(thread: Thread, resolved: boolean): void {
-  core(["label", thread.key, `resolved=${resolved ? "true" : ""}`]).catch((error: unknown) =>
-    reportFailure("Could not change the thread", error),
-  );
+  reportFailureOf("Could not change the thread", label(thread.key, [`resolved=${resolved ? "true" : ""}`]));
 }
 
 export function openNewProjectDialog(): void {
@@ -80,31 +78,35 @@ export function openReview(thread: string): void {
 }
 
 /** Types a message into a thread's terminal and sends it. */
-export async function sendToThread(thread: string, message: string): Promise<void> {
-  await core(["send", thread, message]);
+export function sendToThread(thread: string, message: string): Promise<Outcome> {
+  return core(["send", thread, message]);
 }
 
 /** Starts the project's orchestrator in a space of its own. `machine` is null for this computer. */
-export async function startProject(name: string, machine: string | null, cwd: string): Promise<void> {
+export function startProject(name: string, machine: string | null, cwd: string): Promise<Outcome> {
   const args = ["orchestrator", name, "--cwd", cwd, ...(machine ? ["--on", machine] : [])];
-  succeed(await exec(`${appHome()}/mods/${MOD}/agent/start.sh`, args, { timeout: START_TIMEOUT }), "start.sh");
+  return runProgram(`${appHome()}/mods/${MOD}/agent/start.sh`, args, { timeout: START_TIMEOUT, name: "start.sh" });
+}
+
+/** Moves a project's memory folder on one machine to the folder of its new name. */
+function moveMemory(on: string | null, from: string, to: string): Promise<Outcome> {
+  const args = ["-c", MOVE_MEMORY, "sh", MEMORY, from, to];
+  return runProgram("sh", args, { on, name: "the move of the memory folder" });
 }
 
 /** Gives the project another name: its sessions' label, its memory folder, and a word to its orchestrator. */
-export async function renameProject(project: Project, name: string): Promise<void> {
+export async function renameProject(project: Project, name: string): Promise<Outcome> {
   // The memory moves first: a folder of the new name that is already there stops the rename.
-  const moves = await Promise.all(
-    project.machines.map((on) => exec("sh", ["-c", MOVE_MEMORY, "sh", MEMORY, project.name, name], { on })),
-  );
-  for (const move of moves) succeed(move, "the move of the memory folder");
-  await Promise.all(project.members.map((member) => core(["label", member.address, `project=${name}`])));
+  const moved = await all(project.machines.map((on) => moveMemory(on, project.name, name)));
+  if (!moved.ok) return moved;
+  const labelled = await all(project.members.map((member) => label(member.address, [`project=${name}`])));
+  if (!labelled.ok) return labelled;
   const lead = leadOf(project);
-  if (lead)
-    await core([
-      "send",
-      lead.address,
-      `The person renamed this project to "${name}". Its memory folder has that name now.`,
-    ]);
+  if (!lead) return DONE;
+  return sendToThread(
+    lead.address,
+    `The person renamed this project to "${name}". Its memory folder has that name now.`,
+  );
 }
 
 /**
@@ -112,21 +114,20 @@ export async function renameProject(project: Project, name: string): Promise<voi
  * Its own space is closed, which ends the sessions there. `outside` are its
  * sessions elsewhere, which are ended one by one. Its memory folder stays.
  */
-export async function closeProject(ownSpace: string | null, outside: readonly string[]): Promise<void> {
-  if (ownSpace) run("space.close", { id: ownSpace, confirmed: true });
-  await Promise.all(outside.map((address) => core(["kill", address])));
+export async function closeProject(ownSpace: string | null, outside: readonly string[]): Promise<Outcome> {
+  const closed = ownSpace ? runCommand("space.close", { id: ownSpace, confirmed: true }) : DONE;
+  if (!closed.ok) return closed;
+  return all(outside.map((address) => core(["kill", address])));
 }
 
 /** Takes a project apart and leaves its sessions running: they lose the labels of this setup. */
-export async function ungroupProject(project: Project): Promise<void> {
-  const cleared = LABELS.map((label) => `${label}=`);
-  await Promise.all(project.members.map((member) => core(["label", member.address, ...cleared])));
+export function ungroupProject(project: Project): Promise<Outcome> {
+  const cleared = LABELS.map((name) => `${name}=`);
+  return all(project.members.map((member) => label(member.address, cleared)));
 }
 
 /** Opens a web page in the person's browser. */
 export function openLink(url: string): void {
   const opener = window()?.platform === "macos" ? "open" : "xdg-open";
-  exec(opener, [url])
-    .then((result) => succeed(result, opener))
-    .catch((error: unknown) => reportFailure("Could not open the link", error));
+  reportFailureOf("Could not open the link", runProgram(opener, [url]));
 }

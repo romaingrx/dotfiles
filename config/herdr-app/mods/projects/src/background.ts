@@ -4,6 +4,7 @@ import { openNewProjectDialog, openReview, reportFailure } from "./actions";
 import { openNextWait, selectProject, showThreadList, stepProject } from "./navigation";
 import { readPanel } from "./panel";
 import { refreshPulls } from "./pull-reader";
+import { attemptSync } from "./result";
 import { readScene } from "./snapshot";
 import { waits } from "./waits";
 
@@ -38,16 +39,16 @@ const COMMANDS: Readonly<Record<string, () => void>> = {
 /**
  * Runs the commands as they come. A build of the mod that was replaced still
  * waits here: the use of `cx` ends its loop before it runs a command twice.
+ * A command that throws has a bug: the loop says so and takes the next one.
  */
 async function runCommands(cx: AsyncContext): Promise<void> {
   for (;;) {
     const name = await nextCommand();
     cx.notify();
-    try {
-      COMMANDS[name]?.();
-    } catch (error) {
-      reportFailure(`Could not run ${MOD}.${name}`, error);
-    }
+    reportFailure(
+      `Could not run ${MOD}.${name}`,
+      attemptSync(() => COMMANDS[name]?.()),
+    );
   }
 }
 

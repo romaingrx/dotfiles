@@ -1,8 +1,9 @@
 import type { AsyncContext, Context, Element, FocusHandle } from "gpui-kit";
 import { h_flex, InputState, TextareaState, v_flex, VirtualListScrollHandle } from "gpui-base";
 import { closeOverlay } from "herdr";
-import { messageOf, sendToThread } from "../actions";
+import { sendToThread } from "../actions";
 import { leadPull, openPulls, type Pull } from "../pulls";
+import { DONE, fail, type Outcome, type Result } from "../result";
 import { reviewRange, type BranchDiff, type DiffFile } from "../review/diff";
 import { aboutOf, discussionsAt, type Discussion } from "../review/discussions";
 import {
@@ -466,13 +467,11 @@ export class ReviewDialog implements Part {
    * other one may take longer, or fail. An answer that comes after the person
    * turned to another pull request is dropped.
    */
-  private async read<T>(reading: Promise<T>, keep: (value: T) => void, latest: () => boolean): Promise<void> {
-    try {
-      const value = await reading;
-      if (latest()) keep(value);
-    } catch (error) {
-      if (latest()) this.error = messageOf(error);
-    }
+  private async read<T>(reading: Promise<Result<T>>, keep: (value: T) => void, latest: () => boolean): Promise<void> {
+    const read = await reading;
+    if (!latest()) return;
+    if (read.ok) keep(read.value);
+    else this.error = read.error;
   }
 
   /** A click on a file in the tree: the diff goes to that file's head. */
@@ -581,16 +580,32 @@ export class ReviewDialog implements Part {
   }
 
   /**
-   * Posts the answers that are replies on GitHub, one by one. Each is marked
-   * once it is there, so a second try posts none twice.
+   * Posts the answers that are replies on GitHub, one by one, up to the first
+   * one that fails. Each is marked once it is there, so a second try posts
+   * none twice.
    */
-  private async postReplies(thread: Thread, key: string, pull: Pull | null): Promise<void> {
+  private async postReplies(thread: Thread, key: string, pull: Pull | null): Promise<Outcome> {
     for (const comment of duePosts(readDraft(key))) {
       // An answer is in a discussion, and a discussion is of the pull request under review.
       if (!comment.about || !pull) continue;
-      await postReply(thread, pull, comment.about, comment.body);
+      const posted = await postReply(thread, pull, comment.about, comment.body);
+      if (!posted.ok) return posted;
       saveDraft(key, withPosted(readDraft(key), comment));
     }
+    return DONE;
+  }
+
+  /**
+   * Sends the draft at `key`: its replies to GitHub, then one message to the
+   * thread. GitHub comes first: when a reply fails, the thread has no message
+   * yet, and another Send goes on from there.
+   */
+  private async deliver(thread: Thread, key: string, pull: Pull | null, paths: readonly string[]): Promise<Outcome> {
+    const posted = await this.postReplies(thread, key, pull);
+    if (!posted.ok) {
+      return fail(`${posted.error}. Nothing went to the thread: send again, or keep that answer for the thread only.`);
+    }
+    return sendToThread(this.thread, reviewMessage(readDraft(key), paths, pull));
   }
 
   private removeComment(anchor: Anchor, cx: Context): void {
@@ -619,27 +634,16 @@ export class ReviewDialog implements Part {
     this.sending = true;
     this.error = null;
     cx.spawn(async (task) => {
-      const fail = (message: string): void => {
-        this.error = message;
-        this.sending = false;
-        task.notify();
-      };
-      // GitHub first: when a reply fails, the thread has no message yet, and another Send goes on from there.
-      try {
-        await this.postReplies(thread, key, subject);
-      } catch (error) {
-        return fail(
-          `${messageOf(error)}. Nothing went to the thread: send again, or keep that answer for the thread only.`,
-        );
+      const delivered = await this.deliver(thread, key, subject, paths);
+      if (delivered.ok) {
+        this.sent = true;
+        saveDraft(key, NO_DRAFT);
+        closeOverlay(this.overlay);
+        return;
       }
-      try {
-        await sendToThread(this.thread, reviewMessage(readDraft(key), paths, subject));
-      } catch (error) {
-        return fail(messageOf(error));
-      }
-      this.sent = true;
-      saveDraft(key, NO_DRAFT);
-      closeOverlay(this.overlay);
+      this.error = delivered.error;
+      this.sending = false;
+      task.notify();
     });
     cx.notify();
   }

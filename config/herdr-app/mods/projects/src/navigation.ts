@@ -20,11 +20,7 @@ function focusTerminal(terminal: string): void {
 }
 
 function showInPanel(terminal: string, focus: boolean): void {
-  try {
-    showThreadInPanel(terminal, focus);
-  } catch (error) {
-    reportFailure("Could not open the thread", error);
-  }
+  reportFailure("Could not open the thread", showThreadInPanel(terminal, focus));
 }
 
 /** Opens a thread where it shows. One that opens in the panel is what its project has open from then on. */

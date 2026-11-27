@@ -1,4 +1,5 @@
-import { appHome, layout, readTextFile, run, setShared, shared } from "herdr";
+import { appHome, layout, run, setShared, shared } from "herdr";
+import { readText, runCommand } from "./host";
 import {
   findNode,
   PANEL,
@@ -10,7 +11,8 @@ import {
   type Drawer,
   type LayoutNode,
 } from "./layout-tree";
-import { isRecord } from "./parse";
+import { isRecord, parseJson } from "./parse";
+import { DONE, fail, ok, type Outcome, type Result } from "./result";
 
 /** What the right panel of the `projects` layout can show, by the id of its block. */
 export type Panel = "threads" | "files" | "changes" | typeof THREAD;
@@ -79,8 +81,8 @@ export function toggleDrawer(drawer: Drawer): void {
 }
 
 /** Replaces the shown layout by `tree`, with the panel holding the thread of `thread`. */
-function setLayout(tree: LayoutNode, thread: string | null): void {
-  run("layout.set", { layout: withThread(tree, thread) });
+function setLayout(tree: LayoutNode, thread: string | null): Outcome {
+  return runCommand("layout.set", { layout: withThread(tree, thread) });
 }
 
 /**
@@ -89,21 +91,32 @@ function setLayout(tree: LayoutNode, thread: string | null): void {
  * goes to the thread: a terminal that was never shown takes the size of its
  * block only once it has the focus.
  */
-export function showThreadInPanel(terminal: string, focus: boolean): void {
+export function showThreadInPanel(terminal: string, focus: boolean): Outcome {
   const shown = shownLayout();
-  if (!shown) return;
-  setLayout(shown, terminal);
+  if (!shown) return DONE;
+  const set = setLayout(shown, terminal);
+  if (!set.ok) return set;
   selectPanel(THREAD);
-  if (focus) run("pane.focus", { terminal });
+  return focus ? runCommand("pane.focus", { terminal }) : DONE;
+}
+
+/** The tree that the text of the mod's layout file holds. */
+function parseBase(base: string): Result<LayoutNode> {
+  const read = parseJson(base);
+  if (!read.ok) return read;
+  const tree = asNode(read.value);
+  return tree ? ok(tree) : fail(`${BASE} does not hold a layout`);
 }
 
 /** Makes the app's copy of the layout again when the base changed, keeping the open thread. */
-export async function syncLayout(): Promise<void> {
-  const base = await readTextFile(`${appHome()}/${BASE}`);
-  if (base === null) throw new Error(`${BASE} is missing`);
-  if (shared(APPLIED) === base || !shownLayout()) return;
-  const tree = asNode(JSON.parse(base));
-  if (!tree) throw new Error(`${BASE} does not hold a layout`);
-  setLayout(tree, readPanel().thread);
-  setShared(APPLIED, base);
+export async function syncLayout(): Promise<Outcome> {
+  const base = await readText(`${appHome()}/${BASE}`);
+  if (!base.ok) return base;
+  if (base.value === null) return fail(`${BASE} is missing`);
+  if (shared(APPLIED) === base.value || !shownLayout()) return DONE;
+  const tree = parseBase(base.value);
+  if (!tree.ok) return tree;
+  const set = setLayout(tree.value, readPanel().thread);
+  if (set.ok) setShared(APPLIED, base.value);
+  return set;
 }

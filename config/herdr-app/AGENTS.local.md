@@ -36,6 +36,12 @@ formats `src`.
 Keep the code in small modules: data logic with no Herdr import and with tests,
 view functions that take a props object, and one `View` class that wires them.
 
+A step that can fail for a reason that is no bug (a program is not installed, a
+machine is away, GitHub refuses) returns a `Result` (`src/result.ts`), and the
+caller decides once what the person sees. `src/host.ts` is the boundary: it runs
+programs, `hc` and app commands, and each of its functions returns a `Result`.
+`result.ts` alone catches. Only a bug or a broken setup throws.
+
 ## Layout
 
 `projects` is the personal layout: the project list on the left, a project's

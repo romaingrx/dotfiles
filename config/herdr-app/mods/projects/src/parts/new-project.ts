@@ -1,9 +1,10 @@
 import type { AsyncContext, Context, Element } from "gpui-kit";
 import { h_flex, InputState } from "gpui-base";
 import { closeOverlay, machines } from "herdr";
-import { messageOf, reportFailure, startProject } from "../actions";
+import { reportFailureOf, startProject } from "../actions";
 import { dialog, focusSoon, label, textField } from "../dialog";
 import { LOCAL, nameProblem } from "../projects";
+import type { Outcome } from "../result";
 import { usualFolder } from "../scene";
 import { readScene } from "../snapshot";
 import { readTheme, textButton, type Theme } from "../ui";
@@ -129,20 +130,20 @@ export class NewProjectDialog implements Part {
     if (!this.starting) return;
     const start = startProject(name, this.machine, folder);
     // The notice reaches the person also after they hid the dialog.
-    start.catch((error: unknown) => reportFailure(`Could not start ${name}`, error));
+    reportFailureOf(`Could not start ${name}`, start);
     cx.spawn((task) => this.follow(start, task));
   }
 
   /** Closes the dialog once the orchestrator runs. A start that fails leaves it open, with what was typed. */
-  private async follow(start: Promise<void>, cx: AsyncContext): Promise<void> {
-    try {
-      await start;
+  private async follow(start: Promise<Outcome>, cx: AsyncContext): Promise<void> {
+    const started = await start;
+    if (started.ok) {
       closeOverlay(this.overlay);
-    } catch (error) {
-      this.starting = false;
-      this.problem = { field: null, message: messageOf(error) };
-      cx.notify();
+      return;
     }
+    this.starting = false;
+    this.problem = { field: null, message: started.error };
+    cx.notify();
   }
 
   private check(name: string, folder: string): Problem | null {

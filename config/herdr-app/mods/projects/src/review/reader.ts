@@ -1,5 +1,7 @@
-import { exec } from "herdr";
+import { runProgram } from "../host";
+import { parseJson } from "../parse";
 import { placeOf, type Pull } from "../pulls";
+import { fail, ok, type Outcome, type Result } from "../result";
 import { machineOf } from "../terminal";
 import type { Thread } from "../threads";
 import { parseBranchDiff, type BranchDiff, type ReviewRange } from "./diff";
@@ -39,29 +41,28 @@ exit 1`;
 const GITHUB_TIMEOUT = 30_000;
 
 /** Runs a program in a thread's folder, on its machine. A thread without a folder of its own has nothing to review. */
-async function inFolder(thread: Thread, program: string, args: string[], timeout: number): Promise<string> {
-  if (!thread.checkout) throw new Error("this thread has no folder of its own to review");
-  const result = await exec(program, args, { cwd: thread.checkout.folder, on: machineOf(thread.key), timeout });
-  if (result.code !== 0) throw new Error(result.stderr.trim() || `${program} ended with code ${result.code}`);
-  return result.stdout;
+async function inFolder(thread: Thread, program: string, args: string[], timeout: number): Promise<Result<string>> {
+  if (!thread.checkout) return fail("this thread has no folder of its own to review");
+  return runProgram(program, args, { cwd: thread.checkout.folder, on: machineOf(thread.key), timeout });
 }
 
 /** Asks GitHub's GraphQL API on the host of a pull request, as whoever `gh` is signed in as on the thread's machine. */
-function askGitHub(thread: Thread, host: string, query: string, fields: readonly string[]): Promise<string> {
+function askGitHub(thread: Thread, host: string, query: string, fields: readonly string[]): Promise<Result<string>> {
   const args = ["api", "graphql", "--hostname", host, "-f", `query=${query}`, ...fields];
   return inFolder(thread, "gh", args, GITHUB_TIMEOUT);
 }
 
 /** One layer of a thread's work against its base, read in the thread's folder. */
-export async function readBranchDiff(thread: Thread, range: ReviewRange): Promise<BranchDiff> {
+export async function readBranchDiff(thread: Thread, range: ReviewRange): Promise<Result<BranchDiff>> {
   const args = ["-c", DIFF, "sh", range.tip ?? FOLDER, ...range.bases];
-  return parseBranchDiff(await inFolder(thread, "sh", args, DIFF_TIMEOUT));
+  const printed = await inFolder(thread, "sh", args, DIFF_TIMEOUT);
+  return printed.ok ? ok(parseBranchDiff(printed.value)) : printed;
 }
 
 /** The open discussions of a pull request on GitHub, read with `gh`. None without a pull request. */
-export async function readDiscussions(thread: Thread, pull: Pull | null): Promise<Discussion[]> {
+export async function readDiscussions(thread: Thread, pull: Pull | null): Promise<Result<Discussion[]>> {
   const place = pull && placeOf(pull.url);
-  if (!place) return [];
+  if (!place) return ok([]);
   const fields = [`owner=${place.owner}`, `name=${place.name}`, `number=${place.number}`];
   const answer = await askGitHub(
     thread,
@@ -69,7 +70,9 @@ export async function readDiscussions(thread: Thread, pull: Pull | null): Promis
     DISCUSSIONS_QUERY,
     fields.flatMap((field) => ["-F", field]),
   );
-  return parseDiscussions(JSON.parse(answer));
+  if (!answer.ok) return answer;
+  const read = parseJson(answer.value);
+  return read.ok ? ok(parseDiscussions(read.value)) : read;
 }
 
 /**
@@ -77,14 +80,10 @@ export async function readDiscussions(thread: Thread, pull: Pull | null): Promis
  * whoever `gh` is signed in as on the thread's machine. The body goes as it
  * is: `-f` takes it as text.
  */
-export async function postReply(thread: Thread, pull: Pull, about: About, body: string): Promise<void> {
+export async function postReply(thread: Thread, pull: Pull, about: About, body: string): Promise<Outcome> {
   const place = placeOf(pull.url);
-  if (!place) throw new Error(`${pull.url} is not the URL of a pull request`);
+  if (!place) return fail(`${pull.url} is not the URL of a pull request`);
   const fields = [`discussion=${about.discussion}`, `body=${body}`].flatMap((field) => ["-f", field]);
-  try {
-    await askGitHub(thread, place.host, REPLY_MUTATION, fields);
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(`GitHub did not take the reply to @${about.author}: ${reason}`);
-  }
+  const posted = await askGitHub(thread, place.host, REPLY_MUTATION, fields);
+  return posted.ok ? posted : fail(`GitHub did not take the reply to @${about.author}: ${posted.error}`);
 }
