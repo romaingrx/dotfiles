@@ -69,6 +69,16 @@ export function reviewRange(pull: Pull | null, branch: string): ReviewRange {
   return { bases: baseRefs(pull?.base ?? null), tip };
 }
 
+/**
+ * What a review compares, as its head says it: `fix-it → origin/main`. Null
+ * while the thread's branch is not known, or its diff not read: `base` is the
+ * one the read found.
+ */
+export function rangeLabel(pull: Pull | null, branch: string | undefined, base: string | undefined): string | null {
+  if (!branch || base === undefined) return null;
+  return `${reviewRange(pull, branch).tip ?? branch} → ${base}`;
+}
+
 const NO_FILE = "/dev/null";
 const FILE = "diff --git ";
 /** Git puts a path with a quote, a tab or a line break in it between quotes. */

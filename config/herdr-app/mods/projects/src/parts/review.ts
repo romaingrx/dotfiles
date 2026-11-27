@@ -4,7 +4,7 @@ import { closeOverlay } from "herdr";
 import { sendToThread } from "../actions";
 import { leadPull, openPulls, type Pull } from "../pulls";
 import { DONE, fail, type Outcome, type Result } from "../result";
-import { reviewRange, type BranchDiff, type DiffFile } from "../review/diff";
+import { rangeLabel, reviewRange, type BranchDiff, type DiffFile } from "../review/diff";
 import { aboutOf, discussionsAt, type Discussion } from "../review/discussions";
 import {
   anchorKey,
@@ -12,7 +12,6 @@ import {
   draftKey,
   duePosts,
   isEmpty,
-  linesOf,
   NO_DRAFT,
   reviewMessage,
   withComment,
@@ -40,7 +39,6 @@ import {
 import {
   fileKey,
   fileRows,
-  lineKey,
   quoteOf,
   reviewFiles,
   spanBetween,
@@ -51,6 +49,7 @@ import {
 } from "../review/rows";
 import { fileTree, filterFiles, inTreeOrder } from "../review/tree";
 import { readDraft, saveDraft } from "../review/store";
+import { isPickable, targetAt, whereOf, type Target } from "../review/target";
 import {
   commentColumns,
   composer,
@@ -67,19 +66,6 @@ import { readScene } from "../snapshot";
 import { threadAt, type Thread } from "../threads";
 import { readTheme, type TextButton, type Theme } from "../ui";
 import type { Part } from "./part";
-
-/** The lines the person writes a comment on. */
-interface Target {
-  readonly anchor: Span;
-  /** The line the person picked first: a Shift-click on another line makes a span from it. */
-  readonly pivot: Anchor;
-  /** The text of the lines. */
-  readonly code: string;
-  /** Set when the line has a comment already. */
-  readonly written: boolean;
-  /** The comment on GitHub that a comment on this line answers. */
-  readonly about: About | null;
-}
 
 /** The list of the whole review as it is drawn, kept until a file is built, a file comes or goes, or the type changes. */
 interface Drawn {
@@ -103,18 +89,6 @@ const FIRST_WIDTH = 900;
 
 /** What the person asks of the thread with one click on a discussion. */
 const ADDRESS = "Address this comment.";
-
-function linesWord(span: Span): string {
-  if (span.start) return `Lines ${linesOf(span)}`;
-  return span.side === "old" ? `Line ${span.line}, which the branch removes` : `Line ${span.line}`;
-}
-
-function whereOf(target: Target): string {
-  // Several files are on show at once: the file's name says which one the lines are of.
-  const { path } = target.anchor;
-  const lines = `${path.slice(path.lastIndexOf("/") + 1)} · ${linesWord(target.anchor)}`;
-  return target.about ? `${lines} · in answer to @${target.about.author} on GitHub` : lines;
-}
 
 /**
  * The review of one thread: the files its branch changed, the diff of one of
@@ -184,65 +158,28 @@ export class ReviewDialog implements Part {
     const thread = this.find();
     if (thread && !this.asked) this.load(cx);
     const draft = readDraft(this.key());
-    const files = reviewFiles(this.diff?.files ?? [], draft.comments, this.discussions);
-    const ordered = inTreeOrder(files);
-    const columns = commentColumns(this.width, type);
-    // A render only puts together what is built: building the rows of a long branch here is what the app stops.
-    this.build(ordered, columns, cx);
-    const drawn = this.drawnOf(ordered, columns, type);
+    const files = reviewFiles(this.changed(), draft.comments, this.discussions);
+    const drawn = this.draw(inTreeOrder(files), type, cx);
     // The file on show is the one the diff is scrolled to: the first one before any scroll.
     const open = files.some((entry) => entry.file.path === this.open) ? this.open : fileAt(drawn.starts, 0);
-    const branch = thread?.checkout?.branch;
-    const tip = branch && (reviewRange(this.subject, branch).tip ?? branch);
-    const range = tip && this.diff ? `${tip} → ${this.diff.base}` : null;
+    const shown = files.find((entry) => entry.file.path === open)?.file ?? null;
     return v_flex()
       .id("review")
       .size_full()
       .bg(colors.popover)
       .text_color(colors.foreground)
       .track_focus(this.handle)
-      .child(
-        reviewHead(colors, {
-          title: thread?.title ?? "This thread has ended.",
-          range,
-          files: this.diff?.files ?? [],
-          loading: this.loading,
-          onRefresh: (cx) => this.load(cx),
-          onClose: () => closeOverlay(this.overlay),
-        }),
-      )
-      .children(
-        pullStrip(colors, {
-          choices: openPulls(thread?.pulls ?? []),
-          shown: this.subject,
-          onPick: (pull, cx) => this.turn(pull, cx),
-        }),
-      )
+      .child(this.head(colors, thread))
+      .children(this.strip(colors, thread))
       .child(
         h_flex()
           .flex_1()
           .min_h(0)
           .items_start()
-          .child(
-            fileList(colors, {
-              rows: fileTree(filterFiles(files, this.filter.value()), this.folded),
-              filter: this.filter,
-              onFold: (path, cx) => this.fold(path, cx),
-              open,
-              empty: this.emptyText(),
-              onOpen: (path, cx) => this.show(drawn, path, cx),
-            }),
-          )
-          .child(this.diffSide(colors, type, drawn, files.find((entry) => entry.file.path === open)?.file ?? null)),
+          .child(this.tree(colors, files, drawn, open))
+          .child(this.diffSide(colors, type, drawn, shown)),
       )
-      .child(
-        reviewFoot(colors, {
-          note: this.note,
-          // Before the first diff, the file list says what went wrong.
-          error: this.diff ? this.error : null,
-          send: this.sendButton(thread, draft),
-        }),
-      );
+      .child(this.foot(colors, thread, draft));
   }
 
   /** Called once when the dialog goes: what the person was writing stays in the draft. */
@@ -255,6 +192,64 @@ export class ReviewDialog implements Part {
   private find(): Thread | undefined {
     const { snapshot, projects } = readScene();
     return threadAt(snapshot, projects, this.thread);
+  }
+
+  /** The files the branch changed: none before its diff is read. */
+  private changed(): readonly DiffFile[] {
+    return this.diff?.files ?? [];
+  }
+
+  /** The top row: the thread's name, what is compared, and how much changed. */
+  private head(colors: Theme, thread: Thread | undefined): Element {
+    return reviewHead(colors, {
+      title: thread?.title ?? "This thread has ended.",
+      range: rangeLabel(this.subject, thread?.checkout?.branch, this.diff?.base),
+      files: this.changed(),
+      loading: this.loading,
+      onRefresh: (cx) => this.load(cx),
+      onClose: () => closeOverlay(this.overlay),
+    });
+  }
+
+  /** The tabs of a stack: one for each pull request of the thread that is still open. */
+  private strip(colors: Theme, thread: Thread | undefined): Element[] {
+    return pullStrip(colors, {
+      choices: openPulls(thread?.pulls ?? []),
+      shown: this.subject,
+      onPick: (pull, cx) => this.turn(pull, cx),
+    });
+  }
+
+  /** The left side: the files of the review as a tree, under a filter. */
+  private tree(colors: Theme, files: readonly ReviewFile[], drawn: Drawn, open: string | null): Element {
+    return fileList(colors, {
+      rows: fileTree(filterFiles(files, this.filter.value()), this.folded),
+      filter: this.filter,
+      onFold: (path, cx) => this.fold(path, cx),
+      open,
+      empty: this.emptyText(),
+      onOpen: (path, cx) => this.show(drawn, path, cx),
+    });
+  }
+
+  /** The bottom row: the note on the whole branch, what went wrong, and Send. */
+  private foot(colors: Theme, thread: Thread | undefined, draft: Draft): Element {
+    return reviewFoot(colors, {
+      note: this.note,
+      // Before the first diff, the file list says what went wrong.
+      error: this.diff ? this.error : null,
+      send: this.sendButton(thread, draft),
+    });
+  }
+
+  /**
+   * The list as it shows now. A render only puts together what is built:
+   * building the rows of a long branch here is what the app stops.
+   */
+  private draw(files: readonly ReviewFile[], type: Type, cx: Context): Drawn {
+    const columns = commentColumns(this.width, type);
+    this.build(files, columns, cx);
+    return this.drawnOf(files, columns, type);
   }
 
   /** Where the draft of what is under review is kept. */
@@ -494,20 +489,13 @@ export class ReviewDialog implements Part {
   /** A click on a line, or on a card under it, opens that line's comment to write. */
   private pick(rows: readonly Row[], key: string, cx: Context): void {
     const row = rows.find((candidate) => candidate.key === key);
-    if (row?.kind !== "line" && row?.kind !== "card") return;
+    if (!isPickable(row)) return;
     // What follows is about the lines of one file: its rows are enough, and far fewer than the whole list.
     const own = this.rowsIn(row.anchor.path);
     if (this.shift && row.kind === "line" && this.extend(own, row.anchor, cx)) return;
     this.keepTyped();
     const written = commentAt(readDraft(this.key()), row.anchor);
-    const line = own.find((candidate) => candidate.key === lineKey(row.anchor));
-    this.target = {
-      anchor: written ?? { path: row.anchor.path, side: row.anchor.side, line: row.anchor.line, start: null },
-      pivot: row.anchor,
-      code: written?.code ?? (line?.kind === "line" ? line.line.text : ""),
-      written: Boolean(written),
-      about: this.aboutAt(row.anchor),
-    };
+    this.target = targetAt(own, row.anchor, written, this.aboutAt(row.anchor));
     this.field.set_value(written?.body ?? "");
     this.field.focus();
     cx.notify();
@@ -530,13 +518,13 @@ export class ReviewDialog implements Part {
     return true;
   }
 
-  /** Takes a written comment from the lines it was on and puts it on other lines, with the same words. */
   /** What a comment that ends on a line answers: the discussion on GitHub that is on that line, if one is. */
   private aboutAt(anchor: Anchor): About | null {
     const [discussion] = discussionsAt(this.discussions, anchor);
     return discussion ? aboutOf(discussion) : null;
   }
 
+  /** Takes a written comment from the lines it was on and puts it on other lines, with the same words. */
   private moveComment(from: Span, to: Target): void {
     const draft = readDraft(this.key());
     const written = commentAt(draft, from);
@@ -630,7 +618,7 @@ export class ReviewDialog implements Part {
     const key = this.key();
     const { subject } = this;
     if (!thread || isEmpty(readDraft(key))) return;
-    const paths = (this.diff?.files ?? []).map((file) => file.path);
+    const paths = this.changed().map((file) => file.path);
     this.sending = true;
     this.error = null;
     cx.spawn(async (task) => {

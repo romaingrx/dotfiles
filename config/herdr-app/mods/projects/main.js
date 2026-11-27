@@ -667,13 +667,24 @@ function seats(snapshot) {
   }
   return seated;
 }
-function sessionTitle(terminal, seat) {
-  if (seat?.pane.name)
+function givenName(seat) {
+  if (seat.pane.name)
     return seat.pane.name;
-  const tab = seat?.home?.tab;
-  if (tab?.named && tab.name !== seat?.pane.program.name)
-    return tab.name;
+  const tab = seat.home?.tab;
+  return tab?.named && tab.name !== seat.pane.program.name ? tab.name : null;
+}
+function ownName(terminal) {
   return terminal.heading ?? terminal.name ?? (stripGlyph(terminal.title) || terminal.address);
+}
+function sessionTitle(terminal, seat) {
+  return (seat && givenName(seat)) ?? ownName(terminal);
+}
+function ownTab(seat) {
+  const home = seat?.home;
+  return home ? { id: home.tab.id, space: home.space.id } : null;
+}
+function changedAt(terminal, seat) {
+  return seat?.home?.tab.changed_at ?? terminal.since;
 }
 function place(pane) {
   return pane.terminal && pane.cwd ? `${machineOf(pane.terminal) ?? ""}:${pane.cwd}` : null;
@@ -717,10 +728,10 @@ function projectThreads(snapshot, project) {
       active: member.address === snapshot.focused,
       resolved: member.resolved,
       pane: seat?.pane.pane ?? null,
-      tab: seat?.home ? { id: seat.home.tab.id, space: seat.home.space.id } : null,
+      tab: ownTab(seat),
       note: note(member),
       aside: spread ? member.machine ?? LOCAL : null,
-      since: seat?.home?.tab.changed_at ?? member.since,
+      since: changedAt(member, seat),
       checkout: checkout(seat, shared),
       refs,
       pulls: stackOf(refs, snapshot.pulls),
@@ -1502,6 +1513,11 @@ function reviewRange(pull, branch) {
   const tip = pull && pull.head !== branch ? pull.head : null;
   return { bases: baseRefs(pull?.base ?? null), tip };
 }
+function rangeLabel(pull, branch, base) {
+  if (!branch || base === undefined)
+    return null;
+  return `${reviewRange(pull, branch).tip ?? branch} → ${base}`;
+}
 var NO_FILE = "/dev/null";
 var FILE = "diff --git ";
 var QUOTED = /^"(.*)"$/;
@@ -1973,47 +1989,59 @@ function cardsOf(entry, columns, stale) {
     add(comment, commentCard(comment, columns, stale));
   return cards;
 }
-function fileRows(entry, columns) {
+function staleCards(entry, columns) {
   const { file } = entry;
   const lines = file.hunks.flatMap((hunk) => hunk.lines);
   const shown = new Set(lines.map((line) => anchorKey(anchorOf(file.path, line))));
-  const cards = cardsOf(entry, columns, false);
-  const stale = [...cardsOf(entry, columns, true)].filter(([key]) => !shown.has(key));
-  const rows = stale.flatMap(([, rowsOfLine]) => rowsOfLine);
-  const empty = emptyText(entry);
-  if (empty)
-    return [...rows, { kind: "note", key: `note:empty:${file.path}`, text: empty }];
+  return [...cardsOf(entry, columns, true)].filter(([key]) => !shown.has(key)).flatMap(([, cards]) => cards);
+}
+function gapRows(path, index, gap) {
+  if (gap <= 0)
+    return [];
+  return [{ kind: "hunk", key: `hunk:${path}:${index}`, text: `${gap} unchanged line${gap === 1 ? "" : "s"}` }];
+}
+function linesWithCards(path, lines, cards) {
+  return lines.flatMap((line) => {
+    const anchor = anchorOf(path, line);
+    const under = cards.get(anchorKey(anchor)) ?? [];
+    const mark = { commented: false, discussed: false };
+    return [{ kind: "line", key: lineKey(anchor), anchor, line, text: untab(line.text), ...mark }, ...under];
+  });
+}
+function hunkRows(file, cards) {
   const gaps = unchangedBefore(file.hunks);
+  const rows = [];
   let drawn = 0;
   for (const [index, hunk] of file.hunks.entries()) {
     if (drawn >= MAX_LINES)
       break;
-    const gap = gaps[index] ?? 0;
-    if (gap > 0)
-      rows.push({
-        kind: "hunk",
-        key: `hunk:${file.path}:${index}`,
-        text: `${gap} unchanged line${gap === 1 ? "" : "s"}`
-      });
-    for (const line of hunk.lines.slice(0, MAX_LINES - drawn)) {
-      const anchor = anchorOf(file.path, line);
-      const under = cards.get(anchorKey(anchor)) ?? [];
-      const mark = { commented: false, discussed: false };
-      rows.push({ kind: "line", key: lineKey(anchor), anchor, line, text: untab(line.text), ...mark }, ...under);
-    }
+    rows.push(gapRows(file.path, index, gaps[index] ?? 0));
+    rows.push(linesWithCards(file.path, hunk.lines.slice(0, MAX_LINES - drawn), cards));
     drawn += hunk.lines.length;
   }
-  if (lines.length > MAX_LINES) {
-    rows.push({
-      kind: "note",
-      key: `note:cut:${file.path}`,
-      text: `This diff is long: only its first ${MAX_LINES} lines show.`
-    });
-  }
+  return rows.flat();
+}
+function cutNote(file) {
+  const lines = file.hunks.reduce((sum, hunk) => sum + hunk.lines.length, 0);
+  if (lines <= MAX_LINES)
+    return [];
+  const text = `This diff is long: only its first ${MAX_LINES} lines show.`;
+  return [{ kind: "note", key: `note:cut:${file.path}`, text }];
+}
+function marked(rows, entry) {
   const covered = (spans) => new Set(spans.flatMap((span) => spanRows(rows, span).map((row) => row.key)));
   const commented = covered(entry.comments);
   const discussed = covered(entry.discussions);
   return rows.map((row) => row.kind === "line" ? { ...row, commented: commented.has(row.key), discussed: discussed.has(row.key) } : row);
+}
+function fileRows(entry, columns) {
+  const { file } = entry;
+  const stale = staleCards(entry, columns);
+  const empty = emptyText(entry);
+  if (empty)
+    return [...stale, { kind: "note", key: `note:empty:${file.path}`, text: empty }];
+  const cards = cardsOf(entry, columns, false);
+  return marked([...stale, ...hunkRows(file, cards), ...cutNote(file)], entry);
 }
 function lineRows(rows) {
   return rows.filter((row) => row.kind === "line");
@@ -2145,6 +2173,37 @@ function readDraft(key) {
 }
 function saveDraft(key, draft) {
   setShared4(REVIEWS, withDraft(parseDrafts(shared3(REVIEWS)), key, draft));
+}
+
+// src/review/target.ts
+function isPickable(row) {
+  return row?.kind === "line" || row?.kind === "card";
+}
+function codeAt(rows, anchor) {
+  const row = rows.find((candidate) => candidate.key === lineKey(anchor));
+  return row?.kind === "line" ? row.line.text : "";
+}
+function targetAt(rows, anchor, written, about) {
+  if (written)
+    return { anchor: written, pivot: anchor, code: written.code, written: true, about };
+  const { path, side, line } = anchor;
+  return {
+    anchor: { path, side, line, start: null },
+    pivot: anchor,
+    code: codeAt(rows, anchor),
+    written: false,
+    about
+  };
+}
+function linesWord(span) {
+  if (span.start)
+    return `Lines ${linesOf(span)}`;
+  return span.side === "old" ? `Line ${span.line}, which the branch removes` : `Line ${span.line}`;
+}
+function whereOf(target) {
+  const { path } = target.anchor;
+  const lines = `${path.slice(path.lastIndexOf("/") + 1)} · ${linesWord(target.anchor)}`;
+  return target.about ? `${lines} · in answer to @${target.about.author} on GitHub` : lines;
 }
 
 // src/review/view.ts
@@ -2477,16 +2536,6 @@ function reviewFoot(colors, props) {
 var SHOW_EVERY = 150;
 var FIRST_WIDTH = 900;
 var ADDRESS = "Address this comment.";
-function linesWord(span) {
-  if (span.start)
-    return `Lines ${linesOf(span)}`;
-  return span.side === "old" ? `Line ${span.line}, which the branch removes` : `Line ${span.line}`;
-}
-function whereOf(target) {
-  const { path } = target.anchor;
-  const lines = `${path.slice(path.lastIndexOf("/") + 1)} · ${linesWord(target.anchor)}`;
-  return target.about ? `${lines} · in answer to @${target.about.author} on GitHub` : lines;
-}
 
 class ReviewDialog {
   overlay;
@@ -2537,38 +2586,11 @@ class ReviewDialog {
     if (thread && !this.asked)
       this.load(cx);
     const draft = readDraft(this.key());
-    const files = reviewFiles(this.diff?.files ?? [], draft.comments, this.discussions);
-    const ordered = inTreeOrder(files);
-    const columns = commentColumns(this.width, type);
-    this.build(ordered, columns, cx);
-    const drawn = this.drawnOf(ordered, columns, type);
+    const files = reviewFiles(this.changed(), draft.comments, this.discussions);
+    const drawn = this.draw(inTreeOrder(files), type, cx);
     const open = files.some((entry) => entry.file.path === this.open) ? this.open : fileAt(drawn.starts, 0);
-    const branch = thread?.checkout?.branch;
-    const tip = branch && (reviewRange(this.subject, branch).tip ?? branch);
-    const range = tip && this.diff ? `${tip} → ${this.diff.base}` : null;
-    return v_flex6().id("review").size_full().bg(colors.popover).text_color(colors.foreground).track_focus(this.handle).child(reviewHead(colors, {
-      title: thread?.title ?? "This thread has ended.",
-      range,
-      files: this.diff?.files ?? [],
-      loading: this.loading,
-      onRefresh: (cx) => this.load(cx),
-      onClose: () => closeOverlay4(this.overlay)
-    })).children(pullStrip(colors, {
-      choices: openPulls(thread?.pulls ?? []),
-      shown: this.subject,
-      onPick: (pull, cx) => this.turn(pull, cx)
-    })).child(h_flex7().flex_1().min_h(0).items_start().child(fileList(colors, {
-      rows: fileTree(filterFiles(files, this.filter.value()), this.folded),
-      filter: this.filter,
-      onFold: (path, cx) => this.fold(path, cx),
-      open,
-      empty: this.emptyText(),
-      onOpen: (path, cx) => this.show(drawn, path, cx)
-    })).child(this.diffSide(colors, type, drawn, files.find((entry) => entry.file.path === open)?.file ?? null))).child(reviewFoot(colors, {
-      note: this.note,
-      error: this.diff ? this.error : null,
-      send: this.sendButton(thread, draft)
-    }));
+    const shown = files.find((entry) => entry.file.path === open)?.file ?? null;
+    return v_flex6().id("review").size_full().bg(colors.popover).text_color(colors.foreground).track_focus(this.handle).child(this.head(colors, thread)).children(this.strip(colors, thread)).child(h_flex7().flex_1().min_h(0).items_start().child(this.tree(colors, files, drawn, open)).child(this.diffSide(colors, type, drawn, shown))).child(this.foot(colors, thread, draft));
   }
   close() {
     if (this.sent)
@@ -2579,6 +2601,48 @@ class ReviewDialog {
   find() {
     const { snapshot, projects } = readScene();
     return threadAt(snapshot, projects, this.thread);
+  }
+  changed() {
+    return this.diff?.files ?? [];
+  }
+  head(colors, thread) {
+    return reviewHead(colors, {
+      title: thread?.title ?? "This thread has ended.",
+      range: rangeLabel(this.subject, thread?.checkout?.branch, this.diff?.base),
+      files: this.changed(),
+      loading: this.loading,
+      onRefresh: (cx) => this.load(cx),
+      onClose: () => closeOverlay4(this.overlay)
+    });
+  }
+  strip(colors, thread) {
+    return pullStrip(colors, {
+      choices: openPulls(thread?.pulls ?? []),
+      shown: this.subject,
+      onPick: (pull, cx) => this.turn(pull, cx)
+    });
+  }
+  tree(colors, files, drawn, open) {
+    return fileList(colors, {
+      rows: fileTree(filterFiles(files, this.filter.value()), this.folded),
+      filter: this.filter,
+      onFold: (path, cx) => this.fold(path, cx),
+      open,
+      empty: this.emptyText(),
+      onOpen: (path, cx) => this.show(drawn, path, cx)
+    });
+  }
+  foot(colors, thread, draft) {
+    return reviewFoot(colors, {
+      note: this.note,
+      error: this.diff ? this.error : null,
+      send: this.sendButton(thread, draft)
+    });
+  }
+  draw(files, type, cx) {
+    const columns = commentColumns(this.width, type);
+    this.build(files, columns, cx);
+    return this.drawnOf(files, columns, type);
   }
   key() {
     return draftKey(this.thread, this.subject);
@@ -2788,21 +2852,14 @@ class ReviewDialog {
   }
   pick(rows, key, cx) {
     const row = rows.find((candidate) => candidate.key === key);
-    if (row?.kind !== "line" && row?.kind !== "card")
+    if (!isPickable(row))
       return;
     const own = this.rowsIn(row.anchor.path);
     if (this.shift && row.kind === "line" && this.extend(own, row.anchor, cx))
       return;
     this.keepTyped();
     const written = commentAt(readDraft(this.key()), row.anchor);
-    const line = own.find((candidate) => candidate.key === lineKey(row.anchor));
-    this.target = {
-      anchor: written ?? { path: row.anchor.path, side: row.anchor.side, line: row.anchor.line, start: null },
-      pivot: row.anchor,
-      code: written?.code ?? (line?.kind === "line" ? line.line.text : ""),
-      written: Boolean(written),
-      about: this.aboutAt(row.anchor)
-    };
+    this.target = targetAt(own, row.anchor, written, this.aboutAt(row.anchor));
     this.field.set_value(written?.body ?? "");
     this.field.focus();
     cx.notify();
@@ -2898,7 +2955,7 @@ class ReviewDialog {
     const { subject } = this;
     if (!thread || isEmpty(readDraft(key)))
       return;
-    const paths = (this.diff?.files ?? []).map((file) => file.path);
+    const paths = this.changed().map((file) => file.path);
     this.sending = true;
     this.error = null;
     cx.spawn(async (task) => {

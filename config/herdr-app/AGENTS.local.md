@@ -31,7 +31,8 @@ changes in a few seconds.
 
 The linter is oxlint (`.oxlintrc.json`) and the formatter is oxfmt
 (`.oxfmtrc.json`), both run from nixpkgs as the type check is. `bun run format`
-formats `src`.
+formats `src`. The linter refuses a function with a cyclomatic complexity over
+10: split it by what it does.
 
 Keep the code in small modules: data logic with no Herdr import and with tests,
 view functions that take a props object, and one `View` class that wires them.

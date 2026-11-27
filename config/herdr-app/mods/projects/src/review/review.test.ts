@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Pull } from "../pulls";
-import { baseRefs, parseBranchDiff, parseDiff, reviewRange, type DiffFile } from "./diff";
+import { baseRefs, parseBranchDiff, parseDiff, rangeLabel, reviewRange, type DiffFile } from "./diff";
 import {
   anchorOf,
   commentAt,
@@ -41,6 +41,7 @@ import {
   type Row,
 } from "./rows";
 import { assemble, builtFrom, fileAt, fileStarts, offsets, rowToReveal, staleFiles } from "./layout";
+import { isPickable, targetAt, whereOf } from "./target";
 import { fileTree, filterFiles, inTreeOrder } from "./tree";
 
 const MODIFIED = `diff --git a/src/app.ts b/src/app.ts
@@ -205,6 +206,14 @@ describe("a branch's diff", () => {
     expect(reviewRange(null, "top")).toEqual({ bases: baseRefs(null), tip: null });
     expect(reviewRange({ ...LAYER, head: "top", base: "low" }, "top")).toEqual({ bases: baseRefs("low"), tip: null });
     expect(reviewRange(LAYER, "top")).toEqual({ bases: baseRefs("main"), tip: "low" });
+  });
+
+  test("names what it compares once the branch is known and the diff is read", () => {
+    expect(rangeLabel(null, "top", "origin/main")).toBe("top → origin/main");
+    expect(rangeLabel(LAYER, "top", "origin/main")).toBe("low → origin/main");
+    expect(rangeLabel({ ...LAYER, head: "top" }, "top", "main")).toBe("top → main");
+    expect(rangeLabel(LAYER, undefined, "origin/main")).toBeNull();
+    expect(rangeLabel(LAYER, "top", undefined)).toBeNull();
   });
 });
 
@@ -654,6 +663,50 @@ describe("a comment on several lines", () => {
     ).split("\n");
     expect(quote).toHaveLength(13);
     expect(quote.at(-1)).toBe("…");
+  });
+});
+
+describe("the lines a comment is written on", () => {
+  const file = only(MODIFIED);
+  const at = (side: "old" | "new", line: number): Anchor => ({ path: "src/app.ts", side, line });
+  const said = [
+    comment({ path: "src/app.ts", line: 3, start: { side: "new", line: 2 }, code: "two lines", body: "Why?" }),
+  ];
+  const [entry] = reviewFiles([file], said, [discussion({ path: "src/app.ts", line: 4 })]);
+  if (!entry) throw new Error("expected a file");
+  const rows = fileRows(entry, 60);
+
+  test("open from a line or from a card under it, and from no other row", () => {
+    const kinds = rows.filter(isPickable).map((row) => row.kind);
+    expect(new Set(kinds)).toEqual(new Set(["line", "card"]));
+    expect(rows.some((row) => row.kind === "hunk" && isPickable(row))).toBe(false);
+    expect(isPickable(undefined)).toBe(false);
+  });
+
+  test("are one line with its text, for a line without a comment", () => {
+    expect(targetAt(rows, at("new", 4), undefined, ABOUT)).toEqual({
+      anchor: { ...at("new", 4), start: null },
+      pivot: at("new", 4),
+      code: "return a;",
+      written: false,
+      about: ABOUT,
+    });
+    expect(targetAt(rows, at("new", 90), undefined, null).code).toBe("");
+  });
+
+  test("are the lines of the comment that ends there, with the text it quoted", () => {
+    const [written] = said;
+    const target = targetAt(rows, at("new", 3), written, null);
+    expect(target).toMatchObject({ pivot: at("new", 3), code: "two lines", written: true, about: null });
+    expect(target.anchor).toMatchObject({ ...at("new", 3), start: { side: "new", line: 2 } });
+  });
+
+  test("are named by their file, their numbers and what they answer", () => {
+    const one = targetAt(rows, at("new", 4), undefined, null);
+    expect(whereOf(one)).toBe("app.ts · Line 4");
+    expect(whereOf(targetAt(rows, at("old", 2), undefined, null))).toBe("app.ts · Line 2, which the branch removes");
+    expect(whereOf(targetAt(rows, at("new", 3), said[0], null))).toBe("app.ts · Lines 2-3");
+    expect(whereOf({ ...one, about: ABOUT })).toBe("app.ts · Line 4 · in answer to @ana on GitHub");
   });
 });
 
