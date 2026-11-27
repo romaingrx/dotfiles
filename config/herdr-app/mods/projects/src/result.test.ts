@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { outputOf } from "./exit";
 import { parseJson } from "./parse";
-import { all, attempt, attemptSync, DONE, fail, ok, type Result } from "./result";
+import { all, attempt, attemptSync, DONE, fail, ok, settle, settleSync, type Result } from "./result";
 
 describe("a result", () => {
   test("holds a value, or why there is none", () => {
@@ -44,13 +44,38 @@ describe("steps that run at once", () => {
 
   test("fail with the first failure in their order, once all have ended", async () => {
     let ended = 0;
-    const step = async (result: Result<string>): Promise<Result<string>> => {
-      ended++;
-      return result;
-    };
-    const steps = [step(ok("a")), step(fail("t3 is gone")), step(fail("t4 is gone")), step(ok("d"))];
+    const step = (result: Result<string>, after: number): Promise<Result<string>> =>
+      new Promise((resolve) =>
+        setTimeout(() => {
+          ended++;
+          resolve(result);
+        }, after),
+      );
+    // The second failure ends first, and the last step ends well after both.
+    const steps = [step(ok("a"), 1), step(fail("t3 is gone"), 6), step(fail("t4 is gone"), 2), step(ok("d"), 12)];
     expect(await all(steps)).toEqual(fail("t3 is gone"));
     expect(ended).toBe(4);
+  });
+});
+
+describe("a step at the edge of work that nothing waits for", () => {
+  test("gives its own result", async () => {
+    expect(await settle(async () => ok(7))).toEqual(ok(7));
+    expect(await settle(() => fail("gh refused"))).toEqual(fail("gh refused"));
+    expect(settleSync(() => ok("set"))).toEqual(ok("set"));
+    expect(settleSync(() => fail("the layout nests too deep"))).toEqual(fail("the layout nests too deep"));
+  });
+
+  test("fails with the words of a bug in it, where it would have left the person waiting", async () => {
+    const rejects = async (): Promise<Result<number>> => {
+      throw new TypeError("lines is not iterable");
+    };
+    const throws = (): Result<number> => {
+      throw new TypeError("children is not a list");
+    };
+    expect(await settle(rejects)).toEqual(fail("lines is not iterable"));
+    expect(await settle(throws)).toEqual(fail("children is not a list"));
+    expect(settleSync(throws)).toEqual(fail("children is not a list"));
   });
 });
 

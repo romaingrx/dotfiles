@@ -30,7 +30,7 @@ export class ThreadPanel implements Part {
 
   constructor(cx: AsyncContext) {
     cx.timer.every(AGE_REFRESH, (tick) => tick.notify());
-    reportFailureOf("Could not update the layout", syncLayout());
+    reportFailureOf("Could not update the layout", syncLayout);
   }
 
   render(): Element {

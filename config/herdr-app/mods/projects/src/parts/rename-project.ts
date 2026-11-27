@@ -54,6 +54,6 @@ export class RenameProjectDialog implements Part {
     }
     closeOverlay(this.overlay);
     if (name === this.project) return;
-    reportFailureOf(`Could not rename ${this.project}`, renameProject(project, name));
+    reportFailureOf(`Could not rename ${this.project}`, () => renameProject(project, name));
   }
 }

@@ -40,8 +40,13 @@ view functions that take a props object, and one `View` class that wires them.
 A step that can fail for a reason that is no bug (a program is not installed, a
 machine is away, GitHub refuses) returns a `Result` (`src/result.ts`), and the
 caller decides once what the person sees. `src/host.ts` is the boundary: it runs
-programs, `hc` and app commands, and each of its functions returns a `Result`.
-`result.ts` alone catches. Only a bug or a broken setup throws.
+programs, `hc` and the app commands that Herdr can refuse, and each of its
+functions returns a `Result`. `result.ts` alone catches. Only a bug or a broken
+setup throws.
+
+Work that nothing waits for (a `cx.spawn` task, a notice after a click) runs
+its step through `settle` or `settleSync`: a bug there has nobody above to show
+it, so it becomes a failure, and no "Reading…" or "Sending…" stays for good.
 
 ## Layout
 

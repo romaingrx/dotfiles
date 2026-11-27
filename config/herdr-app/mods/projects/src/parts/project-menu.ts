@@ -110,6 +110,6 @@ export class ProjectMenu implements Part {
 
   private end(ending: Ending): void {
     closeOverlay(this.overlay);
-    reportFailureOf(`Could not end ${this.name}`, ending.run());
+    reportFailureOf(`Could not end ${this.name}`, ending.run);
   }
 }

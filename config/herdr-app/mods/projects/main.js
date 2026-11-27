@@ -36,6 +36,15 @@ function attemptSync(step) {
     return fail(messageOf(thrown));
   }
 }
+function flat(nested) {
+  return nested.ok ? nested.value : nested;
+}
+async function settle(step) {
+  return flat(await attempt(async () => step()));
+}
+function settleSync(step) {
+  return flat(attemptSync(step));
+}
 async function all(steps) {
   const values = [];
   for (const result of await Promise.all(steps)) {
@@ -199,7 +208,7 @@ function reportFailure(title, outcome) {
     notify({ title, body: outcome.error, level: "error" });
 }
 function reportFailureOf(title, work) {
-  work.then((outcome) => reportFailure(title, outcome));
+  settle(work).then((outcome) => reportFailure(title, outcome));
 }
 function askName(title, value, command, args) {
   openOverlay({ mod: "prompt", kind: "dialog", width: 420, props: { title, value, command: { name: command, args } } });
@@ -220,7 +229,7 @@ function label(address, labels) {
   return core(["label", address, ...labels]);
 }
 function setResolved(thread, resolved) {
-  reportFailureOf("Could not change the thread", label(thread.key, [`resolved=${resolved ? "true" : ""}`]));
+  reportFailureOf("Could not change the thread", () => label(thread.key, [`resolved=${resolved ? "true" : ""}`]));
 }
 function openNewProjectDialog() {
   openOverlay({ mod: MOD, kind: "dialog", width: 440, props: { part: "new-project" } });
@@ -269,7 +278,7 @@ function ungroupProject(project) {
 }
 function openLink(url) {
   const opener = window()?.platform === "macos" ? "open" : "xdg-open";
-  reportFailureOf("Could not open the link", runProgram(opener, [url]));
+  reportFailureOf("Could not open the link", () => runProgram(opener, [url]));
 }
 
 // src/navigation.ts
@@ -811,7 +820,7 @@ function focusTerminal(terminal) {
   run3("pane.focus", { terminal });
 }
 function showInPanel(terminal, focus) {
-  reportFailure("Could not open the thread", showThreadInPanel(terminal, focus));
+  reportFailure("Could not open the thread", settleSync(() => showThreadInPanel(terminal, focus)));
 }
 function openThread(thread) {
   if (thread.opens === "pane") {
@@ -904,9 +913,13 @@ function pullAnswer(printed, known) {
 // src/pull-reader.ts
 var PULL_TIMEOUT = 20000;
 async function readPull(ask, known) {
-  const options = { ...ask.cwd !== null && { cwd: ask.cwd }, on: ask.on, timeout: PULL_TIMEOUT };
-  const printed = await runProgram("gh", ["pr", "view", ...ask.args, "--json", PULL_FIELDS], options);
-  return pullAnswer(printed, known[ask.key] ?? null);
+  const kept = known[ask.key] ?? null;
+  const read = await attempt(async () => {
+    const options = { ...ask.cwd !== null && { cwd: ask.cwd }, on: ask.on, timeout: PULL_TIMEOUT };
+    const printed = await runProgram("gh", ["pr", "view", ...ask.args, "--json", PULL_FIELDS], options);
+    return pullAnswer(printed, kept);
+  });
+  return read.ok ? read.value : kept;
 }
 async function refreshPulls() {
   const { snapshot, projects } = readScene();
@@ -1177,16 +1190,19 @@ class NewProjectDialog {
     cx.notify();
     if (!this.starting)
       return;
-    const start = startProject(name, this.machine, folder);
-    reportFailureOf(`Could not start ${name}`, start);
+    const start = settle(() => startProject(name, this.machine, folder));
+    reportFailureOf(`Could not start ${name}`, () => start);
     cx.spawn((task) => this.follow(start, task));
   }
   async follow(start, cx) {
-    const started = await start;
-    if (started.ok) {
-      closeOverlay(this.overlay);
+    const started = await settle(async () => {
+      const outcome = await start;
+      if (outcome.ok)
+        closeOverlay(this.overlay);
+      return outcome;
+    });
+    if (started.ok)
       return;
-    }
     this.starting = false;
     this.problem = { field: null, message: started.error };
     cx.notify();
@@ -1445,7 +1461,7 @@ class ProjectMenu {
   }
   end(ending) {
     closeOverlay2(this.overlay);
-    reportFailureOf(`Could not end ${this.name}`, ending.run());
+    reportFailureOf(`Could not end ${this.name}`, ending.run);
   }
 }
 
@@ -1495,7 +1511,7 @@ class RenameProjectDialog {
     closeOverlay3(this.overlay);
     if (name === this.project)
       return;
-    reportFailureOf(`Could not rename ${this.project}`, renameProject(project, name));
+    reportFailureOf(`Could not rename ${this.project}`, () => renameProject(project, name));
   }
 }
 
@@ -2767,9 +2783,12 @@ class ReviewDialog {
         for (const entry of stale) {
           if (round !== this.round)
             break;
+          const rows = attemptSync(() => fileRows(entry, columns));
+          if (!rows.ok)
+            this.error = `${entry.file.path}: ${rows.error}`;
           this.built.set(entry.file.path, {
             signature: builtFrom(entry, columns, round),
-            rows: fileRows(entry, columns)
+            rows: rows.ok ? rows.value : []
           });
           this.version++;
           if (Date.now() - shown >= SHOW_EVERY) {
@@ -2817,8 +2836,8 @@ class ReviewDialog {
     cx.spawn(async (task) => {
       const show = () => task.notify();
       await Promise.all([
-        this.read(readBranchDiff(thread, range), (diff) => this.diff = diff, latest).then(show),
-        this.read(readDiscussions(thread, subject), (discussions) => this.discussions = discussions, latest).then(show)
+        this.read(() => readBranchDiff(thread, range), (diff) => this.diff = diff, latest).then(show),
+        this.read(() => readDiscussions(thread, subject), (discussions) => this.discussions = discussions, latest).then(show)
       ]);
       if (latest())
         this.loading = false;
@@ -2826,7 +2845,7 @@ class ReviewDialog {
     });
   }
   async read(reading, keep, latest) {
-    const read = await reading;
+    const read = await settle(reading);
     if (!latest())
       return;
     if (read.ok)
@@ -2959,7 +2978,7 @@ class ReviewDialog {
     this.sending = true;
     this.error = null;
     cx.spawn(async (task) => {
-      const delivered = await this.deliver(thread, key, subject, paths);
+      const delivered = await settle(() => this.deliver(thread, key, subject, paths));
       if (delivered.ok) {
         this.sent = true;
         saveDraft(key, NO_DRAFT);
@@ -3059,7 +3078,7 @@ class ThreadPanel {
   order = "";
   constructor(cx) {
     cx.timer.every(AGE_REFRESH, (tick) => tick.notify());
-    reportFailureOf("Could not update the layout", syncLayout());
+    reportFailureOf("Could not update the layout", syncLayout);
   }
   render() {
     const colors = readTheme();

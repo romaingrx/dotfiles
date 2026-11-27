@@ -3,7 +3,7 @@ import { h_flex, InputState, TextareaState, v_flex, VirtualListScrollHandle } fr
 import { closeOverlay } from "herdr";
 import { sendToThread } from "../actions";
 import { leadPull, openPulls, type Pull } from "../pulls";
-import { DONE, fail, type Outcome, type Result } from "../result";
+import { attemptSync, DONE, fail, settle, type Outcome, type Result } from "../result";
 import { rangeLabel, reviewRange, type BranchDiff, type DiffFile } from "../review/diff";
 import { aboutOf, discussionsAt, type Discussion } from "../review/discussions";
 import {
@@ -392,9 +392,12 @@ export class ReviewDialog implements Part {
         for (const entry of stale) {
           // Another pull request or a fresh read: these files are of a diff that is no longer on show.
           if (round !== this.round) break;
+          // A bug in the rows of one file leaves that file with its head alone, and says so: the others are still built.
+          const rows = attemptSync(() => fileRows(entry, columns));
+          if (!rows.ok) this.error = `${entry.file.path}: ${rows.error}`;
           this.built.set(entry.file.path, {
             signature: builtFrom(entry, columns, round),
-            rows: fileRows(entry, columns),
+            rows: rows.ok ? rows.value : [],
           });
           this.version++;
           if (Date.now() - shown >= SHOW_EVERY) {
@@ -447,10 +450,16 @@ export class ReviewDialog implements Part {
       // What is read is of this round: the rows of the files are built again from it, in the background.
       const show = (): void => task.notify();
       await Promise.all([
-        this.read(readBranchDiff(thread, range), (diff) => (this.diff = diff), latest).then(show),
-        this.read(readDiscussions(thread, subject), (discussions) => (this.discussions = discussions), latest).then(
-          show,
-        ),
+        this.read(
+          () => readBranchDiff(thread, range),
+          (diff) => (this.diff = diff),
+          latest,
+        ).then(show),
+        this.read(
+          () => readDiscussions(thread, subject),
+          (discussions) => (this.discussions = discussions),
+          latest,
+        ).then(show),
       ]);
       if (latest()) this.loading = false;
       task.notify();
@@ -460,10 +469,15 @@ export class ReviewDialog implements Part {
   /**
    * Reads one part of the review. Each part shows as soon as it is there: the
    * other one may take longer, or fail. An answer that comes after the person
-   * turned to another pull request is dropped.
+   * turned to another pull request is dropped. A bug in a reader is a failure
+   * here too: the review says so, and does not wait for good.
    */
-  private async read<T>(reading: Promise<Result<T>>, keep: (value: T) => void, latest: () => boolean): Promise<void> {
-    const read = await reading;
+  private async read<T>(
+    reading: () => Promise<Result<T>>,
+    keep: (value: T) => void,
+    latest: () => boolean,
+  ): Promise<void> {
+    const read = await settle(reading);
     if (!latest()) return;
     if (read.ok) keep(read.value);
     else this.error = read.error;
@@ -622,7 +636,8 @@ export class ReviewDialog implements Part {
     this.sending = true;
     this.error = null;
     cx.spawn(async (task) => {
-      const delivered = await this.deliver(thread, key, subject, paths);
+      // A bug on the way is a failure too: Send comes back, and says why.
+      const delivered = await settle(() => this.deliver(thread, key, subject, paths));
       if (delivered.ok) {
         this.sent = true;
         saveDraft(key, NO_DRAFT);

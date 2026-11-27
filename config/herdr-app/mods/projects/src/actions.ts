@@ -1,7 +1,7 @@
 import { appHome, notify, openOverlay, window } from "herdr";
 import { core, runCommand, runProgram } from "./host";
 import { leadOf, type Project } from "./projects";
-import { all, DONE, type Outcome } from "./result";
+import { all, DONE, settle, type Outcome } from "./result";
 import type { OwnTab, Thread } from "./threads";
 
 const MOD = "projects";
@@ -22,8 +22,8 @@ export function reportFailure(title: string, outcome: Outcome): void {
 }
 
 /** Tells the person when work that goes on behind what they see fails. */
-export function reportFailureOf(title: string, work: Promise<Outcome>): void {
-  void work.then((outcome) => reportFailure(title, outcome));
+export function reportFailureOf(title: string, work: () => Promise<Outcome>): void {
+  void settle(work).then((outcome) => reportFailure(title, outcome));
 }
 
 /** Herdr's own rename dialog, for a name that Herdr holds. */
@@ -57,7 +57,7 @@ function label(address: string, labels: readonly string[]): Promise<Outcome> {
  * reads it.
  */
 export function setResolved(thread: Thread, resolved: boolean): void {
-  reportFailureOf("Could not change the thread", label(thread.key, [`resolved=${resolved ? "true" : ""}`]));
+  reportFailureOf("Could not change the thread", () => label(thread.key, [`resolved=${resolved ? "true" : ""}`]));
 }
 
 export function openNewProjectDialog(): void {
@@ -129,5 +129,5 @@ export function ungroupProject(project: Project): Promise<Outcome> {
 /** Opens a web page in the person's browser. */
 export function openLink(url: string): void {
   const opener = window()?.platform === "macos" ? "open" : "xdg-open";
-  reportFailureOf("Could not open the link", runProgram(opener, [url]));
+  reportFailureOf("Could not open the link", () => runProgram(opener, [url]));
 }

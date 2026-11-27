@@ -45,6 +45,25 @@ export function attemptSync<T>(step: () => T): Result<T> {
   }
 }
 
+function flat<T>(nested: Result<Result<T>>): Result<T> {
+  return nested.ok ? nested.value : nested;
+}
+
+/**
+ * Runs a step that gives a result, at the edge of work that nothing waits
+ * for: a task, a notice of its own. A bug in the step has nobody above to
+ * show it and would leave the person waiting, so here it is a failure too,
+ * and the person sees it as they see any other.
+ */
+export async function settle<T>(step: () => Promise<Result<T>> | Result<T>): Promise<Result<T>> {
+  return flat(await attempt(async () => step()));
+}
+
+/** `settle` for a step that ends at once, such as the handler of a click. */
+export function settleSync<T>(step: () => Result<T>): Result<T> {
+  return flat(attemptSync(step));
+}
+
 /** Waits for steps that run at once: the first failure in their order, else every value. */
 export async function all<T>(steps: readonly Promise<Result<T>>[]): Promise<Result<T[]>> {
   const values: T[] = [];
