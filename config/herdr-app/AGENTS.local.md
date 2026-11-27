@@ -23,10 +23,15 @@ cd ~/.dotfiles/config/herdr-app/mods/<name>
 bun run build
 ```
 
-`build` runs the type check, the tests and the bundler, then touches the link
-and runs `herdr-app check`. The touch is needed: Herdr does not see a change
-behind a linked mod folder until the link itself changes. A linked layout file
-needs no such step, because Herdr applies its changes in a few seconds.
+`build` runs the type check, the linter, the format check, the tests and the
+bundler, then touches the link and runs `herdr-app check`. The touch is needed:
+Herdr does not see a change behind a linked mod folder until the link itself
+changes. A linked layout file needs no such step, because Herdr applies its
+changes in a few seconds.
+
+The linter is oxlint (`.oxlintrc.json`) and the formatter is oxfmt
+(`.oxfmtrc.json`), both run from nixpkgs as the type check is. `bun run format`
+formats `src`.
 
 Keep the code in small modules: data logic with no Herdr import and with tests,
 view functions that take a props object, and one `View` class that wires them.

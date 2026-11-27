@@ -4,9 +4,12 @@
   "type": "module",
   "scripts": {
     "typecheck": "nix shell nixpkgs#typescript -c tsc --noEmit -p .",
+    "lint": "nix shell nixpkgs#oxlint -c oxlint src",
+    "format": "nix shell nixpkgs#oxfmt -c oxfmt src",
+    "format:check": "nix shell nixpkgs#oxfmt -c oxfmt --check src",
     "test": "bun test",
     "bundle": "bun build src/main.ts --outfile main.js --format esm --external gpui-kit --external gpui-base --external herdr",
     "reload": "touch -h ~/.config/herdr-app/mods/projects && herdr-app check .",
-    "build": "bun run typecheck && bun run test && bun run bundle && bun run reload"
+    "build": "bun run typecheck && bun run lint && bun run format:check && bun run test && bun run bundle && bun run reload"
   }
 }
