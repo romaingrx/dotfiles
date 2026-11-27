@@ -2157,7 +2157,10 @@ function diffPane(colors, props) {
     return row.kind === "hunk" ? foldRow(colors, type, row.text) : plainRow(colors, type, row.text);
   };
   const list = v_virtual_list("review-diff", rows.length, props.heights, (index) => rows[index]?.key ?? String(index), (range) => rows.slice(range.start, range.end).map(draw)).track_scroll(props.scroll).on_item_click(props.onPick).size_full();
-  return div6().id("review-diff-box").flex_1().min_h(0).relative().font_family(type.family).text_size(type.size).on_size_change((size, cx) => props.onWidth(size.width / readZoom(), cx)).on_mouse_down("left", (event) => props.onPress(event.modifiers.shift)).on_scroll_wheel((_event, cx) => props.onScroll(cx)).child(div6().id("review-diff-x").size_full().overflow_x_scrollbar().child(div6().w_full().min_w(Math.ceil(props.widest * type.char) + gutter(type) + DIFF_END).h_full().child(list))).child(Scrollbar.vertical("review-diff").viewport_from_layout().absolute().inset_0());
+  return div6().id("review-diff-box").flex_1().min_h(0).relative().font_family(type.family).text_size(type.size).on_size_change((size, cx) => props.onWidth(size.width / readZoom(), cx)).on_mouse_down("left", (event) => props.onPress(event.modifiers.shift)).on_scroll_wheel((_event, cx) => props.onScroll(cx)).child(div6().id("review-diff-x").size_full().overflow_x_scrollbar().child(div6().w_full().min_w(Math.ceil(props.widest * type.char) + gutter(type) + DIFF_END).h_full().child(list))).child(Scrollbar.vertical("review-diff").viewport_from_layout().absolute().inset_0()).children(props.shown ? [stickyHead(colors, type, props.shown)] : []);
+}
+function stickyHead(colors, type, file) {
+  return div6().absolute().top(0).left(0).right(0).bg(colors.popover).child(cardHead(colors, type, file));
 }
 function counts(colors, added, removed) {
   const count = (amount, sign, color) => div6().flex_none().text_size(11).text_color(color).child(`${sign}${amount}`);
@@ -2324,7 +2327,7 @@ class ReviewDialog {
       open,
       empty: this.emptyText(),
       onOpen: (path, cx) => this.show(drawn.rows, path, cx)
-    })).child(this.diffSide(colors, type, drawn))).child(reviewFoot(colors, {
+    })).child(this.diffSide(colors, type, drawn, files.find((entry) => entry.file.path === open)?.file ?? null))).child(reviewFoot(colors, {
       note: this.note,
       error: this.diff ? this.error : null,
       send: this.sendButton(thread, draft)
@@ -2370,7 +2373,7 @@ class ReviewDialog {
       return this.loading ? "Reading the branch…" : "No branch to review.";
     return `Nothing changed against ${this.diff.base}.`;
   }
-  diffSide(colors, type, drawn) {
+  diffSide(colors, type, drawn, shown) {
     const side = v_flex6().flex_1().min_w(0).h_full();
     if (drawn.rows.length === 0)
       return side;
@@ -2383,6 +2386,7 @@ class ReviewDialog {
       columns: drawn.columns,
       scroll: this.scroll,
       onScroll: (cx) => this.follow(drawn, cx),
+      shown,
       active: new Set(target ? spanRows(this.rowsIn(target.anchor.path), target.anchor).map((row) => row.key) : []),
       onPress: (shift) => {
         this.shift = shift;

@@ -212,6 +212,8 @@ export interface DiffPane {
   readonly onWidth: (width: number, cx: Context) => void;
   /** A turn of the wheel over the diff: the file on show may be another one. */
   readonly onScroll: Handler;
+  /** The file the diff is scrolled to: its head stays at the top. Null for a review without a file. */
+  readonly shown: DiffFile | null;
 }
 
 /** The diff of every file, one after the other, with the comments under their lines. Only the rows on screen are drawn. */
@@ -259,7 +261,23 @@ export function diffPane(colors: Theme, props: DiffPane): Element {
           ),
       )
       .child(Scrollbar.vertical("review-diff").viewport_from_layout().absolute().inset_0())
+      .children(props.shown ? [stickyHead(colors, type, props.shown)] : [])
   );
+}
+
+/**
+ * The head of the file the diff is scrolled to, kept at the top of the diff
+ * while its lines go by. It is drawn as the head in the list is, on a ground
+ * of its own, so that at the top of a file it lies exactly over that head.
+ */
+function stickyHead(colors: Theme, type: Type, file: DiffFile): Element {
+  return div()
+    .absolute()
+    .top(0)
+    .left(0)
+    .right(0)
+    .bg(colors.popover)
+    .child(cardHead(colors, type, file));
 }
 
 function counts(colors: Theme, added: number, removed: number): Element[] {

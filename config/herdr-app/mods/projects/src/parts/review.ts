@@ -3,7 +3,7 @@ import { h_flex, InputState, TextareaState, v_flex, VirtualListScrollHandle } fr
 import { closeOverlay } from "herdr";
 import { messageOf, sendToThread } from "../actions";
 import { leadPull, openPulls, type Pull } from "../pulls";
-import { reviewRange, type BranchDiff } from "../review/diff";
+import { reviewRange, type BranchDiff, type DiffFile } from "../review/diff";
 import { aboutOf, discussionsAt, type Discussion } from "../review/discussions";
 import {
   anchorKey,
@@ -229,7 +229,7 @@ export class ReviewDialog implements Part {
               onOpen: (path, cx) => this.show(drawn.rows, path, cx),
             }),
           )
-          .child(this.diffSide(colors, type, drawn)),
+          .child(this.diffSide(colors, type, drawn, files.find((entry) => entry.file.path === open)?.file ?? null)),
       )
       .child(
         reviewFoot(colors, {
@@ -288,7 +288,7 @@ export class ReviewDialog implements Part {
   }
 
   /** The right side: the diff of every file in one scroll, and the comment being written under it. */
-  private diffSide(colors: Theme, type: Type, drawn: Drawn): Element {
+  private diffSide(colors: Theme, type: Type, drawn: Drawn, shown: DiffFile | null): Element {
     const side = v_flex().flex_1().min_w(0).h_full();
     if (drawn.rows.length === 0) return side;
     const { target } = this;
@@ -301,6 +301,7 @@ export class ReviewDialog implements Part {
         columns: drawn.columns,
         scroll: this.scroll,
         onScroll: (cx) => this.follow(drawn, cx),
+        shown,
         active: new Set(target ? spanRows(this.rowsIn(target.anchor.path), target.anchor).map((row) => row.key) : []),
         onPress: (shift) => {
           this.shift = shift;
