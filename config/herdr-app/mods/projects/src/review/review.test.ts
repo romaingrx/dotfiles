@@ -28,6 +28,7 @@ import {
   lineKey,
   MAX_LINES,
   MAX_REMARK_LINES,
+  fileKey,
   unchangedBefore,
   quoteOf,
   reviewFiles,
@@ -39,7 +40,8 @@ import {
   type ReviewFile,
   type Row,
 } from "./rows";
-import { fileTree, filterFiles, firstFile } from "./tree";
+import { assemble, builtFrom, fileAt, fileStarts, offsets, rowToReveal, staleFiles } from "./layout";
+import { fileTree, filterFiles, inTreeOrder } from "./tree";
 
 const MODIFIED = `diff --git a/src/app.ts b/src/app.ts
 index 1111111..2222222 100644
@@ -711,9 +713,95 @@ describe("the tree of a review's files", () => {
     });
   });
 
-  test("opens on its first file from the top, whatever is folded", () => {
-    expect(firstFile(files)?.file.path).toBe("config/app/mods/src/b.ts");
-    expect(firstFile([])).toBeUndefined();
+  test("gives the files in the order it lists them, whatever is folded", () => {
+    expect(inTreeOrder(files).map((file) => file.file.path)).toEqual([
+      "config/app/mods/src/b.ts",
+      "config/app/mods/a.ts",
+      "config/app/x.ts",
+      "docs/guide/one.md",
+      "README.md",
+    ]);
+    expect(inTreeOrder([])).toEqual([]);
     expect(fileTree([], new Set())).toEqual([]);
+  });
+});
+
+describe("the review's files in one scroll", () => {
+  const entry = (path: string): ReviewFile => ({
+    file: { ...only(MODIFIED), path },
+    comments: [],
+    discussions: [],
+    gone: false,
+  });
+  const files = [entry("a.ts"), entry("b.ts"), { ...entry("gone.ts"), file: { ...only(BINARY), path: "gone.ts" } }];
+  const build = (some: readonly ReviewFile[], columns: number, round: number) =>
+    new Map(
+      some.map((file) => [
+        file.file.path,
+        { signature: builtFrom(file, columns, round), rows: fileRows(file, columns) },
+      ]),
+    );
+  const built = build(files, 60, 1);
+  const rows = assemble(files, built);
+
+  test("are one list: each file's opening row, then its own rows, with a key of its own for every row", () => {
+    const opens = rows.flatMap((row, index) => (row.kind === "file" ? [`${index} ${row.entry.file.path}`] : []));
+    expect(opens).toEqual(["0 a.ts", "10 b.ts", "20 gone.ts"]);
+    expect(rows.map((row) => row.key)).toContain(fileKey("b.ts"));
+    expect(new Set(rows.map((row) => row.key)).size).toBe(rows.length);
+    expect(assemble([], built)).toEqual([]);
+  });
+
+  test("show a file that is not built yet by its opening row alone", () => {
+    const some = assemble(files, build(files.slice(0, 1), 60, 1));
+    expect(some.map((row) => row.kind).slice(9)).toEqual(["line", "file", "file"]);
+  });
+
+  test("are built again for a file when what is said about it changes, or the read it is of", () => {
+    const stale = (some: readonly ReviewFile[], columns: number, round: number) =>
+      staleFiles(some, built, columns, round).map((file) => file.file.path);
+    expect(stale(files, 60, 1)).toEqual([]);
+    expect(stale(files, 60, 2)).toEqual(["a.ts", "b.ts", "gone.ts"]);
+    expect(stale([...files, entry("new.ts")], 60, 1)).toEqual(["new.ts"]);
+    const said = { ...entry("b.ts"), comments: [comment({ path: "b.ts", line: 2 })] };
+    expect(stale([entry("a.ts"), said], 60, 1)).toEqual(["b.ts"]);
+    // Only a file with a card is cut to the width.
+    expect(stale(files, 90, 1)).toEqual([]);
+    const withCard = build([said], 60, 1);
+    expect(staleFiles([said], withCard, 60, 1)).toEqual([]);
+    expect(staleFiles([said], withCard, 90, 1)).toEqual([said]);
+  });
+
+  test("ask the list for the row that brings a file's head to the top", () => {
+    // Ten rows of 20: a screen of 60 shows three of them.
+    const heights = Array.from({ length: 10 }, () => 20);
+    const tops = offsets(heights);
+    const row = (head: number, scrolled: number) => rowToReveal(tops, heights, head, scrolled, 60);
+    // A head over the screen comes to the top by itself.
+    expect(row(2, 100)).toBe(2);
+    expect(row(2, 40)).toBe(2);
+    // A head on screen or under it: the last row of the screen that starts at the head.
+    expect(row(2, 0)).toBe(4);
+    expect(row(5, 0)).toBe(7);
+    // Near the end there are fewer rows than a screen.
+    expect(row(8, 0)).toBe(9);
+    expect(row(9, 0)).toBe(9);
+  });
+
+  test("say which file is on show for how far the list is scrolled", () => {
+    const tops = offsets(rows.map((row) => (row.kind === "file" ? 40 : 20)));
+    expect(tops.slice(0, 3)).toEqual([0, 40, 60]);
+    const starts = fileStarts(rows, tops);
+    expect(starts).toEqual([
+      { path: "a.ts", top: 0 },
+      { path: "b.ts", top: 40 + 9 * 20 },
+      { path: "gone.ts", top: 2 * (40 + 9 * 20) },
+    ]);
+    expect(fileAt(starts, 0)).toBe("a.ts");
+    expect(fileAt(starts, 219)).toBe("a.ts");
+    expect(fileAt(starts, 220)).toBe("b.ts");
+    expect(fileAt(starts, 100_000)).toBe("gone.ts");
+    expect(fileAt(starts.slice(1), 0)).toBe("b.ts");
+    expect(fileAt([], 0)).toBeNull();
   });
 });

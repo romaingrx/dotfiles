@@ -3,7 +3,7 @@ import { h_flex, InputState, TextareaState, v_flex, VirtualListScrollHandle } fr
 import { closeOverlay } from "herdr";
 import { messageOf, sendToThread } from "../actions";
 import { leadPull, openPulls, type Pull } from "../pulls";
-import { reviewRange, type BranchDiff } from "../review/diff";
+import { reviewRange, type BranchDiff, type DiffFile } from "../review/diff";
 import { aboutOf, discussionsAt, type Discussion } from "../review/discussions";
 import {
   anchorKey,
@@ -26,6 +26,18 @@ import {
 } from "../review/draft";
 import { postReply, readBranchDiff, readDiscussions } from "../review/reader";
 import {
+  assemble,
+  builtFrom,
+  fileAt,
+  fileStarts,
+  offsets,
+  rowToReveal,
+  staleFiles,
+  type Built,
+  type FileStart,
+} from "../review/layout";
+import {
+  fileKey,
   fileRows,
   lineKey,
   quoteOf,
@@ -36,18 +48,18 @@ import {
   type ReviewFile,
   type Row,
 } from "../review/rows";
-import { fileTree, filterFiles, firstFile } from "../review/tree";
+import { fileTree, filterFiles, inTreeOrder } from "../review/tree";
 import { readDraft, saveDraft } from "../review/store";
 import {
   commentColumns,
   composer,
   diffPane,
-  fileHead,
   fileList,
+  pullStrip,
   readType,
   reviewFoot,
-  pullStrip,
   reviewHead,
+  rowHeights,
   type Type,
 } from "../review/view";
 import { readScene } from "../snapshot";
@@ -68,12 +80,22 @@ interface Target {
   readonly about: About | null;
 }
 
-/** The rows of the file on show, kept until the file, its comments or the width change. */
+/** The list of the whole review as it is drawn, kept until a file is built, a file comes or goes, or the type changes. */
 interface Drawn {
   readonly signature: string;
   readonly rows: readonly Row[];
+  /** How many characters of a card fit on one line. */
+  readonly columns: number;
+  readonly heights: number[];
+  /** Where each row starts in the list. */
+  readonly tops: readonly number[];
+  /** Where each file opens in the list. */
+  readonly starts: readonly FileStart[];
   readonly widest: number;
 }
+
+/** How often the list shows what is built so far, while files are still being built, in ms. */
+const SHOW_EVERY = 150;
 
 /** The width the diff is taken to have before the app says how wide it is. */
 const FIRST_WIDTH = 900;
@@ -87,7 +109,9 @@ function linesWord(span: Span): string {
 }
 
 function whereOf(target: Target): string {
-  const lines = linesWord(target.anchor);
+  // Several files are on show at once: the file's name says which one the lines are of.
+  const { path } = target.anchor;
+  const lines = `${path.slice(path.lastIndexOf("/") + 1)} · ${linesWord(target.anchor)}`;
   return target.about ? `${lines} · in answer to @${target.about.author} on GitHub` : lines;
 }
 
@@ -121,7 +145,7 @@ export class ReviewDialog implements Part {
   private sending = false;
   /** Set once the review went to the thread: nothing of it is kept then. */
   private sent = false;
-  /** The path of the file on show; the first file while null. */
+  /** The path of the file the diff is scrolled to; the first file while null. */
   private open: string | null = null;
   /** The folders of the file tree that the person folded. */
   private readonly folded = new Set<string>();
@@ -129,6 +153,12 @@ export class ReviewDialog implements Part {
   /** Whether Shift was held at the last press on the diff. */
   private shift = false;
   private width = FIRST_WIDTH;
+  /** The rows of the files that are built so far, by path. They are built in a task, never in a render. */
+  private readonly built = new Map<string, Built>();
+  /** Counts the changes of what is built: the list is put together again when it moves. */
+  private version = 0;
+  /** Set while a task builds rows. */
+  private building = false;
   private drawn: Drawn | null = null;
 
   constructor(
@@ -154,7 +184,13 @@ export class ReviewDialog implements Part {
     if (thread && !this.asked) this.load(cx);
     const draft = readDraft(this.key());
     const files = reviewFiles(this.diff?.files ?? [], draft.comments, this.discussions);
-    const shown = files.find((entry) => entry.file.path === this.open) ?? firstFile(files);
+    const ordered = inTreeOrder(files);
+    const columns = commentColumns(this.width, type);
+    // A render only puts together what is built: building the rows of a long branch here is what the app stops.
+    this.build(ordered, columns, cx);
+    const drawn = this.drawnOf(ordered, columns, type);
+    // The file on show is the one the diff is scrolled to: the first one before any scroll.
+    const open = files.some((entry) => entry.file.path === this.open) ? this.open : fileAt(drawn.starts, 0);
     const branch = thread?.checkout?.branch;
     const tip = branch && (reviewRange(this.subject, branch).tip ?? branch);
     const range = tip && this.diff ? `${tip} → ${this.diff.base}` : null;
@@ -191,12 +227,12 @@ export class ReviewDialog implements Part {
               rows: fileTree(filterFiles(files, this.filter.value()), this.folded),
               filter: this.filter,
               onFold: (path, cx) => this.fold(path, cx),
-              open: shown?.file.path ?? null,
+              open,
               empty: this.emptyText(),
-              onOpen: (path, cx) => this.show(path, cx),
+              onOpen: (path, cx) => this.show(drawn, path, cx),
             }),
           )
-          .child(this.file(colors, type, shown)),
+          .child(this.diffSide(colors, type, drawn, files.find((entry) => entry.file.path === open)?.file ?? null)),
       )
       .child(
         reviewFoot(colors, {
@@ -234,7 +270,9 @@ export class ReviewDialog implements Part {
     this.discussions = [];
     this.open = null;
     this.target = null;
-    this.drawn = null;
+    this.built.clear();
+    this.version++;
+    this.scroll.scroll_to_item(0);
     this.field.set_value("");
     this.note.set_value(readDraft(this.key()).note);
   }
@@ -252,21 +290,22 @@ export class ReviewDialog implements Part {
     return `Nothing changed against ${this.diff.base}.`;
   }
 
-  /** The right side: the diff of the file on show, and the comment being written under it. */
-  private file(colors: Theme, type: Type, shown: ReviewFile | undefined): Element {
+  /** The right side: the diff of every file in one scroll, and the comment being written under it. */
+  private diffSide(colors: Theme, type: Type, drawn: Drawn, shown: DiffFile | null): Element {
     const side = v_flex().flex_1().min_w(0).h_full();
-    if (!shown) return side;
-    const columns = commentColumns(this.width, type);
-    const drawn = this.rowsOf(shown, columns);
-    const target = this.target?.anchor.path === shown.file.path ? this.target : null;
-    const pane = side.child(fileHead(colors, type, shown.file)).child(
+    if (drawn.rows.length === 0) return side;
+    const { target } = this;
+    const pane = side.child(
       diffPane(colors, {
         rows: drawn.rows,
+        heights: drawn.heights,
         widest: drawn.widest,
         type,
-        columns,
+        columns: drawn.columns,
         scroll: this.scroll,
-        active: new Set(target ? spanRows(drawn.rows, target.anchor).map((row) => row.key) : []),
+        onScroll: (cx) => this.follow(drawn, cx),
+        shown,
+        active: new Set(target ? spanRows(this.rowsIn(target.anchor.path), target.anchor).map((row) => row.key) : []),
         onPress: (shift) => {
           this.shift = shift;
         },
@@ -335,13 +374,65 @@ export class ReviewDialog implements Part {
     };
   }
 
-  private rowsOf(entry: ReviewFile, columns: number): Drawn {
-    const words = entry.comments.map((comment) => `${anchorKey(comment)} ${comment.about?.post} ${comment.body}`);
-    const signature = JSON.stringify([entry.file.path, columns, words]);
+  /** The rows of one file that are built so far. */
+  private rowsIn(path: string): readonly Row[] {
+    return this.built.get(path)?.rows ?? [];
+  }
+
+  /**
+   * Builds the rows of the files that have none yet, or whose comments or
+   * width changed, in a task of its own: one file a step, with a pause after
+   * each, so that no step is long enough for the app to stop it. The list
+   * shows what is built so far a few times a second.
+   */
+  private build(files: readonly ReviewFile[], columns: number, cx: Context): void {
+    const { round } = this;
+    const stale = this.building ? [] : staleFiles(files, this.built, columns, round);
+    if (stale.length === 0) return;
+    this.building = true;
+    cx.spawn(async (task) => {
+      let shown = Date.now();
+      try {
+        for (const entry of stale) {
+          // Another pull request or a fresh read: these files are of a diff that is no longer on show.
+          if (round !== this.round) break;
+          this.built.set(entry.file.path, {
+            signature: builtFrom(entry, columns, round),
+            rows: fileRows(entry, columns),
+          });
+          this.version++;
+          if (Date.now() - shown >= SHOW_EVERY) {
+            shown = Date.now();
+            task.notify();
+          }
+          await task.sleep(1);
+        }
+      } finally {
+        this.building = false;
+        // The next render looks again: the width or a comment may have changed meanwhile.
+        task.notify();
+      }
+    });
+  }
+
+  /** Puts the list together from what is built. It is kept until a file is built or the files or the type change. */
+  private drawnOf(files: readonly ReviewFile[], columns: number, type: Type): Drawn {
+    const signature = `${this.version} ${files.length} ${type.size} ${columns}`;
     if (this.drawn?.signature === signature) return this.drawn;
-    const rows = fileRows(entry, columns);
-    this.drawn = { signature, rows, widest: widest(rows) };
+    const rows = assemble(files, this.built);
+    const heights = rowHeights(rows, type);
+    const tops = offsets(heights);
+    this.drawn = { signature, rows, columns, heights, tops, starts: fileStarts(rows, tops), widest: widest(rows) };
     return this.drawn;
+  }
+
+  /** After a turn of the wheel, the tree marks the file the diff is scrolled to. */
+  private follow(drawn: Drawn, cx: Context): void {
+    // A file is on show once its head is under the head that stays at the top, which is as high as a head's row.
+    const path = fileAt(drawn.starts, this.scroll.offset().y + (drawn.heights[0] ?? 0));
+    if (path === this.open) return;
+    this.open = path;
+    cx.notify();
   }
 
   private load(cx: Context): void {
@@ -357,10 +448,8 @@ export class ReviewDialog implements Part {
     this.loading = true;
     this.error = null;
     cx.spawn(async (task) => {
-      const show = (): void => {
-        this.drawn = null;
-        task.notify();
-      };
+      // What is read is of this round: the rows of the files are built again from it, in the background.
+      const show = (): void => task.notify();
       await Promise.all([
         this.read(readBranchDiff(thread, range), (diff) => (this.diff = diff), latest).then(show),
         this.read(readDiscussions(thread, subject), (discussions) => (this.discussions = discussions), latest).then(
@@ -386,11 +475,14 @@ export class ReviewDialog implements Part {
     }
   }
 
-  private show(path: string, cx: Context): void {
-    this.keepTyped();
-    this.target = null;
+  /** A click on a file in the tree: the diff goes to that file's head. */
+  private show(drawn: Drawn, path: string, cx: Context): void {
+    const head = drawn.rows.findIndex((row) => row.key === fileKey(path));
+    if (head < 0) return;
     this.open = path;
-    this.scroll.scroll_to_item(0);
+    const scrolled = this.scroll.offset().y;
+    const screen = this.scroll.viewport_size().height;
+    this.scroll.scroll_to_item(rowToReveal(drawn.tops, drawn.heights, head, scrolled, screen), "top");
     cx.notify();
   }
 
@@ -404,10 +496,12 @@ export class ReviewDialog implements Part {
   private pick(rows: readonly Row[], key: string, cx: Context): void {
     const row = rows.find((candidate) => candidate.key === key);
     if (row?.kind !== "line" && row?.kind !== "card") return;
-    if (this.shift && row.kind === "line" && this.extend(rows, row.anchor, cx)) return;
+    // What follows is about the lines of one file: its rows are enough, and far fewer than the whole list.
+    const own = this.rowsIn(row.anchor.path);
+    if (this.shift && row.kind === "line" && this.extend(own, row.anchor, cx)) return;
     this.keepTyped();
     const written = commentAt(readDraft(this.key()), row.anchor);
-    const line = rows.find((candidate) => candidate.key === lineKey(row.anchor));
+    const line = own.find((candidate) => candidate.key === lineKey(row.anchor));
     this.target = {
       anchor: written ?? { path: row.anchor.path, side: row.anchor.side, line: row.anchor.line, start: null },
       pivot: row.anchor,

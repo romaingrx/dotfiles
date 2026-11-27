@@ -19,8 +19,10 @@ export interface CardLine {
   readonly head: boolean;
 }
 
-/** One row of a file's diff, as the list draws it. */
+/** One row of the review, as the list draws it. Its key names its file: the rows of all files are in one list. */
 export type Row =
+  /** Opens a file: its name, its folder and how much of it changed. */
+  | { readonly kind: "file"; readonly key: string; readonly entry: ReviewFile }
   /** Stands for the lines over a hunk that the branch did not change: it says how many they are. */
   | { readonly kind: "hunk"; readonly key: string; readonly text: string }
   | { readonly kind: "note"; readonly key: string; readonly text: string }
@@ -159,7 +161,14 @@ function discussionCard(discussion: Discussion, index: number, columns: number, 
     ...span,
     ...discussion.remarks.flatMap((remark) => remarkLines(remark, columns)),
   ];
-  return { kind: "card", key: `discussion:${index}`, anchor: discussion, from: "github", lines, stale };
+  return {
+    kind: "card",
+    key: `discussion:${discussion.path}:${index}`,
+    anchor: discussion,
+    from: "github",
+    lines,
+    stale,
+  };
 }
 
 /** The lines of the branch's file that a hunk shows, from its `@@` line: the first one, and how many. */
@@ -218,14 +227,18 @@ export function fileRows(entry: ReviewFile, columns: number): Row[] {
   const stale = [...cardsOf(entry, columns, true)].filter(([key]) => !shown.has(key));
   const rows: Row[] = stale.flatMap(([, rowsOfLine]) => rowsOfLine);
   const empty = emptyText(entry);
-  if (empty) return [...rows, { kind: "note", key: "note:empty", text: empty }];
+  if (empty) return [...rows, { kind: "note", key: `note:empty:${file.path}`, text: empty }];
   const gaps = unchangedBefore(file.hunks);
   let drawn = 0;
   for (const [index, hunk] of file.hunks.entries()) {
     if (drawn >= MAX_LINES) break;
     const gap = gaps[index] ?? 0;
     if (gap > 0)
-      rows.push({ kind: "hunk", key: `hunk:${index}`, text: `${gap} unchanged line${gap === 1 ? "" : "s"}` });
+      rows.push({
+        kind: "hunk",
+        key: `hunk:${file.path}:${index}`,
+        text: `${gap} unchanged line${gap === 1 ? "" : "s"}`,
+      });
     for (const line of hunk.lines.slice(0, MAX_LINES - drawn)) {
       const anchor = anchorOf(file.path, line);
       const under = cards.get(anchorKey(anchor)) ?? [];
@@ -235,7 +248,11 @@ export function fileRows(entry: ReviewFile, columns: number): Row[] {
     drawn += hunk.lines.length;
   }
   if (lines.length > MAX_LINES) {
-    rows.push({ kind: "note", key: "note:cut", text: `This diff is long: only its first ${MAX_LINES} lines show.` });
+    rows.push({
+      kind: "note",
+      key: `note:cut:${file.path}`,
+      text: `This diff is long: only its first ${MAX_LINES} lines show.`,
+    });
   }
   // What is said about several lines marks each of them, not only the last one.
   const covered = (spans: readonly Span[]) =>
@@ -287,5 +304,10 @@ export function quoteOf(lines: readonly LineRow[]): string {
 
 /** The longest line of the rows, in characters: how wide the diff is. */
 export function widest(rows: readonly Row[]): number {
-  return Math.max(0, ...rows.map((row) => (row.kind === "line" ? row.text.length : 0)));
+  return rows.reduce((longest, row) => (row.kind === "line" ? Math.max(longest, row.text.length) : longest), 0);
+}
+
+/** The key of the row that opens a file. */
+export function fileKey(path: string): string {
+  return `file:${path}`;
 }
