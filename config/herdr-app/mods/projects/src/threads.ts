@@ -1,6 +1,6 @@
 import type { AgentInfo, PaneInfo, SpaceInfo, Status, TabInfo } from "herdr";
 import { leadOf, LOCAL, threadsOf, type Project } from "./projects";
-import type { Pull, Pulls } from "./pulls";
+import { leadPull, refsOf, stackOf, type PullRef, type Pulls, type Stack } from "./pulls";
 import { GROUPS, groupOf, isBusy, type Group } from "./status";
 import { machineOf, type Terminal } from "./terminal";
 import { stripGlyph } from "./text";
@@ -44,8 +44,10 @@ export interface Thread {
   readonly since: number | null;
   /** Its folder and the git branch there, when it works in a repository folder of its own. */
   readonly checkout: { readonly folder: string; readonly branch: string } | null;
-  /** The pull request of that branch, as last read. */
-  readonly pull: Pull | null;
+  /** The pull requests to ask for on its behalf: the ones it declared, else the one of its branch. */
+  readonly refs: readonly PullRef[];
+  /** Those pull requests as last read, the lowest of a stack first. */
+  readonly pulls: Stack;
   /** Where a click shows it: in its own pane in the middle, or in the right panel. */
   readonly opens: "pane" | "panel";
 }
@@ -133,7 +135,7 @@ function checkout(seat: Seat | undefined, shared: ReadonlySet<string>): Thread["
 
 /** Whose move a thread is. */
 export function threadGroup(thread: Thread): Group {
-  return groupOf(thread.status, thread.resolved, thread.pull?.stage);
+  return groupOf(thread.status, thread.resolved, leadPull(thread.pulls)?.stage);
 }
 
 /** The threads of a project. Its orchestrator is not one of them: it is the project's own session. */
@@ -146,6 +148,7 @@ export function projectThreads(snapshot: Snapshot, project: Project): Thread[] {
   const beside = lead !== undefined && seated.has(lead.address);
   return threadsOf(project).map((member) => {
     const seat = seated.get(member.address);
+    const refs = refsOf(member.address, member.declared);
     return {
       key: member.address,
       project: project.name,
@@ -160,7 +163,8 @@ export function projectThreads(snapshot: Snapshot, project: Project): Thread[] {
       aside: spread ? (member.machine ?? LOCAL) : null,
       since: seat?.home?.tab.changed_at ?? member.since,
       checkout: checkout(seat, shared),
-      pull: snapshot.pulls[member.address] ?? null,
+      refs,
+      pulls: stackOf(refs, snapshot.pulls),
       opens: seat && !beside ? "pane" : "panel",
     };
   });

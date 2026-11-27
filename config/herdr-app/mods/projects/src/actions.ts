@@ -4,7 +4,7 @@ import type { OwnTab, Thread } from "./threads";
 
 const MOD = "projects";
 /** Every label this setup puts on a terminal. */
-const LABELS = ["project", "role", "task", "title", "state", "report", "report-turn", "handled", "resolved"];
+const LABELS = ["project", "role", "task", "title", "state", "report", "report-turn", "handled", "resolved", "pulls"];
 const MEMORY = ".claude/projects-memory";
 /** The launcher checks the machine, copies its scripts there and starts Claude: give it time on a slow line. */
 const START_TIMEOUT = 180_000;

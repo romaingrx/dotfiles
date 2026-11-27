@@ -126,7 +126,7 @@ function moveProject(names, moved, target) {
 
 // src/actions.ts
 var MOD = "projects";
-var LABELS = ["project", "role", "task", "title", "state", "report", "report-turn", "handled", "resolved"];
+var LABELS = ["project", "role", "task", "title", "state", "report", "report-turn", "handled", "resolved", "pulls"];
 var MEMORY = ".claude/projects-memory";
 var START_TIMEOUT = 180000;
 var MOVE_MEMORY = `cd "$HOME/$1" 2>/dev/null || exit 0
@@ -344,7 +344,6 @@ async function syncLayout() {
 import { agents, focused, machines, panes, shared as shared2, spaces, terminals } from "herdr";
 
 // src/pulls.ts
-var PULL_FIELDS = "number,url,state,isDraft,reviewDecision,autoMergeRequest,baseRefName";
 var STAGE_WORDS = {
   draft: "draft",
   review: "in review",
@@ -353,6 +352,12 @@ var STAGE_WORDS = {
   merged: "merged",
   closed: "closed"
 };
+var PULL_FIELDS = "number,url,state,isDraft,reviewDecision,autoMergeRequest,baseRefName,headRefName,title";
+var MAX_DECLARED = 8;
+var PULL_URL = /^https:\/\/([^/\s]+)\/([^/\s]+)\/([^/\s]+)\/pull\/(\d+)$/;
+function isStage(word) {
+  return typeof word === "string" && word in STAGE_WORDS;
+}
 function stageOf(raw) {
   if (raw.state === "MERGED")
     return "merged";
@@ -371,18 +376,87 @@ function stageOf(raw) {
 function parsePull(value) {
   if (!isRecord(value) || typeof value.number !== "number" || typeof value.url !== "string")
     return null;
-  const stored = typeof value.stage === "string" && value.stage in STAGE_WORDS ? value.stage : null;
+  const title = text(value.title);
   const base = text(value.base) ?? text(value.baseRefName);
-  return { number: value.number, url: value.url, stage: stored ?? stageOf(value), base };
+  const head = text(value.head) ?? text(value.headRefName);
+  if (!title || !base || !head)
+    return null;
+  return {
+    number: value.number,
+    url: value.url,
+    title,
+    stage: isStage(value.stage) ? value.stage : stageOf(value),
+    base,
+    head
+  };
 }
 function parsePulls(value) {
   if (!isRecord(value))
     return {};
-  const pulls = Object.entries(value).map(([address, pull]) => [address, parsePull(pull)]);
+  const pulls = Object.entries(value).map(([key, pull]) => [key, parsePull(pull)]);
   return Object.fromEntries(pulls.filter((entry) => entry[1] !== null));
 }
-function pullLabel(pull) {
-  return `#${pull.number} ${STAGE_WORDS[pull.stage]}`;
+function parseDeclared(label) {
+  if (typeof label !== "string")
+    return [];
+  const urls = label.split(/\s+/).filter((word) => PULL_URL.test(word));
+  return [...new Set(urls)].slice(0, MAX_DECLARED);
+}
+function placeOf(url) {
+  const [, host, owner, name, number] = PULL_URL.exec(url) ?? [];
+  return host && owner && name && number ? { host, owner, name, number: Number(number) } : null;
+}
+function refsOf(terminal, declared) {
+  if (declared.length === 0)
+    return [{ kind: "branch", terminal }];
+  return declared.map((url) => ({ kind: "declared", url }));
+}
+function refKey(ref) {
+  return ref.kind === "declared" ? ref.url : ref.terminal;
+}
+function depth(pull, pulls) {
+  let steps = 0;
+  let below = pulls.find((other) => other.head === pull.base);
+  while (below && steps < pulls.length) {
+    steps++;
+    const { base } = below;
+    below = pulls.find((other) => other.head === base);
+  }
+  return steps;
+}
+function orderStack(pulls) {
+  const depths = new Map(pulls.map((pull) => [pull, depth(pull, pulls)]));
+  return [...pulls].sort((a, b) => (depths.get(a) ?? 0) - (depths.get(b) ?? 0) || a.number - b.number);
+}
+function stackOf(refs, known) {
+  const found = refs.map((ref) => known[refKey(ref)]).filter((pull) => pull !== undefined);
+  return orderStack([...new Map(found.map((pull) => [pull.url, pull])).values()]);
+}
+var LEAD_ORDER = ["review", "changes", "draft", "landing", "merged", "closed"];
+function leadPull(stack) {
+  for (const stage of LEAD_ORDER) {
+    const pull = stack.find((candidate) => candidate.stage === stage);
+    if (pull)
+      return pull;
+  }
+  return null;
+}
+function openPulls(stack) {
+  return stack.filter((pull) => pull.stage !== "merged" && pull.stage !== "closed");
+}
+function stageLabel(stage) {
+  return STAGE_WORDS[stage];
+}
+function stackLabel(stack) {
+  const runs = [];
+  for (const pull of stack) {
+    const last = runs[runs.length - 1];
+    if (last?.stage === pull.stage)
+      last.numbers.push(`#${pull.number}`);
+    else
+      runs.push({ numbers: [`#${pull.number}`], stage: pull.stage });
+  }
+  return runs.length ? runs.map((run) => `${run.numbers.join(" ")} ${STAGE_WORDS[run.stage]}`).join(", ") : null;
 }
 
 // src/scene.ts
@@ -425,7 +499,8 @@ function parseTerminal(raw) {
     role: text(labels.role),
     heading: text(labels.title) ?? text(labels.task),
     reported: currentReport(labels, raw.turn),
-    resolved: labels.resolved === "true"
+    resolved: labels.resolved === "true",
+    declared: parseDeclared(labels.pulls)
   };
 }
 
@@ -541,7 +616,7 @@ function checkout(seat, shared) {
   return { folder: cwd, branch };
 }
 function threadGroup(thread) {
-  return groupOf(thread.status, thread.resolved, thread.pull?.stage);
+  return groupOf(thread.status, thread.resolved, leadPull(thread.pulls)?.stage);
 }
 function projectThreads(snapshot, project) {
   const seated = seats(snapshot);
@@ -551,6 +626,7 @@ function projectThreads(snapshot, project) {
   const beside = lead !== undefined && seated.has(lead.address);
   return threadsOf(project).map((member) => {
     const seat = seated.get(member.address);
+    const refs = refsOf(member.address, member.declared);
     return {
       key: member.address,
       project: project.name,
@@ -565,7 +641,8 @@ function projectThreads(snapshot, project) {
       aside: spread ? member.machine ?? LOCAL : null,
       since: seat?.home?.tab.changed_at ?? member.since,
       checkout: checkout(seat, shared),
-      pull: snapshot.pulls[member.address] ?? null,
+      refs,
+      pulls: stackOf(refs, snapshot.pulls),
       opens: seat && !beside ? "pane" : "panel"
     };
   });
@@ -715,25 +792,39 @@ function selectProject(index) {
 
 // src/pull-reader.ts
 import { exec as exec2, setShared as setShared3 } from "herdr";
+
+// src/pull-asks.ts
+function askOf(thread, ref) {
+  const on = machineOf(thread.key);
+  if (ref.kind === "declared")
+    return { key: refKey(ref), args: [ref.url], cwd: null, on };
+  return thread.checkout ? { key: refKey(ref), args: [], cwd: thread.checkout.folder, on } : null;
+}
+function pullAsks(threads) {
+  const asks = threads.flatMap((thread) => thread.refs.map((ref) => askOf(thread, ref)));
+  const byKey = new Map(asks.filter((ask) => ask !== null).map((ask) => [ask.key, ask]));
+  return [...byKey.values()];
+}
+
+// src/pull-reader.ts
 var PULL_TIMEOUT = 20000;
-var NO_PULL = /no pull requests found/;
-async function readPull(thread) {
-  if (!thread.checkout)
-    return null;
+var NO_PULL = /no pull requests found|Could not resolve to a PullRequest/;
+async function readPull(ask, known) {
+  const before = known[ask.key] ?? null;
   try {
-    const options = { cwd: thread.checkout.folder, on: machineOf(thread.key), timeout: PULL_TIMEOUT };
-    const result = await exec2("gh", ["pr", "view", "--json", PULL_FIELDS], options);
+    const options = { ...ask.cwd !== null && { cwd: ask.cwd }, on: ask.on, timeout: PULL_TIMEOUT };
+    const result = await exec2("gh", ["pr", "view", ...ask.args, "--json", PULL_FIELDS], options);
     if (result.code === 0)
-      return parsePull(JSON.parse(result.stdout)) ?? thread.pull;
-    return NO_PULL.test(result.stderr) ? null : thread.pull;
+      return parsePull(JSON.parse(result.stdout)) ?? before;
+    return NO_PULL.test(result.stderr) ? null : before;
   } catch {
-    return thread.pull;
+    return before;
   }
 }
 async function refreshPulls() {
   const { snapshot, projects } = readScene();
   const open = projects.flatMap((project) => projectThreads(snapshot, project)).filter((thread) => !thread.resolved);
-  const read = await Promise.all(open.map(async (thread) => [thread.key, await readPull(thread)]));
+  const read = await Promise.all(pullAsks(open).map(async (ask) => [ask.key, await readPull(ask, snapshot.pulls)]));
   const pulls = Object.fromEntries(read.filter(([, pull]) => pull !== null));
   if (JSON.stringify(pulls) !== JSON.stringify(snapshot.pulls))
     setShared3(PULLS, pulls);
@@ -1070,11 +1161,10 @@ function place2(project, offline) {
   const where = project.machines.length > 1 ? count(project.machines.length, "machine") : machine ?? LOCAL;
   return offline ? `${where} · offline` : where;
 }
-function detail(project, pulls) {
+function detail(project, groups) {
   const lead = leadOf(project);
-  const open = threadsOf(project).filter((thread) => !thread.resolved);
-  const groupOfThread = (thread) => groupOf(thread.status, false, pulls[thread.address]?.stage);
-  const amount = (group) => open.filter((thread) => groupOfThread(thread) === group).length;
+  const open = groups.filter((group) => group !== "resolved");
+  const amount = (group) => open.filter((candidate) => candidate === group).length;
   const moves = [
     lead && groupOf(lead.status, lead.resolved) === "waiting" ? "orchestrator waits" : null,
     amount("review") > 0 ? `${amount("review")} to review` : null,
@@ -1086,12 +1176,12 @@ function detail(project, pulls) {
     return moves.join(" · ");
   return open.length > 0 ? count(open.length, "thread") : "No thread";
 }
-function projectEntry(project, { selected, offline, pulls }) {
+function projectEntry(project, { selected, offline, groups }) {
   return {
     id: `project-${project.name}`,
     name: project.name,
     aside: place2(project, offline),
-    detail: detail(project, pulls),
+    detail: detail(project, groups),
     status: attention(mostUrgent(project.members.map((member) => member.status))),
     selected
   };
@@ -1132,8 +1222,7 @@ function threadMark(colors, thread) {
 }
 function threadMeta(thread, now) {
   const since = thread.since === null ? null : age(now - thread.since);
-  const pull = thread.pull ? pullLabel(thread.pull) : null;
-  return [thread.aside, pull, since].filter((part) => part !== null).join(" · ");
+  return [thread.aside, stackLabel(thread.pulls), since].filter((part) => part !== null).join(" · ");
 }
 function threadState(thread, now) {
   return [groupLabel(threadGroup(thread)), threadMeta(thread, now)].filter(Boolean).join(" · ");
@@ -1170,7 +1259,8 @@ class ProjectList {
     })).children(rows).when(rows.length === 0, (el) => el.child(div5().px(8).text_size(12).text_color(colors.muted).child("No project yet. Start one with the + above.")));
   }
   row(colors, scene, project, offline) {
-    const entry = projectEntry(project, { selected: project === scene.shown, offline, pulls: scene.snapshot.pulls });
+    const groups = projectThreads(scene.snapshot, project).map(threadGroup);
+    const entry = projectEntry(project, { selected: project === scene.shown, offline, groups });
     return entryRow(colors, entry, {
       onOpen: () => openProject(scene, project),
       onMenu: () => openProjectMenu(project.name),
@@ -1321,6 +1411,108 @@ class RenameProjectDialog {
 import { h_flex as h_flex7, InputState as InputState3, TextareaState, v_flex as v_flex6, VirtualListScrollHandle } from "gpui-base";
 import { closeOverlay as closeOverlay4 } from "herdr";
 
+// src/review/diff.ts
+var USUAL_BASES = ["origin/HEAD", "origin/main", "origin/master", "main", "master"];
+function baseRefs(pullBase) {
+  const named = pullBase ? [`origin/${pullBase}`, pullBase] : [];
+  return [...new Set([...named, ...USUAL_BASES])];
+}
+function reviewRange(pull, branch) {
+  const tip = pull && pull.head !== branch ? pull.head : null;
+  return { bases: baseRefs(pull?.base ?? null), tip };
+}
+var NO_FILE = "/dev/null";
+var FILE = "diff --git ";
+var QUOTED = /^"(.*)"$/;
+var HUNK = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
+function samePath(pair) {
+  const path = pair.slice("a/".length, (pair.length - " ".length) / 2);
+  return pair === `a/${path} b/${path}` ? path : null;
+}
+function sidePath(line) {
+  const path = line.slice(4).replace(/\t$/, "").replace(QUOTED, "$1");
+  return path === NO_FILE ? null : path.slice(2);
+}
+function openFile(line) {
+  const pair = line.slice(FILE.length);
+  return { path: samePath(pair) ?? pair, from: null, change: "modified", binary: false, hunks: [] };
+}
+function readHeader(file, line) {
+  if (line.startsWith("new file mode"))
+    file.change = "added";
+  else if (line.startsWith("deleted file mode"))
+    file.change = "deleted";
+  else if (line.startsWith("rename from "))
+    file.from = line.slice("rename from ".length);
+  else if (line.startsWith("rename to ")) {
+    file.path = line.slice("rename to ".length);
+    file.change = "renamed";
+  } else if (line.startsWith("Binary files ") || line === "GIT binary patch")
+    file.binary = true;
+  else if (line.startsWith("--- ") || line.startsWith("+++ "))
+    file.path = sidePath(line) ?? file.path;
+}
+function openHunk(file, line, sizes) {
+  file.hunks.push({ header: line, lines: [] });
+  return {
+    old: Number(sizes[1]),
+    oldLeft: Number(sizes[2] ?? 1),
+    now: Number(sizes[3]),
+    nowLeft: Number(sizes[4] ?? 1)
+  };
+}
+function readLine(lines, line, at) {
+  const text = line.slice(1);
+  if (line.startsWith("+")) {
+    lines.push({ sign: "+", old: null, now: at.now++, text });
+    at.nowLeft--;
+  } else if (line.startsWith("-")) {
+    lines.push({ sign: "-", old: at.old++, now: null, text });
+    at.oldLeft--;
+  } else if (!line.startsWith("\\")) {
+    lines.push({ sign: " ", old: at.old++, now: at.now++, text });
+    at.oldLeft--;
+    at.nowLeft--;
+  }
+}
+function count2(lines, sign) {
+  return lines.filter((line) => line.sign === sign).length;
+}
+function closeFile(file) {
+  const lines = file.hunks.flatMap((hunk) => hunk.lines);
+  return {
+    ...file,
+    from: file.change === "renamed" ? file.from : null,
+    added: count2(lines, "+"),
+    removed: count2(lines, "-")
+  };
+}
+function parseDiff(text) {
+  const files = [];
+  let at = { old: 0, now: 0, oldLeft: 0, nowLeft: 0 };
+  for (const line of text.split(`
+`)) {
+    const file = files[files.length - 1];
+    const hunk = file?.hunks[file.hunks.length - 1];
+    const sizes = HUNK.exec(line);
+    if (hunk && (at.oldLeft > 0 || at.nowLeft > 0))
+      readLine(hunk.lines, line, at);
+    else if (line.startsWith(FILE))
+      files.push(openFile(line));
+    else if (file && sizes)
+      at = openHunk(file, line, sizes);
+    else if (file)
+      readHeader(file, line);
+  }
+  return files.map(closeFile);
+}
+function parseBranchDiff(output) {
+  const [base = "", ...diff] = output.split(`
+`);
+  return { base, files: parseDiff(diff.join(`
+`)) };
+}
+
 // src/review/draft.ts
 var NO_DRAFT = { note: "", comments: [] };
 function anchorKey(anchor) {
@@ -1452,9 +1644,13 @@ function commentText(comment, index) {
 function countOf(comments) {
   return comments === 1 ? "1 comment" : `${comments} comments`;
 }
-function reviewMessage(draft, paths) {
+function draftKey(thread, pull) {
+  return pull ? `${thread}#${pull.number}` : thread;
+}
+function reviewMessage(draft, paths, pull) {
   const comments = inOrder(draft.comments, paths);
-  const head = comments.length ? `Review of your branch: ${countOf(comments.length)}.` : "Review of your branch.";
+  const what = pull ? `pull request #${pull.number} (${pull.url})` : "your branch";
+  const head = comments.length ? `Review of ${what}: ${countOf(comments.length)}.` : `Review of ${what}.`;
   const note = draft.note.trim();
   return [head, ...note ? [note] : [], ...comments.map(commentText)].join(`
 
@@ -1526,149 +1722,59 @@ function discussionsAt(discussions, anchor) {
 
 // src/review/reader.ts
 import { exec as exec3 } from "herdr";
-
-// src/review/diff.ts
-var USUAL_BASES = ["origin/HEAD", "origin/main", "origin/master", "main", "master"];
-function baseRefs(pullBase) {
-  const named = pullBase ? [`origin/${pullBase}`, pullBase] : [];
-  return [...new Set([...named, ...USUAL_BASES])];
-}
-var NO_FILE = "/dev/null";
-var FILE = "diff --git ";
-var QUOTED = /^"(.*)"$/;
-var HUNK = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
-function samePath(pair) {
-  const path = pair.slice("a/".length, (pair.length - " ".length) / 2);
-  return pair === `a/${path} b/${path}` ? path : null;
-}
-function sidePath(line) {
-  const path = line.slice(4).replace(/\t$/, "").replace(QUOTED, "$1");
-  return path === NO_FILE ? null : path.slice(2);
-}
-function openFile(line) {
-  const pair = line.slice(FILE.length);
-  return { path: samePath(pair) ?? pair, from: null, change: "modified", binary: false, hunks: [] };
-}
-function readHeader(file, line) {
-  if (line.startsWith("new file mode"))
-    file.change = "added";
-  else if (line.startsWith("deleted file mode"))
-    file.change = "deleted";
-  else if (line.startsWith("rename from "))
-    file.from = line.slice("rename from ".length);
-  else if (line.startsWith("rename to ")) {
-    file.path = line.slice("rename to ".length);
-    file.change = "renamed";
-  } else if (line.startsWith("Binary files ") || line === "GIT binary patch")
-    file.binary = true;
-  else if (line.startsWith("--- ") || line.startsWith("+++ "))
-    file.path = sidePath(line) ?? file.path;
-}
-function openHunk(file, line, sizes) {
-  file.hunks.push({ header: line, lines: [] });
-  return {
-    old: Number(sizes[1]),
-    oldLeft: Number(sizes[2] ?? 1),
-    now: Number(sizes[3]),
-    nowLeft: Number(sizes[4] ?? 1)
-  };
-}
-function readLine(lines, line, at) {
-  const text = line.slice(1);
-  if (line.startsWith("+")) {
-    lines.push({ sign: "+", old: null, now: at.now++, text });
-    at.nowLeft--;
-  } else if (line.startsWith("-")) {
-    lines.push({ sign: "-", old: at.old++, now: null, text });
-    at.oldLeft--;
-  } else if (!line.startsWith("\\")) {
-    lines.push({ sign: " ", old: at.old++, now: at.now++, text });
-    at.oldLeft--;
-    at.nowLeft--;
-  }
-}
-function count2(lines, sign) {
-  return lines.filter((line) => line.sign === sign).length;
-}
-function closeFile(file) {
-  const lines = file.hunks.flatMap((hunk) => hunk.lines);
-  return {
-    ...file,
-    from: file.change === "renamed" ? file.from : null,
-    added: count2(lines, "+"),
-    removed: count2(lines, "-")
-  };
-}
-function parseDiff(text) {
-  const files = [];
-  let at = { old: 0, now: 0, oldLeft: 0, nowLeft: 0 };
-  for (const line of text.split(`
-`)) {
-    const file = files[files.length - 1];
-    const hunk = file?.hunks[file.hunks.length - 1];
-    const sizes = HUNK.exec(line);
-    if (hunk && (at.oldLeft > 0 || at.nowLeft > 0))
-      readLine(hunk.lines, line, at);
-    else if (line.startsWith(FILE))
-      files.push(openFile(line));
-    else if (file && sizes)
-      at = openHunk(file, line, sizes);
-    else if (file)
-      readHeader(file, line);
-  }
-  return files.map(closeFile);
-}
-function parseBranchDiff(output) {
-  const [base = "", ...diff] = output.split(`
-`);
-  return { base, files: parseDiff(diff.join(`
-`)) };
-}
-
-// src/review/reader.ts
 var DIFF_TIMEOUT = 60000;
+var FOLDER = "-";
 var DIFF = `cd "$(git rev-parse --show-toplevel)" || exit 1
+tip=$1
+shift
+[ "$tip" = ${FOLDER} ] && tip=
+if [ -n "$tip" ] && ! git rev-parse --verify --quiet "$tip^{commit}" >/dev/null; then tip="origin/$tip"; fi
 for base in "$@"; do
-  fork=$(git merge-base "$base" HEAD 2>/dev/null) || continue
+  fork=$(git merge-base "$base" "\${tip:-HEAD}" 2>/dev/null) || continue
   printf '%s\\n' "$base"
-  git --no-optional-locks -c core.quotePath=false diff --no-color --no-ext-diff --no-textconv -M "$fork" -- || exit 1
-  git ls-files --others --exclude-standard -z |
+  git --no-optional-locks -c core.quotePath=false diff --no-color --no-ext-diff --no-textconv -M "$fork" \${tip:+"$tip"} -- || exit 1
+  [ -n "$tip" ] || git ls-files --others --exclude-standard -z |
     xargs -0 -r -n 1 git -c core.quotePath=false diff --no-color --no-index -- /dev/null
   exit 0
 done
 echo "this repository has no base branch to compare with" >&2
 exit 1`;
-var DISCUSSIONS_TIMEOUT = 30000;
-async function readDiscussions(thread) {
-  if (!thread.checkout || !thread.pull)
-    return [];
-  const fields = ["owner={owner}", "name={repo}", `number=${thread.pull.number}`].flatMap((field) => ["-F", field]);
-  const options = { cwd: thread.checkout.folder, on: machineOf(thread.key), timeout: DISCUSSIONS_TIMEOUT };
-  const result = await exec3("gh", ["api", "graphql", ...fields, "-f", `query=${DISCUSSIONS_QUERY}`], options);
-  if (result.code !== 0)
-    throw new Error(`GitHub's comments: ${result.stderr.trim() || `gh ended with code ${result.code}`}`);
-  return parseDiscussions(JSON.parse(result.stdout));
-}
-async function postReply(thread, about, body) {
-  if (!thread.checkout)
-    throw new Error("this thread has no folder of its own to post from");
-  const fields = [`query=${REPLY_MUTATION}`, `discussion=${about.discussion}`, `body=${body}`].flatMap((field) => [
-    "-f",
-    field
-  ]);
-  const options = { cwd: thread.checkout.folder, on: machineOf(thread.key), timeout: DISCUSSIONS_TIMEOUT };
-  const result = await exec3("gh", ["api", "graphql", ...fields], options);
-  if (result.code !== 0)
-    throw new Error(`GitHub did not take the reply to @${about.author}: ${result.stderr.trim() || `gh ended with code ${result.code}`}`);
-}
-async function readBranchDiff(thread) {
+var GITHUB_TIMEOUT = 30000;
+async function inFolder(thread, program, args, timeout) {
   if (!thread.checkout)
     throw new Error("this thread has no folder of its own to review");
-  const options = { cwd: thread.checkout.folder, on: machineOf(thread.key), timeout: DIFF_TIMEOUT };
-  const result = await exec3("sh", ["-c", DIFF, "sh", ...baseRefs(thread.pull?.base ?? null)], options);
+  const result = await exec3(program, args, { cwd: thread.checkout.folder, on: machineOf(thread.key), timeout });
   if (result.code !== 0)
-    throw new Error(result.stderr.trim() || `git ended with code ${result.code}`);
-  return parseBranchDiff(result.stdout);
+    throw new Error(result.stderr.trim() || `${program} ended with code ${result.code}`);
+  return result.stdout;
+}
+function askGitHub(thread, host, query, fields) {
+  const args = ["api", "graphql", "--hostname", host, "-f", `query=${query}`, ...fields];
+  return inFolder(thread, "gh", args, GITHUB_TIMEOUT);
+}
+async function readBranchDiff(thread, range) {
+  const args = ["-c", DIFF, "sh", range.tip ?? FOLDER, ...range.bases];
+  return parseBranchDiff(await inFolder(thread, "sh", args, DIFF_TIMEOUT));
+}
+async function readDiscussions(thread, pull) {
+  const place = pull && placeOf(pull.url);
+  if (!place)
+    return [];
+  const fields = [`owner=${place.owner}`, `name=${place.name}`, `number=${place.number}`];
+  const answer = await askGitHub(thread, place.host, DISCUSSIONS_QUERY, fields.flatMap((field) => ["-F", field]));
+  return parseDiscussions(JSON.parse(answer));
+}
+async function postReply(thread, pull, about, body) {
+  const place = placeOf(pull.url);
+  if (!place)
+    throw new Error(`${pull.url} is not the URL of a pull request`);
+  const fields = [`discussion=${about.discussion}`, `body=${body}`].flatMap((field) => ["-f", field]);
+  try {
+    await askGitHub(thread, place.host, REPLY_MUTATION, fields);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`GitHub did not take the reply to @${about.author}: ${reason}`);
+  }
 }
 
 // src/review/rows.ts
@@ -1878,11 +1984,11 @@ function firstFile(files) {
 // src/review/store.ts
 import { setShared as setShared4, shared as shared3 } from "herdr";
 var REVIEWS = "projects.reviews";
-function readDraft(thread) {
-  return parseDrafts(shared3(REVIEWS))[thread] ?? NO_DRAFT;
+function readDraft(key) {
+  return parseDrafts(shared3(REVIEWS))[key] ?? NO_DRAFT;
 }
-function saveDraft(thread, draft) {
-  setShared4(REVIEWS, withDraft(parseDrafts(shared3(REVIEWS)), thread, draft));
+function saveDraft(key, draft) {
+  setShared4(REVIEWS, withDraft(parseDrafts(shared3(REVIEWS)), key, draft));
 }
 
 // src/review/view.ts
@@ -1997,6 +2103,17 @@ function fileList(colors, props) {
   const draw = (row) => row.kind === "folder" ? folderRow(colors, row, (cx) => props.onFold(row.path, cx)) : fileRow(colors, row, row.entry.file.path === props.open, (cx) => props.onOpen(row.entry.file.path, cx));
   return v_flex5().id("review-files").w(300).h_full().flex_none().p(6).border_r(1).border_color(colors.border).text_size(12.5).overflow_y_scrollbar().children(props.rows.map(draw)).when(props.rows.length === 0, (el) => el.child(div6().p(8).text_size(12).text_color(colors.muted).child(props.empty)));
 }
+function pullTab(colors, pull, shown, onPick) {
+  return h_flex6().id(`review-pull-${pull.number}`).h(24).max_w(340).min_w(0).px(8).gap(6).items_center().rounded(6).text_size(11.5).cursor_pointer().when(shown, (el) => el.bg(colors.selected)).text_color(shown ? colors.foreground : colors.muted).hover((style) => style.bg(colors.hover)).on_click((_event, cx) => onPick(cx)).child(div6().flex_none().font_medium().child(`#${pull.number}`)).child(div6().min_w(0).truncate().child(pull.title)).child(div6().flex_none().text_color(colors.dim).child(stageLabel(pull.stage)));
+}
+function pullStrip(colors, props) {
+  if (props.choices.length < 2)
+    return [];
+  const tabs = props.choices.map((pull) => pullTab(colors, pull, pull.url === props.shown?.url, (cx) => props.onPick(pull, cx)));
+  return [
+    h_flex6().h(34).flex_none().px(10).gap(4).items_center().border_b(1).border_color(colors.border).children(tabs)
+  ];
+}
 function reviewHead(colors, props) {
   const added = props.files.reduce((sum, file) => sum + file.added, 0);
   const removed = props.files.reduce((sum, file) => sum + file.removed, 0);
@@ -2043,9 +2160,11 @@ class ReviewDialog {
   note;
   scroll = VirtualListScrollHandle.new();
   handle;
+  subject = null;
   diff = null;
   discussions = [];
   asked = false;
+  round = 0;
   loading = false;
   error = null;
   sending = false;
@@ -2060,7 +2179,7 @@ class ReviewDialog {
     this.overlay = overlay;
     this.thread = thread;
     this.handle = cx.focus_handle();
-    this.note = InputState3.new({ placeholder: "A word on the whole branch (optional)", value: readDraft(thread).note });
+    this.note = InputState3.new({ placeholder: "A word on the whole branch (optional)" });
     this.note.on("change", (_event, change) => change.notify());
     this.note.on("blur", () => this.keepNote());
     this.field.on("submit", (event, submit) => {
@@ -2074,10 +2193,12 @@ class ReviewDialog {
     const thread = this.find();
     if (thread && !this.asked)
       this.load(cx);
-    const draft = readDraft(this.thread);
+    const draft = readDraft(this.key());
     const files = reviewFiles(this.diff?.files ?? [], draft.comments, this.discussions);
     const shown = files.find((entry) => entry.file.path === this.open) ?? firstFile(files);
-    const range = thread?.checkout && this.diff ? `${thread.checkout.branch} → ${this.diff.base}` : null;
+    const branch = thread?.checkout?.branch;
+    const tip = branch && (reviewRange(this.subject, branch).tip ?? branch);
+    const range = tip && this.diff ? `${tip} → ${this.diff.base}` : null;
     return v_flex6().id("review").size_full().bg(colors.popover).text_color(colors.foreground).track_focus(this.handle).child(reviewHead(colors, {
       title: thread?.title ?? "This thread has ended.",
       range,
@@ -2085,6 +2206,10 @@ class ReviewDialog {
       loading: this.loading,
       onRefresh: (cx) => this.load(cx),
       onClose: () => closeOverlay4(this.overlay)
+    })).children(pullStrip(colors, {
+      choices: openPulls(thread?.pulls ?? []),
+      shown: this.subject,
+      onPick: (pull, cx) => this.turn(pull, cx)
     })).child(h_flex7().flex_1().min_h(0).items_start().child(fileList(colors, {
       rows: fileTree(files, this.folded),
       onFold: (path, cx) => this.fold(path, cx),
@@ -2106,6 +2231,27 @@ class ReviewDialog {
   find() {
     const { snapshot, projects } = readScene();
     return threadAt(snapshot, projects, this.thread);
+  }
+  key() {
+    return draftKey(this.thread, this.subject);
+  }
+  turnTo(pull) {
+    this.keepTyped();
+    this.keepNote();
+    this.subject = pull;
+    this.diff = null;
+    this.discussions = [];
+    this.open = null;
+    this.target = null;
+    this.drawn = null;
+    this.field.set_value("");
+    this.note.set_value(readDraft(this.key()).note);
+  }
+  turn(pull, cx) {
+    if (pull.url === this.subject?.url)
+      return;
+    this.turnTo(pull);
+    this.load(cx);
   }
   emptyText() {
     if (this.error && !this.diff)
@@ -2202,28 +2348,40 @@ class ReviewDialog {
   }
   load(cx) {
     const thread = this.find();
-    if (!thread || this.loading)
+    if (!thread)
       return;
+    if (this.subject === null)
+      this.turnTo(leadPull(openPulls(thread.pulls)));
+    const { subject } = this;
+    const range = reviewRange(subject, thread.checkout?.branch ?? "");
+    const round = ++this.round;
+    const latest = () => this.round === round;
     this.asked = true;
     this.loading = true;
     this.error = null;
     cx.spawn(async (task) => {
+      const show = () => {
+        this.drawn = null;
+        task.notify();
+      };
       await Promise.all([
-        this.read(readBranchDiff(thread), (diff) => this.diff = diff, task),
-        this.read(readDiscussions(thread), (discussions) => this.discussions = discussions, task)
+        this.read(readBranchDiff(thread, range), (diff) => this.diff = diff, latest).then(show),
+        this.read(readDiscussions(thread, subject), (discussions) => this.discussions = discussions, latest).then(show)
       ]);
-      this.loading = false;
+      if (latest())
+        this.loading = false;
       task.notify();
     });
   }
-  async read(reading, keep, task) {
+  async read(reading, keep, latest) {
     try {
-      keep(await reading);
+      const value = await reading;
+      if (latest())
+        keep(value);
     } catch (error) {
-      this.error = messageOf(error);
+      if (latest())
+        this.error = messageOf(error);
     }
-    this.drawn = null;
-    task.notify();
   }
   show(path, cx) {
     this.keepTyped();
@@ -2245,7 +2403,7 @@ class ReviewDialog {
     if (this.shift && row.kind === "line" && this.extend(rows, row.anchor, cx))
       return;
     this.keepTyped();
-    const written = commentAt(readDraft(this.thread), row.anchor);
+    const written = commentAt(readDraft(this.key()), row.anchor);
     const line = rows.find((candidate) => candidate.key === lineKey(row.anchor));
     this.target = {
       anchor: written ?? { path: row.anchor.path, side: row.anchor.side, line: row.anchor.line, start: null },
@@ -2275,11 +2433,11 @@ class ReviewDialog {
     return discussion ? aboutOf(discussion) : null;
   }
   moveComment(from, to) {
-    const draft = readDraft(this.thread);
+    const draft = readDraft(this.key());
     const written = commentAt(draft, from);
     if (!written)
       return;
-    saveDraft(this.thread, withComment(withoutComment(draft, from), to.anchor, { ...written, code: to.code }));
+    saveDraft(this.key(), withComment(withoutComment(draft, from), to.anchor, { ...written, code: to.code }));
   }
   fold(path, cx) {
     if (!this.folded.delete(path))
@@ -2290,16 +2448,18 @@ class ReviewDialog {
     const { target } = this;
     if (!target || this.field.value().trim() === "")
       return;
-    const draft = readDraft(this.thread);
+    const draft = readDraft(this.key());
     const post = chosen ?? commentAt(draft, target.anchor)?.about?.post ?? "none";
     const about = target.about && { ...target.about, post };
-    saveDraft(this.thread, withComment(draft, target.anchor, { code: target.code, body: this.field.value(), about }));
+    saveDraft(this.key(), withComment(draft, target.anchor, { code: target.code, body: this.field.value(), about }));
   }
   keepNote() {
-    const draft = readDraft(this.thread);
-    if (this.sent || draft.note === this.note.value())
+    if (this.sent || !this.asked)
       return;
-    saveDraft(this.thread, withNote(draft, this.note.value()));
+    const draft = readDraft(this.key());
+    if (draft.note === this.note.value())
+      return;
+    saveDraft(this.key(), withNote(draft, this.note.value()));
   }
   keepComment(cx, post) {
     this.keepTyped(post);
@@ -2309,16 +2469,16 @@ class ReviewDialog {
     this.field.set_value(ADDRESS);
     this.keepComment(cx, "none");
   }
-  async postReplies(thread) {
-    for (const comment of duePosts(readDraft(this.thread))) {
-      if (!comment.about)
+  async postReplies(thread, key, pull) {
+    for (const comment of duePosts(readDraft(key))) {
+      if (!comment.about || !pull)
         continue;
-      await postReply(thread, comment.about, comment.body);
-      saveDraft(this.thread, withPosted(readDraft(this.thread), comment));
+      await postReply(thread, pull, comment.about, comment.body);
+      saveDraft(key, withPosted(readDraft(key), comment));
     }
   }
   removeComment(anchor, cx) {
-    saveDraft(this.thread, withoutComment(readDraft(this.thread), anchor));
+    saveDraft(this.key(), withoutComment(readDraft(this.key()), anchor));
     this.closeComposer(cx);
   }
   closeComposer(cx) {
@@ -2333,7 +2493,9 @@ class ReviewDialog {
     this.keepTyped();
     this.keepNote();
     const thread = this.find();
-    if (!thread || isEmpty(readDraft(this.thread)))
+    const key = this.key();
+    const { subject } = this;
+    if (!thread || isEmpty(readDraft(key)))
       return;
     const paths = (this.diff?.files ?? []).map((file) => file.path);
     this.sending = true;
@@ -2345,17 +2507,17 @@ class ReviewDialog {
         task.notify();
       };
       try {
-        await this.postReplies(thread);
+        await this.postReplies(thread, key, subject);
       } catch (error) {
         return fail(`${messageOf(error)}. Nothing went to the thread: send again, or keep that answer for the thread only.`);
       }
       try {
-        await sendToThread(this.thread, reviewMessage(readDraft(this.thread), paths));
+        await sendToThread(this.thread, reviewMessage(readDraft(key), paths, subject));
       } catch (error) {
         return fail(messageOf(error));
       }
       this.sent = true;
-      saveDraft(this.thread, NO_DRAFT);
+      saveDraft(key, NO_DRAFT);
       closeOverlay4(this.overlay);
     });
     cx.notify();
@@ -2395,7 +2557,7 @@ function controls(colors, thread) {
       showThreadList();
     }
   });
-  const { pull } = thread;
+  const pull = leadPull(thread.pulls);
   const link = pull ? [
     iconButton(colors, {
       id: "pull-request",

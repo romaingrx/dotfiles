@@ -1,3 +1,5 @@
+import type { Pull } from "../pulls";
+
 /** What a line of a diff does: the branch adds it, removes it, or keeps it. */
 export type Sign = "+" | "-" | " ";
 
@@ -47,6 +49,24 @@ const USUAL_BASES = ["origin/HEAD", "origin/main", "origin/master", "main", "mas
 export function baseRefs(pullBase: string | null): string[] {
   const named = pullBase ? [`origin/${pullBase}`, pullBase] : [];
   return [...new Set([...named, ...USUAL_BASES])];
+}
+
+/** What the review of one layer of a thread's work reads. */
+export interface ReviewRange {
+  /** The refs to compare with, best first. */
+  readonly bases: readonly string[];
+  /** The branch to read; null reads the folder, with what is not committed. */
+  readonly tip: string | null;
+}
+
+/**
+ * What to read for a pull request of a thread whose folder is on `branch`.
+ * The layer that is checked out is read from the folder; a lower layer of a
+ * stack is read from its own branch, so only what it committed.
+ */
+export function reviewRange(pull: Pull | null, branch: string): ReviewRange {
+  const tip = pull && pull.head !== branch ? pull.head : null;
+  return { bases: baseRefs(pull?.base ?? null), tip };
 }
 
 const NO_FILE = "/dev/null";

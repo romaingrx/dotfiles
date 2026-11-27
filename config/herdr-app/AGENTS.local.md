@@ -66,19 +66,29 @@ one machine, so it runs while this computer is off.
   instructions in `thread.md`. A click opens the thread in the right panel;
   its header has its state, rename, resolve, and a drawer with the Files and
   Changes of that thread's folder.
-- **Pull requests:** every two minutes, while the window is on show, the mod
-  reads the pull request of each open thread with `gh pr view` in the thread's
-  folder, on its machine. A thread that rests with a pull request open for
-  review is listed under Ready for review, and one that is approved or set to
-  merge under Landing. The row shows the number and the state, and the
-  thread's header opens it in the browser. Sessions that share a folder get
-  none: the branch there belongs to none of them.
+- **Pull requests:** a thread owns a list of pull requests, also a stack. It
+  declares them with `report.sh --pr <url>`, which keeps their URLs in the
+  `pulls` label of its terminal. A thread that declared none gets the pull
+  request of the branch in its folder; sessions that share a folder then get
+  none, since the branch there belongs to none of them. Every two minutes,
+  while the window is on show, the mod reads each one with `gh pr view` on
+  the thread's machine. The row shows the stack from the lowest one up, such
+  as `#1 merged, #2 #3 in review`. One pull request says where the stack
+  stands: the lowest of those that most call for the person. So a thread that
+  rests is under Ready for review when any of its pull requests is ready, and
+  under Landing only when all are approved or merged. The thread's header
+  opens that one in the browser. A thread lands its own stack, on the
+  person's word in its terminal (`agent/thread.md`).
 - **Review:** the thread's header opens a review of its branch: the files it
   changed against its base, as a tree of folders, and the diff of one of
   them. A Shift-click on a second line puts a comment on all the lines from
   the first one to it. The base is the one
   of its pull request, else the repository's main branch. The diff is of the
-  thread's folder, so it has what is not committed yet. A click on a line
+  thread's folder, so it has what is not committed yet. A thread with a stack
+  gets a strip with one tab for each open pull request (its number, its
+  title and where it stands): the review is of one layer,
+  with its own draft, and a layer that is not checked out is read from its
+  branch. A click on a line
   takes a comment. The comments are a draft that stays until it is sent; Send
   types them into the thread as one message, each with its file, its line and
   the line's text. The open discussions of the

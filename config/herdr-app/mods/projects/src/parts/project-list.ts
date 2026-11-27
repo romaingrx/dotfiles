@@ -7,6 +7,7 @@ import type { Project } from "../projects";
 import { entryRow } from "../rows";
 import type { Scene } from "../scene";
 import { readOffline, readScene } from "../snapshot";
+import { projectThreads, threadGroup } from "../threads";
 import { chromeIcon, heading, readTheme, type Theme } from "../ui";
 import type { Part } from "./part";
 
@@ -52,7 +53,8 @@ export class ProjectList implements Part {
   }
 
   private row(colors: Theme, scene: Scene, project: Project, offline: boolean): Element {
-    const entry = projectEntry(project, { selected: project === scene.shown, offline, pulls: scene.snapshot.pulls });
+    const groups = projectThreads(scene.snapshot, project).map(threadGroup);
+    const entry = projectEntry(project, { selected: project === scene.shown, offline, groups });
     return entryRow(colors, entry, {
       onOpen: () => openProject(scene, project),
       onMenu: () => openProjectMenu(project.name),

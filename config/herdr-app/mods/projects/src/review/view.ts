@@ -12,6 +12,7 @@ import {
 } from "gpui-base";
 import { settings } from "herdr";
 import { text } from "../parse";
+import { stageLabel, type Pull, type Stack } from "../pulls";
 import { chromeIcon, iconButton, optional, textButton, type Handler, type TextButton, type Theme } from "../ui";
 import type { Change, DiffFile, DiffLine } from "./diff";
 import type { Card, Row } from "./rows";
@@ -347,6 +348,47 @@ export interface ReviewHead {
   readonly loading: boolean;
   readonly onRefresh: Handler;
   readonly onClose: Handler;
+}
+
+export interface PullStrip {
+  /** The pull requests the person can review, the lowest of a stack first. */
+  readonly choices: Stack;
+  /** The one whose diff shows. */
+  readonly shown: Pull | null;
+  readonly onPick: (pull: Pull, cx: Context) => void;
+}
+
+/** One pull request of a stack, as a tab: its number, its title, and where it stands. */
+function pullTab(colors: Theme, pull: Pull, shown: boolean, onPick: Handler): Element {
+  return h_flex()
+    .id(`review-pull-${pull.number}`)
+    .h(24)
+    .max_w(340)
+    .min_w(0)
+    .px(8)
+    .gap(6)
+    .items_center()
+    .rounded(6)
+    .text_size(11.5)
+    .cursor_pointer()
+    .when(shown, (el) => el.bg(colors.selected))
+    .text_color(shown ? colors.foreground : colors.muted)
+    .hover((style) => style.bg(colors.hover))
+    .on_click((_event, cx) => onPick(cx))
+    .child(div().flex_none().font_medium().child(`#${pull.number}`))
+    .child(div().min_w(0).truncate().child(pull.title))
+    .child(div().flex_none().text_color(colors.dim).child(stageLabel(pull.stage)));
+}
+
+/** The strip under the review's head, for a thread with a stack: one tab for each open pull request. None for one. */
+export function pullStrip(colors: Theme, props: PullStrip): Element[] {
+  if (props.choices.length < 2) return [];
+  const tabs = props.choices.map((pull) =>
+    pullTab(colors, pull, pull.url === props.shown?.url, (cx) => props.onPick(pull, cx)),
+  );
+  return [
+    h_flex().h(34).flex_none().px(10).gap(4).items_center().border_b(1).border_color(colors.border).children(tabs),
+  ];
 }
 
 export function reviewHead(colors: Theme, props: ReviewHead): Element {

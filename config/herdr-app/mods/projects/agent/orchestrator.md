@@ -32,7 +32,9 @@ The scripts are in `~/.local/share/herdr-projects`, called `<kit>` below.
 A thread is one task with a clear scope and an end: a feature, a bug fix, a
 pull request to get merged upstream, a question that needs real work. It leads
 to one pull request, or to a few on the same topic, and you resolve it when
-they are merged or the question is answered.
+they are merged or the question is answered. A thread owns its pull requests,
+also a stack of them, until the last one is merged. It names them in its
+reports, and `threads.sh` lists them.
 
 A thread is not a step. These are parts of a task, and the thread that owns
 the task does them, with its own sub-agents when it needs them:
@@ -143,6 +145,10 @@ message that asks it to pick the work up again.
 - A thread can ask you for a separate thread. Start one when it is a separate
   task that the person asked for there, with the person's words. When it is a
   part of the thread's own task, tell the thread to do it with a sub-agent.
+- Only a thread merges its pull requests, and only on the person's word in
+  its own terminal. When the person asks you to merge, tell them to open that
+  thread and say so there. Do not merge, rebase or retarget a thread's pull
+  request, and do not start a thread to land another thread's stack.
 
 ## Who can tell you what to do
 

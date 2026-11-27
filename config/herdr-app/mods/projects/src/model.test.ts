@@ -14,9 +14,27 @@ import {
   waitingOn,
   type Project,
 } from "./projects";
-import { parsePull, parsePulls, pullLabel } from "./pulls";
+import { pullAsks } from "./pull-asks";
+import {
+  leadPull,
+  MAX_DECLARED,
+  openPulls,
+  orderStack,
+  parseDeclared,
+  parsePull,
+  parsePulls,
+  placeOf,
+  pullLabel,
+  refKey,
+  refsOf,
+  stackLabel,
+  stackOf,
+  stageLabel,
+  type Pull,
+  type PullStage,
+} from "./pulls";
 import { buildScene, usualFolder } from "./scene";
-import { groupOf, mostUrgent, parseReported, parseStatus, withReport } from "./status";
+import { groupOf, mostUrgent, parseReported, parseStatus, withReport, type Group } from "./status";
 import { machineOf, parseTerminal, type Terminal } from "./terminal";
 import {
   agentOrder,
@@ -25,6 +43,7 @@ import {
   projectFootprint,
   projectThreads,
   threadAt,
+  threadGroup,
   type Snapshot,
   type Thread,
 } from "./threads";
@@ -57,8 +76,14 @@ function terminal(overrides: Partial<Terminal> & Pick<Terminal, "address">): Ter
     heading: null,
     reported: null,
     resolved: false,
+    declared: [],
     ...overrides,
   };
+}
+
+/** A pull request of a made-up repository: its branch is `b<number>`, on `main` unless told. */
+function pull(number: number, stage: PullStage, base = "main"): Pull {
+  return { number, url: `https://example.test/o/r/pull/${number}`, title: `Pull ${number}`, stage, base, head: `b${number}` };
 }
 
 function tab(overrides: Partial<TabInfo> & Pick<TabInfo, "id">): TabInfo {
@@ -112,6 +137,11 @@ function space(overrides: Partial<SpaceInfo> & Pick<SpaceInfo, "id">, tabs: TabI
 
 function snapshot(overrides: Partial<Snapshot>): Snapshot {
   return { spaces: [], panes: [], agents: [], terminals: [], pulls: {}, focused: null, ...overrides };
+}
+
+/** Whose move each thread of a project is, as the project's row counts them. */
+function groupsOf(project: Project, scene: Snapshot = snapshot({})): Group[] {
+  return projectThreads(scene, project).map(threadGroup);
 }
 
 function only(terminals: Terminal[]): Project {
@@ -252,7 +282,7 @@ describe("projects", () => {
   test("an entry says who waits and who works, and marks the most urgent state", () => {
     const billing = projects[1];
     if (!billing) throw new Error("no billing project");
-    expect(projectEntry(billing, { selected: true, offline: false, pulls: {} })).toMatchObject({
+    expect(projectEntry(billing, { selected: true, offline: false, groups: groupsOf(billing) })).toMatchObject({
       name: "billing",
       aside: "2 machines",
       detail: "1 waiting · 1 working",
@@ -262,17 +292,18 @@ describe("projects", () => {
   });
 
   test("a quiet project counts its open threads, and says when its machine is out of reach", () => {
-    const unselected = { selected: false, offline: false, pulls: {} };
+    const entry = (project: Project, offline = false) =>
+      projectEntry(project, { selected: false, offline, groups: groupsOf(project) });
     const quiet = only([
       terminal({ address: "box/t1", project: "p", role: "orchestrator" }),
       terminal({ address: "box/t2", project: "p", status: "idle" }),
       terminal({ address: "box/t3", project: "p", status: "working", resolved: true }),
     ]);
-    expect(projectEntry(quiet, { ...unselected, offline: true })).toMatchObject({ aside: "box · offline", detail: "1 thread" });
+    expect(entry(quiet, true)).toMatchObject({ aside: "box · offline", detail: "1 thread" });
     const empty = only([terminal({ address: "t1", project: "p", role: "orchestrator", status: "blocked" })]);
-    expect(projectEntry(empty, unselected)).toMatchObject({ aside: "local", detail: "orchestrator waits" });
+    expect(entry(empty)).toMatchObject({ aside: "local", detail: "orchestrator waits" });
     const idle = only([terminal({ address: "t1", project: "p", role: "orchestrator" })]);
-    expect(projectEntry(idle, unselected).detail).toBe("No thread");
+    expect(entry(idle).detail).toBe("No thread");
   });
 });
 
@@ -583,7 +614,8 @@ describe("the sessions that wait on the person", () => {
 });
 
 describe("a thread's pull request", () => {
-  const view = (fields: Record<string, unknown>) => parsePull({ number: 7, url: "https://example.test/pull/7", ...fields });
+  const view = (fields: Record<string, unknown>) =>
+    parsePull({ number: 7, url: "https://example.test/pull/7", title: "Fix it", baseRefName: "main", headRefName: "fix-it", ...fields });
 
   test("is read from gh, and says where it stands for the person", () => {
     expect(view({ state: "OPEN", isDraft: true })?.stage).toBe("draft");
@@ -596,15 +628,20 @@ describe("a thread's pull request", () => {
     expect(view({ ...auto, reviewDecision: "REVIEW_REQUIRED" })?.stage).toBe("review");
     expect(view({ state: "MERGED", reviewDecision: "APPROVED" })?.stage).toBe("merged");
     expect(view({ state: "CLOSED" })?.stage).toBe("closed");
-    expect(view({ state: "OPEN", baseRefName: "main" })?.base).toBe("main");
-    expect(view({ state: "OPEN" })?.base).toBeNull();
+    expect(view({ state: "OPEN" })).toMatchObject({ base: "main", head: "fix-it" });
+    expect(view({ state: "OPEN" })?.title).toBe("Fix it");
+    expect(view({ state: "OPEN", headRefName: "" })).toBeNull();
+    expect(view({ state: "OPEN", title: "" })).toBeNull();
+    expect(stageLabel("changes")).toBe("changes requested");
     expect(parsePull({ url: "https://example.test/pull/7" })).toBeNull();
-    expect(pullLabel({ number: 7, url: "", stage: "review", base: null })).toBe("#7 in review");
+    expect(pullLabel(pull(7, "review"))).toBe("#7 in review");
   });
 
-  test("is stored and read back, anything else is dropped", () => {
-    const pull = { number: 7, url: "https://example.test/pull/7", stage: "landing", base: "main" };
-    expect(parsePulls({ t1: pull, t2: "oops", t3: { number: "7" } })).toEqual({ t1: pull });
+  test("is stored and read back; one without its branches, or anything else, is dropped", () => {
+    const stored = { number: 7, url: "https://example.test/pull/7", title: "Fix it", stage: "landing", base: "main", head: "fix-it" };
+    const old = { number: 8, url: "https://example.test/pull/8", title: "Old", stage: "review", base: "main" };
+    expect(parsePulls({ t1: stored, t2: "oops", t3: { number: "7" }, t4: old })).toEqual({ t1: stored });
+    expect(parsePulls({ t1: { ...stored, stage: "soon", state: "MERGED" } }).t1?.stage).toBe("merged");
     expect(parsePulls(null)).toEqual({});
   });
 
@@ -621,7 +658,7 @@ describe("a thread's pull request", () => {
     const lead = terminal({ address: "t1", project: "p", role: "orchestrator" });
     const thread = terminal({ address: "t2", project: "p", heading: "Fix it", status: "idle" });
     const project = only([lead, thread]);
-    const pulls = { t2: { number: 7, url: "https://example.test/pull/7", stage: "review" as const, base: null } };
+    const pulls = { t2: pull(7, "review") };
     const scene = snapshot({
       spaces: [space({ id: "s1" }, [tab({ id: "a" }), tab({ id: "b" })])],
       panes: [
@@ -631,9 +668,15 @@ describe("a thread's pull request", () => {
       pulls,
     });
     const [row] = projectThreads(scene, project);
-    expect(row).toMatchObject({ checkout: { folder: "/work/fix", branch: "fix-it" }, pull: pulls.t2 });
+    expect(row).toMatchObject({
+      checkout: { folder: "/work/fix", branch: "fix-it" },
+      refs: [{ kind: "branch", terminal: "t2" }],
+      pulls: [pulls.t2],
+    });
     expect(groupThreads(row ? [row] : []).map((group) => group.id)).toEqual(["review"]);
-    expect(projectEntry(project, { selected: false, offline: false, pulls }).detail).toBe("1 to review");
+    expect(projectEntry(project, { selected: false, offline: false, groups: groupsOf(project, scene) }).detail).toBe(
+      "1 to review",
+    );
   });
 
   test("is not read for sessions that share a folder: the branch there belongs to none of them", () => {
@@ -661,5 +704,130 @@ describe("a thread's pull request", () => {
     });
     const checkouts = projectThreads(scene, only(members)).map((thread) => thread.checkout?.folder);
     expect(checkouts).toEqual(["/work", "/work"]);
+  });
+});
+
+describe("the pull requests a thread declares", () => {
+  const url = (number: number) => `https://example.test/o/r/pull/${number}`;
+
+  test("are read from its label: URLs of pull requests, each once, a few at most", () => {
+    expect(parseDeclared(`${url(2)} ${url(1)}`)).toEqual([url(2), url(1)]);
+    expect(parseDeclared(`${url(1)}  oops http://example.test/o/r/pull/3 ${url(1)}/files ${url(1)}`)).toEqual([url(1)]);
+    expect(parseDeclared(undefined)).toEqual([]);
+    expect(parseDeclared(7)).toEqual([]);
+    const many = Array.from({ length: MAX_DECLARED + 2 }, (_, index) => url(index + 1));
+    expect(parseDeclared(many.join(" "))).toEqual(many.slice(0, MAX_DECLARED));
+    expect(parseTerminal({ address: "t1", state: "live", labels: { pulls: url(4) } })?.declared).toEqual([url(4)]);
+  });
+
+  test("say where they are on their host", () => {
+    expect(placeOf(url(12))).toEqual({ host: "example.test", owner: "o", name: "r", number: 12 });
+    expect(placeOf("https://example.test/pull/12")).toBeNull();
+  });
+
+  test("win over the branch of its folder, which is asked for a thread that declared none", () => {
+    expect(refsOf("t7", [url(1), url(2)])).toEqual([
+      { kind: "declared", url: url(1) },
+      { kind: "declared", url: url(2) },
+    ]);
+    expect(refsOf("t7", [])).toEqual([{ kind: "branch", terminal: "t7" }]);
+    expect(refsOf("t7", [url(1)]).map(refKey)).toEqual([url(1)]);
+    expect(refsOf("box/t7", []).map(refKey)).toEqual(["box/t7"]);
+  });
+
+  test("are found in what was read, by their URL or by the thread's address", () => {
+    const known = { [url(2)]: pull(2, "review", "b1"), [url(1)]: pull(1, "merged"), t7: pull(9, "draft") };
+    expect(stackOf(refsOf("t7", [url(2), url(3), url(1)]), known).map((entry) => entry.number)).toEqual([1, 2]);
+    expect(stackOf(refsOf("t7", []), known).map((entry) => entry.number)).toEqual([9]);
+    expect(stackOf(refsOf("t8", []), known)).toEqual([]);
+  });
+
+  test("show on a thread though its folder is shared", () => {
+    const members = [
+      terminal({ address: "t1", project: "p", declared: [url(2), url(1)] }),
+      terminal({ address: "t2", project: "p" }),
+    ];
+    const scene = snapshot({
+      terminals: members,
+      panes: [
+        pane({ pane: "p1", tab: "a", terminal: "t1", cwd: "/work", branch: "main" }),
+        pane({ pane: "p2", tab: "b", terminal: "t2", cwd: "/work", branch: "main" }),
+      ],
+      pulls: { [url(1)]: pull(1, "landing"), [url(2)]: pull(2, "review", "b1"), t2: pull(5, "review") },
+    });
+    const [first, second] = projectThreads(scene, only(members));
+    expect(first).toMatchObject({ checkout: null, pulls: [{ number: 1 }, { number: 2 }] });
+    expect(second).toMatchObject({ checkout: null, pulls: [{ number: 5 }] });
+  });
+
+  test("are asked for once each, on the thread's machine; a branch is asked for in a folder of its own", () => {
+    const members = [
+      terminal({ address: "box/t1", project: "p", declared: [url(1), url(2)] }),
+      terminal({ address: "t2", project: "p", declared: [url(2)] }),
+      terminal({ address: "t3", project: "p" }),
+      terminal({ address: "t4", project: "p" }),
+    ];
+    const scene = snapshot({
+      terminals: members,
+      panes: [
+        pane({ pane: "p1", tab: "a", terminal: "box/t1", cwd: "/work", branch: "b2" }),
+        pane({ pane: "p3", tab: "c", terminal: "t3", cwd: "/work/three", branch: "fix" }),
+      ],
+    });
+    expect(pullAsks(projectThreads(scene, only(members)))).toEqual([
+      { key: url(1), args: [url(1)], cwd: null, on: "box" },
+      { key: url(2), args: [url(2)], cwd: null, on: null },
+      { key: "t3", args: [], cwd: "/work/three", on: null },
+    ]);
+  });
+});
+
+describe("a stack of pull requests", () => {
+  const numbers = (stack: readonly Pull[]) => stack.map((entry) => entry.number);
+
+  test("goes from the lowest one up, by the branch each one merges into", () => {
+    expect(numbers(orderStack([pull(3, "draft", "b2"), pull(1, "review"), pull(2, "review", "b1")]))).toEqual([1, 2, 3]);
+    expect(numbers(orderStack([pull(5, "review"), pull(4, "review")]))).toEqual([4, 5]);
+    expect(numbers(orderStack([pull(9, "review", "b7"), pull(8, "review"), pull(7, "merged")]))).toEqual([7, 8, 9]);
+    expect(numbers(orderStack([pull(2, "review", "b1"), pull(1, "review", "b2")]))).toEqual([1, 2]);
+    expect(orderStack([])).toEqual([]);
+  });
+
+  test("stands where the pull request that most calls for the person stands", () => {
+    const lead = (...stack: Pull[]) => leadPull(stack)?.number ?? null;
+    expect(lead(pull(1, "landing"), pull(2, "review", "b1"), pull(3, "draft", "b2"))).toBe(2);
+    expect(lead(pull(1, "merged"), pull(2, "landing"))).toBe(2);
+    expect(lead(pull(1, "landing"), pull(2, "draft", "b1"))).toBe(2);
+    expect(lead(pull(1, "merged"), pull(2, "merged"))).toBe(1);
+    expect(lead(pull(1, "review"), pull(2, "review", "b1"))).toBe(1);
+    expect(lead(pull(1, "changes"), pull(2, "review", "b1"))).toBe(2);
+    expect(lead()).toBeNull();
+  });
+
+  test("puts a thread that rests under Ready for review when any of it is ready", () => {
+    const urls = [pull(1, "landing").url, pull(2, "review").url];
+    const scene = (status: "idle" | "working") => {
+      const members = [terminal({ address: "t2", project: "p", status, declared: urls })];
+      return projectThreads(
+        snapshot({ terminals: members, pulls: { [urls[0] ?? ""]: pull(1, "landing"), [urls[1] ?? ""]: pull(2, "review", "b1") } }),
+        only(members),
+      );
+    };
+    expect(scene("idle").map(threadGroup)).toEqual(["review"]);
+    expect(scene("working").map(threadGroup)).toEqual(["working"]);
+  });
+
+  test("leaves out the ones that can no longer change", () => {
+    const stack = [pull(1, "merged"), pull(2, "closed"), pull(3, "landing"), pull(4, "draft", "b3")];
+    expect(numbers(openPulls(stack))).toEqual([3, 4]);
+  });
+
+  test("is told in a few words; neighbours at one stage share them", () => {
+    expect(stackLabel([pull(7, "review")])).toBe("#7 in review");
+    expect(stackLabel([pull(1, "merged"), pull(2, "review"), pull(3, "review", "b2")])).toBe("#1 merged, #2 #3 in review");
+    expect(stackLabel([pull(1, "review"), pull(2, "draft", "b1"), pull(3, "review", "b2")])).toBe(
+      "#1 in review, #2 draft, #3 in review",
+    );
+    expect(stackLabel([])).toBeNull();
   });
 });

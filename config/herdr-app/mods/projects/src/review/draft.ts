@@ -1,4 +1,5 @@
 import { isRecord, text } from "../parse";
+import type { Pull } from "../pulls";
 import type { DiffLine } from "./diff";
 
 /** The side of a diff a line is on: the base's file, or the branch's. */
@@ -223,10 +224,19 @@ function countOf(comments: number): string {
   return comments === 1 ? "1 comment" : `${comments} comments`;
 }
 
-/** The review as one message for the thread: the note, then each comment with its file, its line and the line's text. */
-export function reviewMessage(draft: Draft, paths: readonly string[]): string {
+/** The key of a thread's draft. Each pull request has its own: the lines of two layers of a stack have other numbers. */
+export function draftKey(thread: string, pull: Pull | null): string {
+  return pull ? `${thread}#${pull.number}` : thread;
+}
+
+/**
+ * The review as one message for the thread: what it is of, the note, then
+ * each comment with its file, its line and the line's text.
+ */
+export function reviewMessage(draft: Draft, paths: readonly string[], pull: Pull | null): string {
   const comments = inOrder(draft.comments, paths);
-  const head = comments.length ? `Review of your branch: ${countOf(comments.length)}.` : "Review of your branch.";
+  const what = pull ? `pull request #${pull.number} (${pull.url})` : "your branch";
+  const head = comments.length ? `Review of ${what}: ${countOf(comments.length)}.` : `Review of ${what}.`;
   const note = draft.note.trim();
   return [head, ...(note ? [note] : []), ...comments.map(commentText)].join("\n\n");
 }

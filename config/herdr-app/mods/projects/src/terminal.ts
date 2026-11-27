@@ -1,5 +1,6 @@
 import type { Status } from "herdr";
 import { asRecord, text, type Raw } from "./parse";
+import { parseDeclared } from "./pulls";
 import { parseReported, parseStatus, type Reported } from "./status";
 
 /** A live core terminal, with the fields this mod reads. */
@@ -21,6 +22,8 @@ export interface Terminal {
   readonly reported: Reported | null;
   /** Put away by the person or the orchestrator. */
   readonly resolved: boolean;
+  /** The URLs of the pull requests its thread declared, from its `pulls` label. */
+  readonly declared: readonly string[];
 }
 
 /**
@@ -57,5 +60,6 @@ export function parseTerminal(raw: Raw): Terminal | null {
     heading: text(labels.title) ?? text(labels.task),
     reported: currentReport(labels, raw.turn),
     resolved: labels.resolved === "true",
+    declared: parseDeclared(labels.pulls),
   };
 }

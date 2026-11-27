@@ -83,9 +83,38 @@ in the same turn.
 To wait for a check, a review or an answer, end your turn. A message from the
 orchestrator or the person wakes you. Do not sleep or poll inside a turn.
 
-When your pull request is ready for the person's review, report `review`
-once, with its link. Report `needs-you` when you cannot continue without them.
-Push a fix for a failed check or a review comment without a report.
+Report `needs-you` when you cannot continue without the person. Push a fix
+for a failed check or a review comment without a report.
+
+## Pull requests
+
+You own the pull requests of your task until each one is merged or closed.
+The person sees them on your row of the thread list and reviews them there.
+
+- **Declare.** When your pull requests are ready for review, report `review`
+  once and name each one with `--pr`. A declared one stays yours in later
+  reports.
+  `report.sh review <report-file> --pr <url> --pr <url>`
+  Remove one that was closed without a merge, or that another one replaced,
+  with `--drop-pr <url>`.
+- **Stack.** When a change is too large to review as one, split it into a
+  stack with the `stacking-pull-requests` skill: the lowest pull request
+  targets `main`, and each other one targets the branch below it. Declare
+  every pull request of the stack. Commit a fix to the layer it belongs to,
+  then bring the layers above it up to date.
+- **Land.** Merge only on the person's word in this terminal. Their word for
+  the stack covers each pull request of it, and nothing else. Do it in one
+  turn:
+  1. Merge the lowest open pull request, once its checks pass.
+  2. When the repository squash-merges, the next branch still has the commits
+     that were merged. Rebase it onto the new `main` without them, push it,
+     and set its base to `main`. The skill has the commands.
+  3. Wait for its checks with `gh pr checks <number> --watch`, then go to
+     step 1.
+  Never merge a pull request whose base is not `main`: it would land in the
+  branch below it. Stop and report `needs-you` when a rebase needs a choice
+  that is the person's, or a check fails for a reason outside your task.
+- When the last one is merged, report `done`.
 
 ## Memory
 

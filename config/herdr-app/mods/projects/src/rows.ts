@@ -1,7 +1,7 @@
 import { div, svg, type Context, type Element } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import type { Entry } from "./entries";
-import { pullLabel } from "./pulls";
+import { stackLabel } from "./pulls";
 import { groupLabel } from "./status";
 import { threadGroup, type Thread } from "./threads";
 import { age } from "./time";
@@ -83,11 +83,10 @@ function threadMark(colors: Theme, thread: Thread): Element {
   return markBox(svg(chromeIcon("terminal")).size(11).text_color(colors.dim));
 }
 
-/** Where it runs, its pull request, then how long it has been in its state. */
+/** Where it runs, its pull requests, then how long it has been in its state. */
 function threadMeta(thread: Thread, now: number): string {
   const since = thread.since === null ? null : age(now - thread.since);
-  const pull = thread.pull ? pullLabel(thread.pull) : null;
-  return [thread.aside, pull, since].filter((part) => part !== null).join(" · ");
+  return [thread.aside, stackLabel(thread.pulls), since].filter((part) => part !== null).join(" · ");
 }
 
 /** Whose move it is, in words, with where the thread runs and for how long: for a place that shows one thread. */

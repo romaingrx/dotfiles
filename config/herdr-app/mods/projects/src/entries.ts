@@ -1,6 +1,5 @@
 import type { Status } from "herdr";
-import { leadOf, LOCAL, threadsOf, type Project } from "./projects";
-import type { Pulls } from "./pulls";
+import { leadOf, LOCAL, type Project } from "./projects";
 import { attention, groupOf, mostUrgent, type Group } from "./status";
 
 /** One row of the project list. */
@@ -25,11 +24,10 @@ function place(project: Project, offline: boolean): string {
   return offline ? `${where} · offline` : where;
 }
 
-function detail(project: Project, pulls: Pulls): string {
+function detail(project: Project, groups: readonly Group[]): string {
   const lead = leadOf(project);
-  const open = threadsOf(project).filter((thread) => !thread.resolved);
-  const groupOfThread = (thread: (typeof open)[number]) => groupOf(thread.status, false, pulls[thread.address]?.stage);
-  const amount = (group: Group) => open.filter((thread) => groupOfThread(thread) === group).length;
+  const open = groups.filter((group) => group !== "resolved");
+  const amount = (group: Group) => open.filter((candidate) => candidate === group).length;
   const moves = [
     lead && groupOf(lead.status, lead.resolved) === "waiting" ? "orchestrator waits" : null,
     amount("review") > 0 ? `${amount("review")} to review` : null,
@@ -46,15 +44,16 @@ export interface EntryContext {
   readonly selected: boolean;
   /** True when a machine the project runs on cannot be reached: what the row shows is then old. */
   readonly offline: boolean;
-  readonly pulls: Pulls;
+  /** Whose move each thread of the project is. */
+  readonly groups: readonly Group[];
 }
 
-export function projectEntry(project: Project, { selected, offline, pulls }: EntryContext): Entry {
+export function projectEntry(project: Project, { selected, offline, groups }: EntryContext): Entry {
   return {
     id: `project-${project.name}`,
     name: project.name,
     aside: place(project, offline),
-    detail: detail(project, pulls),
+    detail: detail(project, groups),
     status: attention(mostUrgent(project.members.map((member) => member.status))),
     selected,
   };
