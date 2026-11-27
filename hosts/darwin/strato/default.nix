@@ -3,7 +3,7 @@
   imports = [
     ../../../modules/darwin
     ../../../modules/darwin/herdr-app.nix
-    ../../../modules/darwin/herdr-projects.nix
+    ../../../modules/darwin/baton.nix
   ];
 
   networking.hostName = "strato";

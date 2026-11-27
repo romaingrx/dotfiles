@@ -61,7 +61,7 @@ in
   imports = [
     ../../../modules/home/tl.nix
     ../../../modules/home/claude-gateway.nix
-    ../../../modules/home/herdr-projects.nix
+    ../../../modules/home/baton.nix
   ];
 
   # Company-managed: per-device keys instead of the age key (see README.md).
