@@ -1860,6 +1860,17 @@ function discussionCard(discussion, index, columns, stale) {
   ];
   return { kind: "card", key: `discussion:${index}`, anchor: discussion, from: "github", lines, stale };
 }
+var NEW_SIDE = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))?/;
+function unchangedBefore(hunks) {
+  let next = 1;
+  return hunks.map((hunk) => {
+    const [, start = "1", count = "1"] = NEW_SIDE.exec(hunk.header) ?? [];
+    const first = Number(count) === 0 ? Number(start) + 1 : Number(start);
+    const gap = Math.max(0, first - next);
+    next = first + Number(count);
+    return gap;
+  });
+}
 function emptyText(entry) {
   if (entry.gone)
     return "This file is no longer in the diff.";
@@ -1888,11 +1899,14 @@ function fileRows(entry, columns) {
   const empty = emptyText(entry);
   if (empty)
     return [...rows, { kind: "note", key: "note:empty", text: empty }];
+  const gaps = unchangedBefore(file.hunks);
   let drawn = 0;
   for (const [index, hunk] of file.hunks.entries()) {
     if (drawn >= MAX_LINES)
       break;
-    rows.push({ kind: "hunk", key: `hunk:${index}`, text: hunk.header });
+    const gap = gaps[index] ?? 0;
+    if (gap > 0)
+      rows.push({ kind: "hunk", key: `hunk:${index}`, text: `${gap} unchanged line${gap === 1 ? "" : "s"}` });
     for (const line of hunk.lines.slice(0, MAX_LINES - drawn)) {
       const anchor = anchorOf(file.path, line);
       const under = cards.get(anchorKey(anchor)) ?? [];
@@ -1935,7 +1949,7 @@ function quoteOf(lines) {
 `);
 }
 function widest(rows) {
-  return Math.max(0, ...rows.map((row) => row.kind === "line" || row.kind === "hunk" ? row.text.length : 0));
+  return Math.max(0, ...rows.map((row) => row.kind === "line" ? row.text.length : 0));
 }
 
 // src/review/tree.ts
@@ -1976,6 +1990,10 @@ function fileTree(files, folded) {
     place3(root, entry);
   return rowsOf(root, 0, folded);
 }
+function filterFiles(files, typed) {
+  const word = typed.trim().toLowerCase();
+  return files.filter((entry) => entry.file.path.toLowerCase().includes(word));
+}
 function firstFile(files) {
   const first = fileTree(files, new Set).find((row) => row.kind === "file");
   return first?.kind === "file" ? first.entry : undefined;
@@ -2015,12 +2033,14 @@ function readZoom() {
 }
 var NUMBER_DIGITS = 4;
 var MARK2 = 3;
-var SIGN = 2;
 var COMMENT_GAP = 4;
 var COMMENT_PAD = { x: 10, y: 6 };
 var DIFF_END = 16;
+function numbers(type) {
+  return Math.ceil((NUMBER_DIGITS + 1) * type.char);
+}
 function gutter(type) {
-  return MARK2 + Math.ceil((2 * (NUMBER_DIGITS + 1) + SIGN) * type.char);
+  return MARK2 + numbers(type) + Math.ceil(2 * type.char);
 }
 function commentColumns(width, type) {
   const room = width - gutter(type) - 2 * COMMENT_PAD.x - DIFF_END;
@@ -2035,15 +2055,26 @@ function tint(colors, line) {
   return line.sign === "-" ? `${colors.ansi1}1c` : null;
 }
 function lineNumber(colors, type, number) {
-  return div6().w(Math.ceil((NUMBER_DIGITS + 1) * type.char)).flex_none().text_right().text_color(colors.dim).child(number === null ? "" : String(number));
+  return div6().w(numbers(type)).flex_none().text_right().text_color(colors.dim).child(number === null ? "" : String(number));
 }
 function lineRow(colors, type, row, active) {
   const { line } = row;
-  const mark = row.commented || active ? colors.accent : row.discussed ? colors.muted : null;
-  const face = h_flex6().w_full().h(type.row).flex_none().cursor_pointer().hover((style) => style.bg(colors.hover)).child(optional(div6().w(MARK2).h_full().flex_none(), mark, (el, color) => el.bg(color))).child(lineNumber(colors, type, line.old)).child(lineNumber(colors, type, line.now)).child(div6().w(Math.ceil(SIGN * type.char)).flex_none().text_center().text_color(colors.dim).child(line.sign)).child(div6().flex_1().min_w(0).whitespace_nowrap().child(row.text || " "));
+  const face = h_flex6().w_full().h(type.row).flex_none().gap(Math.ceil(2 * type.char)).cursor_pointer().hover((style) => style.bg(colors.hover)).child(h_flex6().h_full().flex_none().child(optional(div6().w(MARK2).h_full().flex_none(), edgeOf(colors, row, active), (el, color) => el.bg(color))).child(lineNumber(colors, type, line.now ?? line.old))).child(div6().flex_1().min_w(0).whitespace_nowrap().child(row.text || " "));
   if (active)
-    return face.bg(colors.selected);
+    return face.bg(`${colors.accent}26`);
   return optional(face, tint(colors, line), (el, color) => el.bg(color));
+}
+function edgeOf(colors, row, active) {
+  if (row.commented || active)
+    return colors.accent;
+  if (row.discussed)
+    return colors.muted;
+  if (row.line.sign === "+")
+    return colors.ansi2;
+  return row.line.sign === "-" ? colors.ansi1 : null;
+}
+function foldRow(colors, type, text) {
+  return h_flex6().w_full().h(type.row).flex_none().pl(gutter(type)).items_center().bg(colors.raised).text_size(type.size - 1).text_color(colors.dim).child(text);
 }
 function edge(colors, card) {
   if (card.stale)
@@ -2053,8 +2084,8 @@ function edge(colors, card) {
 function cardRow(colors, type, row, columns) {
   return div6().w_full().h(rowHeight(row, type)).flex_none().pl(gutter(type)).py(COMMENT_GAP).cursor_pointer().child(v_flex5().w(Math.ceil(columns * type.char) + 2 * COMMENT_PAD.x).h_full().px(COMMENT_PAD.x).py(COMMENT_PAD.y).rounded(6).bg(colors.raised).border_l(2).border_color(edge(colors, row)).text_color(colors.foreground).children(row.lines.map((line) => div6().h(type.row).flex_none().whitespace_nowrap().when(line.head, (el) => el.text_color(colors.muted)).child(line.text || " "))));
 }
-function plainRow(colors, type, text, raised) {
-  return div6().w_full().h(type.row).flex_none().px(12).truncate().when(raised, (el) => el.bg(colors.raised)).text_color(colors.dim).child(text);
+function plainRow(colors, type, text) {
+  return div6().w_full().h(type.row).flex_none().px(12).truncate().text_color(colors.dim).child(text);
 }
 function diffPane(colors, props) {
   const { rows, type } = props;
@@ -2063,17 +2094,11 @@ function diffPane(colors, props) {
       return lineRow(colors, type, row, props.active.has(row.key));
     if (row.kind === "card")
       return cardRow(colors, type, row, props.columns);
-    return plainRow(colors, type, row.text, row.kind === "hunk");
+    return row.kind === "hunk" ? foldRow(colors, type, row.text) : plainRow(colors, type, row.text);
   };
   const list = v_virtual_list("review-diff", rows.length, rows.map((row) => rowHeight(row, type)), (index) => rows[index]?.key ?? String(index), (range) => rows.slice(range.start, range.end).map(draw)).track_scroll(props.scroll).on_item_click(props.onPick).size_full();
   return div6().id("review-diff-box").flex_1().min_h(0).relative().font_family(type.family).text_size(type.size).on_size_change((size, cx) => props.onWidth(size.width / readZoom(), cx)).on_mouse_down("left", (event) => props.onPress(event.modifiers.shift)).child(div6().id("review-diff-x").size_full().overflow_x_scrollbar().child(div6().w_full().min_w(Math.ceil(props.widest * type.char) + gutter(type) + DIFF_END).h_full().child(list))).child(Scrollbar.vertical("review-diff").viewport_from_layout().absolute().inset_0());
 }
-var CHANGES = {
-  added: { letter: "A", tone: "ansi2" },
-  deleted: { letter: "D", tone: "ansi1" },
-  modified: { letter: "M", tone: "muted" },
-  renamed: { letter: "R", tone: "muted" }
-};
 function counts(colors, added, removed) {
   const count = (amount, sign, color) => div6().flex_none().text_size(11).text_color(color).child(`${sign}${amount}`);
   return [
@@ -2087,21 +2112,30 @@ function badge2(colors, amount, own) {
     return face.bg(colors.accent).text_color(colors.background).child(String(amount));
   return face.border_1().border_color(colors.input).text_color(colors.muted).child(String(amount));
 }
+var TREE_ROW = 24;
 function inset(depth) {
   return 8 + depth * 14;
 }
 function folderRow(colors, row, onFold) {
-  return h_flex6().id(`review-folder-${row.path}`).h(26).flex_none().pl(inset(row.depth)).pr(8).gap(6).items_center().rounded(7).cursor_pointer().text_color(colors.muted).hover((style) => style.bg(colors.hover)).on_click((_event, cx) => onFold(cx)).child(svg3(chromeIcon(row.open ? "chevron-down" : "chevron-right")).size(11).flex_none()).child(div6().flex_1().min_w(0).truncate().child(row.name));
+  return h_flex6().id(`review-folder-${row.path}`).h(TREE_ROW).flex_none().pl(inset(row.depth)).pr(8).gap(6).items_center().rounded(6).cursor_pointer().text_color(colors.muted).hover((style) => style.bg(colors.hover)).on_click((_event, cx) => onFold(cx)).child(svg3(chromeIcon("folder")).size(12).flex_none()).child(div6().min_w(0).truncate().child(row.name)).child(svg3(chromeIcon(row.open ? "chevron-down" : "chevron-right")).size(10).flex_none().text_color(colors.dim));
+}
+function nameColor(colors, entry) {
+  if (entry.gone)
+    return colors.blocked;
+  if (entry.file.change === "added")
+    return colors.ansi2;
+  return entry.file.change === "deleted" ? colors.ansi1 : colors.foreground;
 }
 function fileRow(colors, row, open, onOpen) {
   const { entry } = row;
   const { file } = entry;
-  const change = CHANGES[file.change];
-  return h_flex6().id(`review-file-${file.path}`).h(28).flex_none().pl(inset(row.depth)).pr(8).gap(8).items_center().rounded(7).cursor_pointer().when(open, (el) => el.bg(colors.selected)).hover((style) => style.bg(colors.hover)).on_click((_event, cx) => onOpen(cx)).child(div6().w(12).flex_none().text_size(11).text_color(colors[entry.gone ? "blocked" : change.tone]).child(entry.gone ? "!" : change.letter)).child(div6().flex_1().min_w(0).truncate().child(row.name)).when(entry.discussions.length > 0, (el) => el.child(badge2(colors, entry.discussions.length, false))).when(entry.comments.length > 0, (el) => el.child(badge2(colors, entry.comments.length, true))).children(counts(colors, file.added, file.removed));
+  return h_flex6().id(`review-file-${file.path}`).h(TREE_ROW).flex_none().pl(inset(row.depth) + 18).pr(8).gap(8).items_center().rounded(6).cursor_pointer().when(open, (el) => el.bg(colors.selected)).hover((style) => style.bg(colors.hover)).on_click((_event, cx) => onOpen(cx)).child(div6().flex_1().min_w(0).truncate().text_color(nameColor(colors, entry)).child(row.name)).when(entry.discussions.length > 0, (el) => el.child(badge2(colors, entry.discussions.length, false))).when(entry.comments.length > 0, (el) => el.child(badge2(colors, entry.comments.length, true))).children(counts(colors, file.added, file.removed));
 }
 function fileList(colors, props) {
   const draw = (row) => row.kind === "folder" ? folderRow(colors, row, (cx) => props.onFold(row.path, cx)) : fileRow(colors, row, row.entry.file.path === props.open, (cx) => props.onOpen(row.entry.file.path, cx));
-  return v_flex5().id("review-files").w(300).h_full().flex_none().p(6).border_r(1).border_color(colors.border).text_size(12.5).overflow_y_scrollbar().children(props.rows.map(draw)).when(props.rows.length === 0, (el) => el.child(div6().p(8).text_size(12).text_color(colors.muted).child(props.empty)));
+  const filter = Input2.new(props.filter).h(26).flex_none().mx(6).mt(6).px(8).rounded(6).border_1().border_color(colors.border).text_size(12).text_color(colors.foreground);
+  const tree = v_flex5().id("review-files").flex_1().min_h(0).p(6).overflow_y_scrollbar().children(props.rows.map(draw)).when(props.rows.length === 0, (el) => el.child(div6().p(8).text_size(12).text_color(colors.muted).child(props.empty)));
+  return v_flex5().w(300).h_full().flex_none().border_r(1).border_color(colors.border).text_size(12).child(filter).child(tree);
 }
 function pullTab(colors, pull, shown, onPick) {
   return h_flex6().id(`review-pull-${pull.number}`).h(24).max_w(340).min_w(0).px(8).gap(6).items_center().rounded(6).text_size(11.5).cursor_pointer().when(shown, (el) => el.bg(colors.selected)).text_color(shown ? colors.foreground : colors.muted).hover((style) => style.bg(colors.hover)).on_click((_event, cx) => onPick(cx)).child(div6().flex_none().font_medium().child(`#${pull.number}`)).child(div6().min_w(0).truncate().child(pull.title)).child(div6().flex_none().text_color(colors.dim).child(stageLabel(pull.stage)));
@@ -2118,7 +2152,7 @@ function reviewHead(colors, props) {
   const added = props.files.reduce((sum, file) => sum + file.added, 0);
   const removed = props.files.reduce((sum, file) => sum + file.removed, 0);
   const bar = h_flex6().h(44).flex_none().px(14).gap(8).items_center().border_b(1).border_color(colors.border).text_size(13).child(svg3(chromeIcon("git-compare")).size(14).flex_none().text_color(colors.muted)).child(div6().flex_none().font_semibold().child("Review")).child(div6().min_w(0).truncate().text_color(colors.muted).child(props.title));
-  return optional(bar, props.range, (el, range) => el.child(div6().flex_none().px(6).py(1).rounded(4).border_1().border_color(colors.border).text_size(11).text_color(colors.muted).child(range))).child(div6().flex_1()).children(counts(colors, added, removed)).child(props.loading ? svg3(chromeIcon("spinner")).size(13).flex_none().text_color(colors.working).spin(900) : iconButton(colors, {
+  return optional(bar, props.range, (el, range) => el.child(div6().flex_none().px(6).py(1).rounded(4).border_1().border_color(colors.border).text_size(11).text_color(colors.muted).child(range))).children(counts(colors, added, removed)).child(div6().flex_1()).child(props.loading ? svg3(chromeIcon("spinner")).size(13).flex_none().text_color(colors.working).spin(900) : iconButton(colors, {
     id: "review-refresh",
     icon: "mods/projects/refresh.svg",
     tip: "Read the diff again",
@@ -2126,8 +2160,9 @@ function reviewHead(colors, props) {
   })).child(iconButton(colors, { id: "review-close", icon: chromeIcon("x"), tip: "Close", onClick: props.onClose }));
 }
 function fileHead(colors, type, file) {
-  const bar = h_flex6().h(32).flex_none().px(12).gap(8).items_center().border_b(1).border_color(colors.border).font_family(type.family).text_size(12).child(div6().min_w(0).truncate().child(file.path));
-  return optional(bar, file.from, (el, from) => el.child(div6().min_w(0).truncate().text_color(colors.dim).child(`from ${from}`)));
+  const cut = file.path.lastIndexOf("/");
+  const bar = h_flex6().h(32).flex_none().px(12).gap(8).items_center().border_b(1).border_color(colors.border).font_family(type.family).text_size(12).child(div6().flex_none().child(file.path.slice(cut + 1))).child(div6().min_w(0).truncate().text_color(colors.muted).child(file.path.slice(0, cut + 1)));
+  return optional(bar, file.from, (el, from) => el.child(div6().min_w(0).truncate().text_color(colors.dim).child(`from ${from}`))).child(div6().flex_1()).children(counts(colors, file.added, file.removed));
 }
 function composer(colors, props) {
   return v_flex5().id("review-composer").flex_none().p(10).gap(8).border_t(1).border_color(colors.border).bg(colors.chrome).child(h_flex6().gap(8).items_center().text_size(11.5).child(div6().flex_none().text_color(colors.muted).child(props.where)).child(div6().flex_1().min_w(0).truncate().font_family(props.type.family).text_color(colors.dim).child(props.code.trim()))).child(Textarea.new(props.field).h(96).p(8).rounded(8).border_1().border_color(colors.input).bg(colors.background).text_size(12.8).text_color(colors.foreground)).child(h_flex6().gap(8).justify_end().children(props.buttons.map((button) => textButton(colors, button))));
@@ -2158,6 +2193,7 @@ class ReviewDialog {
     rows: 4
   });
   note;
+  filter = InputState3.new({ placeholder: "Filter files…" });
   scroll = VirtualListScrollHandle.new();
   handle;
   subject = null;
@@ -2181,6 +2217,7 @@ class ReviewDialog {
     this.handle = cx.focus_handle();
     this.note = InputState3.new({ placeholder: "A word on the whole branch (optional)" });
     this.note.on("change", (_event, change) => change.notify());
+    this.filter.on("change", (_event, change) => change.notify());
     this.note.on("blur", () => this.keepNote());
     this.field.on("submit", (event, submit) => {
       if (event.secondary)
@@ -2211,7 +2248,8 @@ class ReviewDialog {
       shown: this.subject,
       onPick: (pull, cx) => this.turn(pull, cx)
     })).child(h_flex7().flex_1().min_h(0).items_start().child(fileList(colors, {
-      rows: fileTree(files, this.folded),
+      rows: fileTree(filterFiles(files, this.filter.value()), this.folded),
+      filter: this.filter,
       onFold: (path, cx) => this.fold(path, cx),
       open: shown?.file.path ?? null,
       empty: this.emptyText(),

@@ -36,7 +36,7 @@ import {
   type ReviewFile,
   type Row,
 } from "../review/rows";
-import { fileTree, firstFile } from "../review/tree";
+import { fileTree, filterFiles, firstFile } from "../review/tree";
 import { readDraft, saveDraft } from "../review/store";
 import {
   commentColumns,
@@ -102,6 +102,8 @@ export class ReviewDialog implements Part {
     rows: 4,
   });
   private readonly note: InputState;
+  /** What the person typed to see only some files in the tree. */
+  private readonly filter = InputState.new({ placeholder: "Filter files…" });
   private readonly scroll = VirtualListScrollHandle.new();
   private readonly handle: FocusHandle;
   /** The pull request under review. Null reviews the folder of a thread that has none. */
@@ -137,6 +139,7 @@ export class ReviewDialog implements Part {
     this.handle = cx.focus_handle();
     this.note = InputState.new({ placeholder: "A word on the whole branch (optional)" });
     this.note.on("change", (_event, change) => change.notify());
+    this.filter.on("change", (_event, change) => change.notify());
     this.note.on("blur", () => this.keepNote());
     // Enter alone is a new line of the comment.
     this.field.on("submit", (event, submit) => {
@@ -185,7 +188,8 @@ export class ReviewDialog implements Part {
           .items_start()
           .child(
             fileList(colors, {
-              rows: fileTree(files, this.folded),
+              rows: fileTree(filterFiles(files, this.filter.value()), this.folded),
+              filter: this.filter,
               onFold: (path, cx) => this.fold(path, cx),
               open: shown?.file.path ?? null,
               empty: this.emptyText(),

@@ -28,6 +28,7 @@ import {
   lineKey,
   MAX_LINES,
   MAX_REMARK_LINES,
+  unchangedBefore,
   quoteOf,
   reviewFiles,
   spanBetween,
@@ -38,7 +39,7 @@ import {
   type ReviewFile,
   type Row,
 } from "./rows";
-import { fileTree, firstFile } from "./tree";
+import { fileTree, filterFiles, firstFile } from "./tree";
 
 const MODIFIED = `diff --git a/src/app.ts b/src/app.ts
 index 1111111..2222222 100644
@@ -448,7 +449,6 @@ describe("the rows of a file", () => {
     if (!entry) throw new Error("expected a file");
     const rows = fileRows(entry, 40);
     expect(texts(rows)).toEqual([
-      "@@ -1,4 +1,5 @@ export function app() {",
       "const a = 1;",
       "const b = 2;",
       "const b = 3;",
@@ -456,14 +456,14 @@ describe("the rows of a file", () => {
       "const c = 4;",
       "return a;",
       "}",
-      "@@ -20 +21 @@",
+      "15 unchanged lines",
       "old",
       "new",
     ]);
     const commented = rows.filter((row) => row.kind === "line" && row.commented).map((row) => row.key);
     expect(commented).toEqual([lineKey(on)]);
     expect(new Set(rows.map((row) => row.key)).size).toBe(rows.length);
-    expect(widest(rows)).toBe("@@ -1,4 +1,5 @@ export function app() {".length);
+    expect(widest(rows)).toBe("const a = 1;".length);
   });
 
   test("start with the cards whose line is not in the diff", () => {
@@ -552,6 +552,16 @@ describe("the rows of a file", () => {
       "This file is no longer in the diff.",
     ]);
     expect(texts(fileRows(old, 60))[0]).toBe("> Line 8, which is not in the diff: / @ana on GitHub / Rename this.");
+  });
+
+  test("say how many lines the branch did not change lie over a hunk", () => {
+    const hunk = (header: string) => ({ header, lines: [] });
+    expect(unchangedBefore(file.hunks)).toEqual([0, 15]);
+    expect(unchangedBefore([hunk("@@ -8,3 +8,4 @@ fn"), hunk("@@ -20 +21 @@"), hunk("@@ -40,2 +41,0 @@")])).toEqual([
+      7, 9, 20,
+    ]);
+    expect(unchangedBefore([hunk("@@ -0,0 +1,3 @@")])).toEqual([0]);
+    expect(unchangedBefore([])).toEqual([]);
   });
 
   test("say why a file has no line to show", () => {
@@ -676,6 +686,13 @@ describe("the tree of a review's files", () => {
       "  one.md",
       "README.md",
     ]);
+  });
+
+  test("keeps the files whose path has what is typed in the filter", () => {
+    const paths = (typed: string) => filterFiles(files, typed).map((file) => file.file.path);
+    expect(paths("MODS")).toEqual(["config/app/mods/a.ts", "config/app/mods/src/b.ts"]);
+    expect(paths("  ")).toHaveLength(files.length);
+    expect(paths("nope")).toEqual([]);
   });
 
   test("shows nothing under a folded folder", () => {

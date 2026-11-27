@@ -14,8 +14,8 @@ import { settings } from "herdr";
 import { text } from "../parse";
 import { stageLabel, type Pull, type Stack } from "../pulls";
 import { chromeIcon, iconButton, optional, textButton, type Handler, type TextButton, type Theme } from "../ui";
-import type { Change, DiffFile, DiffLine } from "./diff";
-import type { Card, Row } from "./rows";
+import type { DiffFile, DiffLine } from "./diff";
+import type { Card, ReviewFile, Row } from "./rows";
 import type { TreeRow } from "./tree";
 
 /** The type the diff is set in: the terminals' font, and the room one character and one row take. */
@@ -43,14 +43,18 @@ export function readZoom(): number {
 
 const NUMBER_DIGITS = 4;
 const MARK = 3;
-const SIGN = 2;
 const COMMENT_GAP = 4;
 const COMMENT_PAD = { x: 10, y: 6 };
 const DIFF_END = 16;
 
-/** The room left of a line's text: the comment mark, the two line numbers and the sign. */
+/** How wide the column of line numbers is. */
+function numbers(type: Type): number {
+  return Math.ceil((NUMBER_DIGITS + 1) * type.char);
+}
+
+/** The room left of a line's text: the mark at the edge, the line number, and a gap. */
 function gutter(type: Type): number {
-  return MARK + Math.ceil((2 * (NUMBER_DIGITS + 1) + SIGN) * type.char);
+  return MARK + numbers(type) + Math.ceil(2 * type.char);
 }
 
 /** How many characters of a comment fit on one line, in a diff that is `width` wide. */
@@ -70,7 +74,7 @@ function tint(colors: Theme, line: DiffLine): Color | null {
 
 function lineNumber(colors: Theme, type: Type, number: number | null): Element {
   return div()
-    .w(Math.ceil((NUMBER_DIGITS + 1) * type.char))
+    .w(numbers(type))
     .flex_none()
     .text_right()
     .text_color(colors.dim)
@@ -79,24 +83,20 @@ function lineNumber(colors: Theme, type: Type, number: number | null): Element {
 
 function lineRow(colors: Theme, type: Type, row: Extract<Row, { kind: "line" }>, active: boolean): Element {
   const { line } = row;
-  // The edge says what is on the line: the person's own comment stands out, a discussion on GitHub is quiet.
-  const mark = row.commented || active ? colors.accent : row.discussed ? colors.muted : null;
   const face = h_flex()
     .w_full()
     .h(type.row)
     .flex_none()
+    .gap(Math.ceil(2 * type.char))
     .cursor_pointer()
     .hover((style) => style.bg(colors.hover))
-    .child(optional(div().w(MARK).h_full().flex_none(), mark, (el, color) => el.bg(color)))
-    .child(lineNumber(colors, type, line.old))
-    .child(lineNumber(colors, type, line.now))
     .child(
-      div()
-        .w(Math.ceil(SIGN * type.char))
+      h_flex()
+        .h_full()
         .flex_none()
-        .text_center()
-        .text_color(colors.dim)
-        .child(line.sign),
+        .child(optional(div().w(MARK).h_full().flex_none(), edgeOf(colors, row, active), (el, color) => el.bg(color)))
+        // One number, as the file has it now; a line the branch removes keeps the number it had.
+        .child(lineNumber(colors, type, line.now ?? line.old)),
     )
     .child(
       div()
@@ -105,8 +105,39 @@ function lineRow(colors: Theme, type: Type, row: Extract<Row, { kind: "line" }>,
         .whitespace_nowrap()
         .child(row.text || " "),
     );
-  if (active) return face.bg(colors.selected);
+  // The lines a comment is being written on stand out from the lines the branch adds.
+  if (active) return face.bg(`${colors.accent}26`);
   return optional(face, tint(colors, line), (el, color) => el.bg(color));
+}
+
+/**
+ * The color of a line's left edge. What is said about the line comes first:
+ * the person's own comment stands out, a discussion on GitHub is quiet. Else
+ * it is the line's own change: added or removed.
+ */
+function edgeOf(colors: Theme, row: Extract<Row, { kind: "line" }>, active: boolean): Color | null {
+  if (row.commented || active) return colors.accent;
+  if (row.discussed) return colors.muted;
+  if (row.line.sign === "+") return colors.ansi2;
+  return row.line.sign === "-" ? colors.ansi1 : null;
+}
+
+/**
+ * A stretch of the file that the branch did not change, told in one row. Its
+ * words start where the lines' text starts: a row is as wide as the longest
+ * line of the diff, so words in its middle can be off the screen.
+ */
+function foldRow(colors: Theme, type: Type, text: string): Element {
+  return h_flex()
+    .w_full()
+    .h(type.row)
+    .flex_none()
+    .pl(gutter(type))
+    .items_center()
+    .bg(colors.raised)
+    .text_size(type.size - 1)
+    .text_color(colors.dim)
+    .child(text);
 }
 
 /** The color of a card's edge: one of GitHub is quiet, the person's own stands out, a misplaced one warns. */
@@ -147,16 +178,8 @@ function cardRow(colors: Theme, type: Type, row: Card, columns: number): Element
     );
 }
 
-function plainRow(colors: Theme, type: Type, text: string, raised: boolean): Element {
-  return div()
-    .w_full()
-    .h(type.row)
-    .flex_none()
-    .px(12)
-    .truncate()
-    .when(raised, (el) => el.bg(colors.raised))
-    .text_color(colors.dim)
-    .child(text);
+function plainRow(colors: Theme, type: Type, text: string): Element {
+  return div().w_full().h(type.row).flex_none().px(12).truncate().text_color(colors.dim).child(text);
 }
 
 export interface DiffPane {
@@ -183,7 +206,7 @@ export function diffPane(colors: Theme, props: DiffPane): Element {
   const draw = (row: Row): Element => {
     if (row.kind === "line") return lineRow(colors, type, row, props.active.has(row.key));
     if (row.kind === "card") return cardRow(colors, type, row, props.columns);
-    return plainRow(colors, type, row.text, row.kind === "hunk");
+    return row.kind === "hunk" ? foldRow(colors, type, row.text) : plainRow(colors, type, row.text);
   };
   const list = v_virtual_list(
     "review-diff",
@@ -223,13 +246,6 @@ export function diffPane(colors: Theme, props: DiffPane): Element {
   );
 }
 
-const CHANGES: Readonly<Record<Change, { readonly letter: string; readonly tone: "ansi1" | "ansi2" | "muted" }>> = {
-  added: { letter: "A", tone: "ansi2" },
-  deleted: { letter: "D", tone: "ansi1" },
-  modified: { letter: "M", tone: "muted" },
-  renamed: { letter: "R", tone: "muted" },
-};
-
 function counts(colors: Theme, added: number, removed: number): Element[] {
   const count = (amount: number, sign: string, color: Color) =>
     div().flex_none().text_size(11).text_color(color).child(`${sign}${amount}`);
@@ -249,6 +265,9 @@ function badge(colors: Theme, amount: number, own: boolean): Element {
 type FolderRow = Extract<TreeRow, { kind: "folder" }>;
 type FileRow = Extract<TreeRow, { kind: "file" }>;
 
+/** The height of a row of the tree: it is dense, as a list of many files must be. */
+const TREE_ROW = 24;
+
 /** How far a row of the tree is from the left edge, for its depth. */
 function inset(depth: number): number {
   return 8 + depth * 14;
@@ -257,51 +276,51 @@ function inset(depth: number): number {
 function folderRow(colors: Theme, row: FolderRow, onFold: Handler): Element {
   return h_flex()
     .id(`review-folder-${row.path}`)
-    .h(26)
+    .h(TREE_ROW)
     .flex_none()
     .pl(inset(row.depth))
     .pr(8)
     .gap(6)
     .items_center()
-    .rounded(7)
+    .rounded(6)
     .cursor_pointer()
     .text_color(colors.muted)
     .hover((style) => style.bg(colors.hover))
     .on_click((_event, cx) => onFold(cx))
+    .child(svg(chromeIcon("folder")).size(12).flex_none())
+    .child(div().min_w(0).truncate().child(row.name))
     .child(
       svg(chromeIcon(row.open ? "chevron-down" : "chevron-right"))
-        .size(11)
-        .flex_none(),
-    )
-    .child(div().flex_1().min_w(0).truncate().child(row.name));
+        .size(10)
+        .flex_none()
+        .text_color(colors.dim),
+    );
+}
+
+/** The color of a file's name in the tree: a new file and a removed one stand out, as their lines do in the diff. */
+function nameColor(colors: Theme, entry: ReviewFile): Color {
+  if (entry.gone) return colors.blocked;
+  if (entry.file.change === "added") return colors.ansi2;
+  return entry.file.change === "deleted" ? colors.ansi1 : colors.foreground;
 }
 
 function fileRow(colors: Theme, row: FileRow, open: boolean, onOpen: Handler): Element {
   const { entry } = row;
   const { file } = entry;
-  const change = CHANGES[file.change];
   return h_flex()
     .id(`review-file-${file.path}`)
-    .h(28)
+    .h(TREE_ROW)
     .flex_none()
-    .pl(inset(row.depth))
+    .pl(inset(row.depth) + 18)
     .pr(8)
     .gap(8)
     .items_center()
-    .rounded(7)
+    .rounded(6)
     .cursor_pointer()
     .when(open, (el) => el.bg(colors.selected))
     .hover((style) => style.bg(colors.hover))
     .on_click((_event, cx) => onOpen(cx))
-    .child(
-      div()
-        .w(12)
-        .flex_none()
-        .text_size(11)
-        .text_color(colors[entry.gone ? "blocked" : change.tone])
-        .child(entry.gone ? "!" : change.letter),
-    )
-    .child(div().flex_1().min_w(0).truncate().child(row.name))
+    .child(div().flex_1().min_w(0).truncate().text_color(nameColor(colors, entry)).child(row.name))
     .when(entry.discussions.length > 0, (el) => el.child(badge(colors, entry.discussions.length, false)))
     .when(entry.comments.length > 0, (el) => el.child(badge(colors, entry.comments.length, true)))
     .children(counts(colors, file.added, file.removed));
@@ -310,6 +329,8 @@ function fileRow(colors: Theme, row: FileRow, open: boolean, onOpen: Handler): E
 export interface FileList {
   /** The files of the review as a tree, from the top. */
   readonly rows: readonly TreeRow[];
+  /** Where the person types a part of a path, to see only the files that have it. */
+  readonly filter: InputState;
   /** The path of the file whose diff shows. */
   readonly open: string | null;
   /** What the list says while it has no file. */
@@ -324,20 +345,36 @@ export function fileList(colors: Theme, props: FileList): Element {
     row.kind === "folder"
       ? folderRow(colors, row, (cx) => props.onFold(row.path, cx))
       : fileRow(colors, row, row.entry.file.path === props.open, (cx) => props.onOpen(row.entry.file.path, cx));
-  return v_flex()
-    .id("review-files")
-    .w(300)
-    .h_full()
+  const filter = Input.new(props.filter)
+    .h(26)
     .flex_none()
-    .p(6)
-    .border_r(1)
+    .mx(6)
+    .mt(6)
+    .px(8)
+    .rounded(6)
+    .border_1()
     .border_color(colors.border)
-    .text_size(12.5)
+    .text_size(12)
+    .text_color(colors.foreground);
+  const tree = v_flex()
+    .id("review-files")
+    .flex_1()
+    .min_h(0)
+    .p(6)
     .overflow_y_scrollbar()
     .children(props.rows.map(draw))
     .when(props.rows.length === 0, (el) =>
       el.child(div().p(8).text_size(12).text_color(colors.muted).child(props.empty)),
     );
+  return v_flex()
+    .w(300)
+    .h_full()
+    .flex_none()
+    .border_r(1)
+    .border_color(colors.border)
+    .text_size(12)
+    .child(filter)
+    .child(tree);
 }
 
 export interface ReviewHead {
@@ -420,8 +457,8 @@ export function reviewHead(colors: Theme, props: ReviewHead): Element {
         .child(range),
     ),
   )
-    .child(div().flex_1())
     .children(counts(colors, added, removed))
+    .child(div().flex_1())
     .child(
       props.loading
         ? svg(chromeIcon("spinner")).size(13).flex_none().text_color(colors.working).spin(900)
@@ -435,8 +472,9 @@ export function reviewHead(colors: Theme, props: ReviewHead): Element {
     .child(iconButton(colors, { id: "review-close", icon: chromeIcon("x"), tip: "Close", onClick: props.onClose }));
 }
 
-/** The strip over a file's diff: its path, and where it moved from. */
+/** The strip over a file's diff: its name, its folder, where it moved from, and how much of it changed. */
 export function fileHead(colors: Theme, type: Type, file: DiffFile): Element {
+  const cut = file.path.lastIndexOf("/");
   const bar = h_flex()
     .h(32)
     .flex_none()
@@ -447,10 +485,23 @@ export function fileHead(colors: Theme, type: Type, file: DiffFile): Element {
     .border_color(colors.border)
     .font_family(type.family)
     .text_size(12)
-    .child(div().min_w(0).truncate().child(file.path));
+    .child(
+      div()
+        .flex_none()
+        .child(file.path.slice(cut + 1)),
+    )
+    .child(
+      div()
+        .min_w(0)
+        .truncate()
+        .text_color(colors.muted)
+        .child(file.path.slice(0, cut + 1)),
+    );
   return optional(bar, file.from, (el, from) =>
     el.child(div().min_w(0).truncate().text_color(colors.dim).child(`from ${from}`)),
-  );
+  )
+    .child(div().flex_1())
+    .children(counts(colors, file.added, file.removed));
 }
 
 export interface Composer {
