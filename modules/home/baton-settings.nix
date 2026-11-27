@@ -1,9 +1,8 @@
 # This setup's settings for the sessions that Baton starts on this machine.
-# Each file of config/baton is one concern, linked on its own into
-# ~/.config/baton, so that another module can add a file of its own there.
-_: {
-  xdg.configFile."baton" = {
-    source = ../../config/baton;
-    recursive = true;
-  };
+# ~/.config/baton is a link to config/baton, where each file is one concern:
+# a new setting is a new file there, and it applies with no rebuild.
+{ config, dotfilesPath, ... }:
+{
+  home.file.".config/baton".source =
+    config.lib.file.mkOutOfStoreSymlink "${dotfilesPath}/config/baton";
 }
