@@ -23,6 +23,10 @@ const COLOR_NAMES = [
   "done",
   "ansi1",
   "ansi2",
+  "ansi3",
+  "ansi4",
+  "ansi5",
+  "ansi6",
 ] as const;
 
 export type Theme = Readonly<Record<(typeof COLOR_NAMES)[number], Color>>;
@@ -147,7 +151,11 @@ export function heading(colors: Theme, props: Heading): Element {
       .cursor_pointer()
       .hover((style) => style.text_color(colors.foreground))
       .on_click((_event, cx) => fold.onToggle(cx))
-      .child(svg(chromeIcon(fold.open ? "chevron-down" : "chevron-right")).size(11).flex_none()),
+      .child(
+        svg(chromeIcon(fold.open ? "chevron-down" : "chevron-right"))
+          .size(11)
+          .flex_none(),
+      ),
   );
   return optional(folding.child(div().flex_1()), props.action, (el, action) => el.child(iconButton(colors, action)));
 }
@@ -206,6 +214,10 @@ export function menuItem(colors: Theme, item: MenuItem): Element {
 }
 
 /** Adds what `add` makes of `value` to the element, when there is a value. */
-export function optional<T>(el: Element, value: T | null | undefined, add: (el: Element, value: T) => Element): Element {
+export function optional<T>(
+  el: Element,
+  value: T | null | undefined,
+  add: (el: Element, value: T) => Element,
+): Element {
   return value === null || value === undefined ? el : add(el, value);
 }

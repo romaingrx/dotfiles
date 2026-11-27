@@ -16,6 +16,7 @@ import { stageLabel, type Pull, type Stack } from "../pulls";
 import { chromeIcon, iconButton, optional, textButton, type Handler, type TextButton, type Theme } from "../ui";
 import type { DiffFile, DiffLine } from "./diff";
 import type { Card, ReviewFile, Row } from "./rows";
+import { grammarOf, tokens, type TokenKind } from "./syntax";
 import type { TreeRow } from "./tree";
 
 /** The type the diff is set in: the terminals' font, and the room one character and one row take. */
@@ -108,16 +109,35 @@ function lineRow(colors: Theme, type: Type, row: Extract<Row, { kind: "line" }>,
         // One number, as the file has it now; a line the branch removes keeps the number it had.
         .child(lineNumber(colors, type, line.now ?? line.old)),
     )
-    .child(
-      div()
-        .flex_1()
-        .min_w(0)
-        .whitespace_nowrap()
-        .child(row.text || " "),
-    );
+    .child(codeText(colors, row));
   // The lines a comment is being written on stand out from the lines the branch adds.
   if (active) return face.bg(`${colors.accent}26`);
   return optional(face, tint(colors, line), (el, color) => el.bg(color));
+}
+
+/** The colors of the pieces of a line of code: the ones Herdr's Files gives them in its own code view. */
+const SYNTAX: Readonly<Record<TokenKind, keyof Theme | null>> = {
+  plain: null,
+  keyword: "ansi5",
+  string: "ansi2",
+  comment: "dim",
+  number: "ansi1",
+  function: "ansi4",
+  type: "ansi3",
+  constant: "ansi6",
+};
+
+/** The text of a line, each piece in the color of what it is. */
+function codeText(colors: Theme, row: Extract<Row, { kind: "line" }>): Element {
+  const pieces = tokens(row.text, grammarOf(row.anchor.path)).map((piece) => {
+    const span = div()
+      .flex_none()
+      .whitespace_nowrap()
+      .child(piece.text || " ");
+    const color = SYNTAX[piece.kind];
+    return color ? span.text_color(colors[color]) : span;
+  });
+  return h_flex().flex_1().min_w(0).children(pieces);
 }
 
 /**
