@@ -14,7 +14,7 @@ import { settings } from "herdr";
 import { text } from "../parse";
 import { chromeIcon, iconButton, optional, textButton, type Handler, type TextButton, type Theme } from "../ui";
 import type { Change, DiffFile, DiffLine } from "./diff";
-import type { Row } from "./rows";
+import type { Card, Row } from "./rows";
 import type { TreeRow } from "./tree";
 
 /** The type the diff is set in: the terminals' font, and the room one character and one row take. */
@@ -59,7 +59,7 @@ export function commentColumns(width: number, type: Type): number {
 }
 
 function rowHeight(row: Row, type: Type): number {
-  return row.kind === "comment" ? row.lines.length * type.row + 2 * (COMMENT_GAP + COMMENT_PAD.y) : type.row;
+  return row.kind === "card" ? row.lines.length * type.row + 2 * (COMMENT_GAP + COMMENT_PAD.y) : type.row;
 }
 
 function tint(colors: Theme, line: DiffLine): Color | null {
@@ -78,20 +78,15 @@ function lineNumber(colors: Theme, type: Type, number: number | null): Element {
 
 function lineRow(colors: Theme, type: Type, row: Extract<Row, { kind: "line" }>, active: boolean): Element {
   const { line } = row;
-  const marked = row.commented || active;
+  // The edge says what is on the line: the person's own comment stands out, a discussion on GitHub is quiet.
+  const mark = row.commented || active ? colors.accent : row.discussed ? colors.muted : null;
   const face = h_flex()
     .w_full()
     .h(type.row)
     .flex_none()
     .cursor_pointer()
     .hover((style) => style.bg(colors.hover))
-    .child(
-      div()
-        .w(MARK)
-        .h_full()
-        .flex_none()
-        .when(marked, (el) => el.bg(colors.accent)),
-    )
+    .child(optional(div().w(MARK).h_full().flex_none(), mark, (el, color) => el.bg(color)))
     .child(lineNumber(colors, type, line.old))
     .child(lineNumber(colors, type, line.now))
     .child(
@@ -113,7 +108,13 @@ function lineRow(colors: Theme, type: Type, row: Extract<Row, { kind: "line" }>,
   return optional(face, tint(colors, line), (el, color) => el.bg(color));
 }
 
-function commentRow(colors: Theme, type: Type, row: Extract<Row, { kind: "comment" }>, columns: number): Element {
+/** The color of a card's edge: one of GitHub is quiet, the person's own stands out, a misplaced one warns. */
+function edge(colors: Theme, card: Card): Color {
+  if (card.stale) return colors.blocked;
+  return card.from === "github" ? colors.muted : colors.accent;
+}
+
+function cardRow(colors: Theme, type: Type, row: Card, columns: number): Element {
   return div()
     .w_full()
     .h(rowHeight(row, type))
@@ -130,7 +131,7 @@ function commentRow(colors: Theme, type: Type, row: Extract<Row, { kind: "commen
         .rounded(6)
         .bg(colors.raised)
         .border_l(2)
-        .border_color(row.stale ? colors.blocked : colors.accent)
+        .border_color(edge(colors, row))
         .text_color(colors.foreground)
         .children(
           row.lines.map((line) =>
@@ -138,7 +139,8 @@ function commentRow(colors: Theme, type: Type, row: Extract<Row, { kind: "commen
               .h(type.row)
               .flex_none()
               .whitespace_nowrap()
-              .child(line || " "),
+              .when(line.head, (el) => el.text_color(colors.muted))
+              .child(line.text || " "),
           ),
         ),
     );
@@ -179,7 +181,7 @@ export function diffPane(colors: Theme, props: DiffPane): Element {
   const { rows, type } = props;
   const draw = (row: Row): Element => {
     if (row.kind === "line") return lineRow(colors, type, row, props.active.has(row.key));
-    if (row.kind === "comment") return commentRow(colors, type, row, props.columns);
+    if (row.kind === "card") return cardRow(colors, type, row, props.columns);
     return plainRow(colors, type, row.text, row.kind === "hunk");
   };
   const list = v_virtual_list(
@@ -236,19 +238,11 @@ function counts(colors: Theme, added: number, removed: number): Element[] {
   ];
 }
 
-function badge(colors: Theme, amount: number): Element {
-  return div()
-    .px(5)
-    .h(16)
-    .flex()
-    .flex_none()
-    .items_center()
-    .rounded(8)
-    .bg(colors.accent)
-    .text_size(10.5)
-    .font_semibold()
-    .text_color(colors.background)
-    .child(String(amount));
+/** How many cards a file has: filled for the person's comments, an outline for the discussions on GitHub. */
+function badge(colors: Theme, amount: number, own: boolean): Element {
+  const face = div().px(5).h(16).flex().flex_none().items_center().rounded(8).text_size(10.5).font_semibold();
+  if (own) return face.bg(colors.accent).text_color(colors.background).child(String(amount));
+  return face.border_1().border_color(colors.input).text_color(colors.muted).child(String(amount));
 }
 
 type FolderRow = Extract<TreeRow, { kind: "folder" }>;
@@ -307,7 +301,8 @@ function fileRow(colors: Theme, row: FileRow, open: boolean, onOpen: Handler): E
         .child(entry.gone ? "!" : change.letter),
     )
     .child(div().flex_1().min_w(0).truncate().child(row.name))
-    .when(entry.comments.length > 0, (el) => el.child(badge(colors, entry.comments.length)))
+    .when(entry.discussions.length > 0, (el) => el.child(badge(colors, entry.discussions.length, false)))
+    .when(entry.comments.length > 0, (el) => el.child(badge(colors, entry.comments.length, true)))
     .children(counts(colors, file.added, file.removed));
 }
 
@@ -501,6 +496,7 @@ export function reviewFoot(colors: Theme, props: ReviewFoot): Element {
         .text_color(colors.foreground),
     );
   return optional(bar, props.error, (el, error) =>
-    el.child(div().max_w(360).truncate().text_size(11.5).text_color(colors.blocked).child(error)),
+    // An error can be a few lines, such as what GitHub answers: it is shown whole.
+    el.child(div().max_w(520).text_size(11.5).text_color(colors.blocked).child(error)),
   ).child(textButton(colors, props.send));
 }

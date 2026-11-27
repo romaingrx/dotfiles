@@ -2,6 +2,8 @@ import { exec } from "herdr";
 import { machineOf } from "../terminal";
 import type { Thread } from "../threads";
 import { baseRefs, parseBranchDiff, type BranchDiff } from "./diff";
+import { DISCUSSIONS_QUERY, parseDiscussions, REPLY_MUTATION, type Discussion } from "./discussions";
+import type { About } from "./draft";
 
 /** How long the read of a branch's diff may take. */
 const DIFF_TIMEOUT = 60_000;
@@ -23,6 +25,43 @@ for base in "$@"; do
 done
 echo "this repository has no base branch to compare with" >&2
 exit 1`;
+
+/** How long the read of a pull request's discussions may take. */
+const DISCUSSIONS_TIMEOUT = 30_000;
+
+/**
+ * The open discussions of a thread's pull request, read with `gh` in the
+ * thread's folder on its machine. `gh` fills in the repository of that folder.
+ * None for a thread without a pull request.
+ */
+export async function readDiscussions(thread: Thread): Promise<Discussion[]> {
+  if (!thread.checkout || !thread.pull) return [];
+  const fields = ["owner={owner}", "name={repo}", `number=${thread.pull.number}`].flatMap((field) => ["-F", field]);
+  const options = { cwd: thread.checkout.folder, on: machineOf(thread.key), timeout: DISCUSSIONS_TIMEOUT };
+  const result = await exec("gh", ["api", "graphql", ...fields, "-f", `query=${DISCUSSIONS_QUERY}`], options);
+  if (result.code !== 0)
+    throw new Error(`GitHub's comments: ${result.stderr.trim() || `gh ended with code ${result.code}`}`);
+  return parseDiscussions(JSON.parse(result.stdout));
+}
+
+/**
+ * Posts an answer on GitHub as a reply in its discussion, in the name of
+ * whoever `gh` is signed in as on the thread's machine. The body goes as it
+ * is: `-f` takes it as text.
+ */
+export async function postReply(thread: Thread, about: About, body: string): Promise<void> {
+  if (!thread.checkout) throw new Error("this thread has no folder of its own to post from");
+  const fields = [`query=${REPLY_MUTATION}`, `discussion=${about.discussion}`, `body=${body}`].flatMap((field) => [
+    "-f",
+    field,
+  ]);
+  const options = { cwd: thread.checkout.folder, on: machineOf(thread.key), timeout: DISCUSSIONS_TIMEOUT };
+  const result = await exec("gh", ["api", "graphql", ...fields], options);
+  if (result.code !== 0)
+    throw new Error(
+      `GitHub did not take the reply to @${about.author}: ${result.stderr.trim() || `gh ended with code ${result.code}`}`,
+    );
+}
 
 /** The whole branch of a thread against its base, read in the thread's folder on its machine. */
 export async function readBranchDiff(thread: Thread): Promise<BranchDiff> {

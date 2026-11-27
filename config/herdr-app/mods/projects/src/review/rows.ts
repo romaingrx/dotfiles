@@ -1,12 +1,22 @@
 import type { DiffFile, DiffLine } from "./diff";
-import { anchorKey, anchorOf, type Anchor, type Comment, type Span } from "./draft";
+import type { Discussion, Remark } from "./discussions";
+import { anchorKey, anchorOf, linesOf, type Anchor, type Comment, type Posting, type Span } from "./draft";
 
-/** A file of the review: one the branch changed, with the comments on it. */
+/** A file of the review: one the branch changed, with what is said about it. */
 export interface ReviewFile {
   readonly file: DiffFile;
+  /** The person's comments, not sent yet. */
   readonly comments: readonly Comment[];
-  /** Set for a file that has comments and is no longer in the diff. */
+  /** The open discussions on GitHub. */
+  readonly discussions: readonly Discussion[];
+  /** Set for a file that is no longer in the diff, and still has comments or discussions. */
   readonly gone: boolean;
+}
+
+/** One line of a card. A head line names who speaks, or where. */
+export interface CardLine {
+  readonly text: string;
+  readonly head: boolean;
 }
 
 /** One row of a file's diff, as the list draws it. */
@@ -19,20 +29,28 @@ export type Row =
       readonly anchor: Anchor;
       readonly line: DiffLine;
       readonly text: string;
+      /** Set for a line that a comment of the person is on. */
       readonly commented: boolean;
+      /** Set for a line that a discussion on GitHub is on. */
+      readonly discussed: boolean;
     }
   | {
-      readonly kind: "comment";
+      /** A card under a line: the person's comment, or a discussion on GitHub. */
+      readonly kind: "card";
       readonly key: string;
       readonly anchor: Anchor;
-      /** The comment's words, cut into the lines the row shows. */
-      readonly lines: readonly string[];
-      /** Set for a comment on a line that is no longer in the diff. */
+      readonly from: "draft" | "github";
+      readonly lines: readonly CardLine[];
+      /** Set for a card on a line that is not in the diff. */
       readonly stale: boolean;
     };
 
+export type Card = Extract<Row, { kind: "card" }>;
+
 /** How many lines of one file's diff are drawn. */
 export const MAX_LINES = 5000;
+/** How many lines of one comment on GitHub are drawn. */
+export const MAX_REMARK_LINES = 12;
 const TAB = 4;
 
 /**
@@ -76,15 +94,22 @@ function gone(path: string): DiffFile {
   return { path, from: null, change: "modified", binary: false, hunks: [], added: 0, removed: 0 };
 }
 
-/** The files of the review: those of the diff, then those that only have comments left. */
-export function reviewFiles(files: readonly DiffFile[], comments: readonly Comment[]): ReviewFile[] {
-  const on = (path: string) => comments.filter((comment) => comment.path === path);
+/** The files of the review: those of the diff, then those that only have comments or discussions left. */
+export function reviewFiles(
+  files: readonly DiffFile[],
+  comments: readonly Comment[],
+  discussions: readonly Discussion[],
+): ReviewFile[] {
+  const entry = (file: DiffFile, isGone: boolean): ReviewFile => ({
+    file,
+    comments: comments.filter((comment) => comment.path === file.path),
+    discussions: discussions.filter((discussion) => discussion.path === file.path),
+    gone: isGone,
+  });
   const changed = new Set(files.map((file) => file.path));
-  const left = [...new Set(comments.map((comment) => comment.path))].filter((path) => !changed.has(path));
-  return [
-    ...files.map((file) => ({ file, comments: on(file.path), gone: false })),
-    ...left.map((path) => ({ file: gone(path), comments: on(path), gone: true })),
-  ];
+  const spoken = [...comments, ...discussions].map((anchor) => anchor.path);
+  const left = [...new Set(spoken)].filter((path) => !changed.has(path));
+  return [...files.map((file) => entry(file, false)), ...left.map((path) => entry(gone(path), true))];
 }
 
 /** The key of the row of a line. */
@@ -92,15 +117,48 @@ export function lineKey(anchor: Anchor): string {
   return `line:${anchorKey(anchor)}`;
 }
 
-function commentRow(comment: Comment, columns: number, stale: boolean): Row {
-  const where = stale ? `Line ${comment.line}, which is no longer in the diff:\n` : "";
-  return {
-    kind: "comment",
-    key: `comment:${anchorKey(comment)}`,
-    anchor: comment,
-    lines: wrap(where + comment.body, columns),
-    stale,
-  };
+function body(text: string, columns: number): CardLine[] {
+  return wrap(text, columns).map((line) => ({ text: line, head: false }));
+}
+
+/** Says where a card belongs, for one whose line the diff does not show. */
+function whereLine(anchor: Anchor, stale: boolean): CardLine[] {
+  return stale ? [{ text: `Line ${anchor.line}, which is not in the diff:`, head: true }] : [];
+}
+
+/** What a card says over an answer that is a reply on GitHub too. */
+const POSTING: Readonly<Record<Posting, string | null>> = {
+  none: null,
+  due: "A reply on GitHub too, when you send the review:",
+  done: "Posted on GitHub:",
+};
+
+function postingLine(comment: Comment): CardLine[] {
+  const text = POSTING[comment.about?.post ?? "none"];
+  return text ? [{ text, head: true }] : [];
+}
+
+function commentCard(comment: Comment, columns: number, stale: boolean): Card {
+  const lines = [...whereLine(comment, stale), ...postingLine(comment), ...body(comment.body, columns)];
+  return { kind: "card", key: `comment:${anchorKey(comment)}`, anchor: comment, from: "draft", lines, stale };
+}
+
+/** A comment on GitHub: who wrote it, then the start of what they wrote. */
+function remarkLines(remark: Remark, columns: number): CardLine[] {
+  const lines = body(remark.body.trim(), columns);
+  const cut: CardLine[] = lines.length > MAX_REMARK_LINES ? [{ text: "…", head: false }] : [];
+  return [{ text: `@${remark.author} on GitHub`, head: true }, ...lines.slice(0, MAX_REMARK_LINES), ...cut];
+}
+
+function discussionCard(discussion: Discussion, index: number, columns: number, stale: boolean): Card {
+  // One on several lines says which: the card is under the last one only.
+  const span: CardLine[] = discussion.start && !stale ? [{ text: `On lines ${linesOf(discussion)}:`, head: true }] : [];
+  const lines = [
+    ...whereLine(discussion, stale),
+    ...span,
+    ...discussion.remarks.flatMap((remark) => remarkLines(remark, columns)),
+  ];
+  return { kind: "card", key: `discussion:${index}`, anchor: discussion, from: "github", lines, stale };
 }
 
 /** What stands in place of the lines of a file that has none to show. */
@@ -111,17 +169,33 @@ function emptyText(entry: ReviewFile): string | null {
 }
 
 /**
- * The rows of one file: each hunk's header and lines, with a comment under its
- * line. A comment whose line the diff no longer has comes first. `columns` is
- * how many characters of a comment fit on one line.
+ * The cards of a file by the line they are on, in the order they show: the
+ * discussions on GitHub, then the person's comment. `stale` builds the card of
+ * a line the diff does not show.
+ */
+function cardsOf(entry: ReviewFile, columns: number, stale: boolean): Map<string, Card[]> {
+  const cards = new Map<string, Card[]>();
+  const add = (anchor: Anchor, card: Card): void => {
+    const key = anchorKey(anchor);
+    cards.set(key, [...(cards.get(key) ?? []), card]);
+  };
+  entry.discussions.forEach((discussion, index) => add(discussion, discussionCard(discussion, index, columns, stale)));
+  for (const comment of entry.comments) add(comment, commentCard(comment, columns, stale));
+  return cards;
+}
+
+/**
+ * The rows of one file: each hunk's header and lines, with the cards of a line
+ * under it. The cards of a line the diff does not show come first. `columns`
+ * is how many characters of a card fit on one line.
  */
 export function fileRows(entry: ReviewFile, columns: number): Row[] {
-  const { file, comments } = entry;
-  const byLine = new Map(comments.map((comment) => [anchorKey(comment), comment]));
+  const { file } = entry;
   const lines = file.hunks.flatMap((hunk) => hunk.lines);
   const shown = new Set(lines.map((line) => anchorKey(anchorOf(file.path, line))));
-  const stale = comments.filter((comment) => !shown.has(anchorKey(comment)));
-  const rows: Row[] = stale.map((comment) => commentRow(comment, columns, true));
+  const cards = cardsOf(entry, columns, false);
+  const stale = [...cardsOf(entry, columns, true)].filter(([key]) => !shown.has(key));
+  const rows: Row[] = stale.flatMap(([, rowsOfLine]) => rowsOfLine);
   const empty = emptyText(entry);
   if (empty) return [...rows, { kind: "note", key: "note:empty", text: empty }];
   let drawn = 0;
@@ -130,25 +204,23 @@ export function fileRows(entry: ReviewFile, columns: number): Row[] {
     rows.push({ kind: "hunk", key: `hunk:${index}`, text: hunk.header });
     for (const line of hunk.lines.slice(0, MAX_LINES - drawn)) {
       const anchor = anchorOf(file.path, line);
-      const comment = byLine.get(anchorKey(anchor));
-      rows.push({
-        kind: "line",
-        key: lineKey(anchor),
-        anchor,
-        line,
-        text: untab(line.text),
-        commented: Boolean(comment),
-      });
-      if (comment) rows.push(commentRow(comment, columns, false));
+      const under = cards.get(anchorKey(anchor)) ?? [];
+      const mark = { commented: false, discussed: false };
+      rows.push({ kind: "line", key: lineKey(anchor), anchor, line, text: untab(line.text), ...mark }, ...under);
     }
     drawn += hunk.lines.length;
   }
   if (lines.length > MAX_LINES) {
     rows.push({ kind: "note", key: "note:cut", text: `This diff is long: only its first ${MAX_LINES} lines show.` });
   }
-  // A comment on several lines marks each of them, not only the last one.
-  const covered = new Set(comments.flatMap((comment) => spanRows(rows, comment).map((row) => row.key)));
-  return rows.map((row) => (row.kind === "line" && covered.has(row.key) ? { ...row, commented: true } : row));
+  // What is said about several lines marks each of them, not only the last one.
+  const covered = (spans: readonly Span[]) =>
+    new Set(spans.flatMap((span) => spanRows(rows, span).map((row) => row.key)));
+  const commented = covered(entry.comments);
+  const discussed = covered(entry.discussions);
+  return rows.map((row) =>
+    row.kind === "line" ? { ...row, commented: commented.has(row.key), discussed: discussed.has(row.key) } : row,
+  );
 }
 
 export type LineRow = Extract<Row, { kind: "line" }>;

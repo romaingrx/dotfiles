@@ -11,6 +11,24 @@ export interface Anchor {
   readonly line: number;
 }
 
+/** What a comment of the review answers: a comment someone left on GitHub. */
+export interface About {
+  readonly author: string;
+  readonly url: string;
+  /** The start of what they wrote. */
+  readonly quote: string;
+  /** The discussion they wrote it in, as GitHub calls it. */
+  readonly discussion: string;
+  readonly post: Posting;
+}
+
+/**
+ * Whether an answer is a reply on GitHub too, in the person's name: not at
+ * all, when the review is sent, or already. One that is posted is not posted
+ * again when a send is tried once more.
+ */
+export type Posting = "none" | "due" | "done";
+
 /** A line of a file's diff, without the file. */
 export type Mark = Pick<Anchor, "side" | "line">;
 
@@ -25,6 +43,8 @@ export interface Comment extends Span {
   /** The text of its lines, quoted to the thread. */
   readonly code: string;
   readonly body: string;
+  /** Set for a comment on a line that has a discussion on GitHub. */
+  readonly about: About | null;
 }
 
 /** A review the person writes and has not sent yet. */
@@ -57,13 +77,27 @@ function parseMark(value: unknown): Mark | null {
   return { side: value.side, line: value.line };
 }
 
+function parsePosting(value: unknown): Posting {
+  return value === "due" || value === "done" ? value : "none";
+}
+
+function parseAbout(value: unknown): About | null {
+  if (!isRecord(value)) return null;
+  const author = text(value.author);
+  const url = text(value.url);
+  const discussion = text(value.discussion);
+  if (!author || !url || !discussion || typeof value.quote !== "string") return null;
+  return { author, url, quote: value.quote, discussion, post: parsePosting(value.post) };
+}
+
 function parseComment(value: unknown): Comment | null {
   if (!isRecord(value)) return null;
   const path = text(value.path);
   const body = text(value.body);
   const last = parseMark(value);
   if (!path || !body || !last || typeof value.code !== "string") return null;
-  return { path, ...last, start: parseMark(value.start), code: value.code, body };
+  const start = parseMark(value.start);
+  return { path, ...last, start, code: value.code, body, about: parseAbout(value.about) };
 }
 
 function parseDraft(value: unknown): Draft {
@@ -102,16 +136,32 @@ export function withoutComment(draft: Draft, anchor: Anchor): Draft {
   return { ...draft, comments: draft.comments.filter((comment) => anchorKey(comment) !== key) };
 }
 
-/** The draft with the comment of some lines set to `body`. A body without words removes the comment. */
-export function withComment(draft: Draft, span: Span, code: string, body: string): Draft {
+/** A comment as the person writes it on some lines: the lines' text, their words, and what they answer. */
+export type Written = Pick<Comment, "code" | "body" | "about">;
+
+/** The draft with the comment of some lines set. A body without words removes the comment. */
+export function withComment(draft: Draft, span: Span, written: Written): Draft {
   const rest = withoutComment(draft, span);
   const { path, side, line, start } = span;
-  const words = body.trim();
-  return words ? { ...rest, comments: [...rest.comments, { path, side, line, start, code, body: words }] } : rest;
+  const body = written.body.trim();
+  return body ? { ...rest, comments: [...rest.comments, { path, side, line, start, ...written, body }] } : rest;
 }
 
 export function withNote(draft: Draft, note: string): Draft {
   return { ...draft, note };
+}
+
+/** The comments that are still to be posted on GitHub as replies. */
+export function duePosts(draft: Draft): Comment[] {
+  return draft.comments.filter((comment) => comment.about?.post === "due");
+}
+
+/** The draft with the answer on a line marked as posted on GitHub. */
+export function withPosted(draft: Draft, anchor: Anchor): Draft {
+  const key = anchorKey(anchor);
+  const posted = (comment: Comment): Comment =>
+    anchorKey(comment) === key && comment.about ? { ...comment, about: { ...comment.about, post: "done" } } : comment;
+  return { ...draft, comments: draft.comments.map(posted) };
 }
 
 /** The comments as a reader goes through the diff: file by file in the order of `paths`, then down each file. */
@@ -152,11 +202,19 @@ function quoted(code: string): string[] {
   ];
 }
 
+/** Says which comment on GitHub an answer is to, and that the answer is there too when it was posted. */
+function answerText(about: About): string {
+  const posted = about.post === "done" ? ", where this answer is posted too" : "";
+  return `In answer to @${about.author} on GitHub (${about.url})${posted}:\n> ${about.quote}`;
+}
+
 function commentText(comment: Comment, index: number): string {
   const removed = comment.side === "old" ? " (a line the branch removes)" : "";
+  const answers = comment.about ? [indent(answerText(comment.about))] : [];
   return [
     `${index + 1}. ${comment.path}:${linesOf(comment)}${removed}`,
     ...quoted(comment.code),
+    ...answers,
     indent(comment.body),
   ].join("\n");
 }
