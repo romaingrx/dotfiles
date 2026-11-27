@@ -61,7 +61,8 @@ in
   imports = [
     ../../../modules/home/tl.nix
     ../../../modules/home/claude-gateway.nix
-    ../../../modules/home/baton.nix
+    ../../../modules/home/baton-app.nix
+    ../../../modules/home/baton-settings.nix
   ];
 
   # Company-managed: per-device keys instead of the age key (see README.md).

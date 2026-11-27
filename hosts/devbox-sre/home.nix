@@ -8,7 +8,7 @@ in
     ../devcontainer/home.nix
     ../../modules/home/tl.nix
     ../../modules/home/envoy.nix
-    ../../modules/home/baton.nix
+    ../../modules/home/baton-settings.nix
     ../../modules/home/programs/tmux-ctrl-a.nix
   ];
 
