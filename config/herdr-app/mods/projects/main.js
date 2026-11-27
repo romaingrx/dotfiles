@@ -190,7 +190,11 @@ async function renameProject(project, name) {
   await Promise.all(project.members.map((member) => core(["label", member.address, `project=${name}`])));
   const lead = leadOf(project);
   if (lead)
-    await core(["send", lead.address, `The person renamed this project to "${name}". Its memory folder has that name now.`]);
+    await core([
+      "send",
+      lead.address,
+      `The person renamed this project to "${name}". Its memory folder has that name now.`
+    ]);
 }
 async function closeProject(ownSpace, outside) {
   if (ownSpace)
@@ -1333,7 +1337,12 @@ class ProjectMenu {
     return v_flex4().id("project-menu").w_full().p(5).bg(colors.popover).text_size(12.8).children(items.map((item) => menuItem(colors, item)));
   }
   choices(all) {
-    const rename = { id: "rename-project", icon: chromeIcon("square-pen"), label: "Rename", onClick: () => this.rename() };
+    const rename = {
+      id: "rename-project",
+      icon: chromeIcon("square-pen"),
+      label: "Rename",
+      onClick: () => this.rename()
+    };
     return [rename, ...all.map((ending) => ({ ...ending, onClick: (cx) => this.ask(ending.id, cx) }))];
   }
   confirmation(ending) {
@@ -2899,7 +2908,12 @@ var threadHead = {
     const panel = readPanel();
     const { snapshot, projects } = readScene();
     const thread = threadAt(snapshot, projects, panel.thread);
-    const bar = h_flex8().size_full().px(8).gap(6).items_center().bg(colors.chrome).text_size(12.5).child(iconButton(colors, { id: "back", icon: chromeIcon("chevron-left"), tip: "All threads", onClick: showThreadList })).child(statusMark(colors, thread?.status ?? null)).child(div7().flex_1().min_w(0).truncate().text_color(thread ? colors.foreground : colors.dim).child(thread?.title ?? "This thread has ended."));
+    const bar = h_flex8().size_full().px(8).gap(6).items_center().bg(colors.chrome).text_size(12.5).child(iconButton(colors, {
+      id: "back",
+      icon: chromeIcon("chevron-left"),
+      tip: "All threads",
+      onClick: showThreadList
+    })).child(statusMark(colors, thread?.status ?? null)).child(div7().flex_1().min_w(0).truncate().text_color(thread ? colors.foreground : colors.dim).child(thread?.title ?? "This thread has ended."));
     return optional(bar, thread, (el, open) => el.child(div7().flex_none().text_size(11).text_color(colors.muted).child(threadState(open, Date.now()))).children([...drawerButtons(colors, panel.drawer), ...controls(colors, open)]));
   }
 };

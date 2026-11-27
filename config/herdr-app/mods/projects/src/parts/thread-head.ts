@@ -79,7 +79,14 @@ export const threadHead: Part = {
       .items_center()
       .bg(colors.chrome)
       .text_size(12.5)
-      .child(iconButton(colors, { id: "back", icon: chromeIcon("chevron-left"), tip: "All threads", onClick: showThreadList }))
+      .child(
+        iconButton(colors, {
+          id: "back",
+          icon: chromeIcon("chevron-left"),
+          tip: "All threads",
+          onClick: showThreadList,
+        }),
+      )
       .child(statusMark(colors, thread?.status ?? null))
       .child(
         div()

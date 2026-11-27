@@ -116,7 +116,9 @@ function place(pane: PaneInfo): string | null {
  * such session.
  */
 function sharedFolders(snapshot: Snapshot): ReadonlySet<string> {
-  const sessions = new Set(snapshot.terminals.filter((terminal) => terminal.project).map((terminal) => terminal.address));
+  const sessions = new Set(
+    snapshot.terminals.filter((terminal) => terminal.project).map((terminal) => terminal.address),
+  );
   const seen = new Set<string>();
   const shared = new Set<string>();
   for (const pane of snapshot.panes) {

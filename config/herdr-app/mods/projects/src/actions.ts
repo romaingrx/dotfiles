@@ -99,7 +99,12 @@ export async function renameProject(project: Project, name: string): Promise<voi
   for (const move of moves) succeed(move, "the move of the memory folder");
   await Promise.all(project.members.map((member) => core(["label", member.address, `project=${name}`])));
   const lead = leadOf(project);
-  if (lead) await core(["send", lead.address, `The person renamed this project to "${name}". Its memory folder has that name now.`]);
+  if (lead)
+    await core([
+      "send",
+      lead.address,
+      `The person renamed this project to "${name}". Its memory folder has that name now.`,
+    ]);
 }
 
 /**

@@ -25,7 +25,8 @@ export interface Pull {
 
 /** What a pull request is asked for by: a URL its thread declared, or the branch in a thread's folder. */
 export type PullRef =
-  { readonly kind: "declared"; readonly url: string } | { readonly kind: "branch"; readonly terminal: string };
+  | { readonly kind: "declared"; readonly url: string }
+  | { readonly kind: "branch"; readonly terminal: string };
 
 /** The pull requests as last read, by `refKey`. A cache the mod can build again. */
 export type Pulls = Readonly<Record<string, Pull>>;

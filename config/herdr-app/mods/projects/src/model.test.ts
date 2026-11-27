@@ -83,7 +83,14 @@ function terminal(overrides: Partial<Terminal> & Pick<Terminal, "address">): Ter
 
 /** A pull request of a made-up repository: its branch is `b<number>`, on `main` unless told. */
 function pull(number: number, stage: PullStage, base = "main"): Pull {
-  return { number, url: `https://example.test/o/r/pull/${number}`, title: `Pull ${number}`, stage, base, head: `b${number}` };
+  return {
+    number,
+    url: `https://example.test/o/r/pull/${number}`,
+    title: `Pull ${number}`,
+    stage,
+    base,
+    head: `b${number}`,
+  };
 }
 
 function tab(overrides: Partial<TabInfo> & Pick<TabInfo, "id">): TabInfo {
@@ -227,7 +234,9 @@ describe("parseTerminal", () => {
     const labels = { state: "needs-you", "report-turn": "3" };
     expect(parseTerminal({ address: "t1", state: "live", turn: 3, labels })?.reported).toBe("needs-you");
     expect(parseTerminal({ address: "t1", state: "live", turn: 4, labels })?.reported).toBeNull();
-    expect(parseTerminal({ address: "t1", state: "live", turn: 3, labels: { state: "needs-you" } })?.reported).toBeNull();
+    expect(
+      parseTerminal({ address: "t1", state: "live", turn: 3, labels: { state: "needs-you" } })?.reported,
+    ).toBeNull();
   });
 
   test("a thread without a title is known by its task", () => {
@@ -384,7 +393,9 @@ describe("a project started by the launcher", () => {
     const everyone = { space: null, outside: ["t1", "t2", "t3", "box/t4"] };
     const visitor = pane({ pane: "p9", tab: "someone-else", terminal: "t9" });
     const withTab = { ...own, tabs: [...own.tabs, tab({ id: "someone-else" })] };
-    expect(projectFootprint(snapshot({ ...scene, spaces: [withTab], panes: [...scene.panes, visitor] }), project)).toEqual(everyone);
+    expect(
+      projectFootprint(snapshot({ ...scene, spaces: [withTab], panes: [...scene.panes, visitor] }), project),
+    ).toEqual(everyone);
     const beside = pane({ pane: "p9", tab: "lead", terminal: "t9" });
     expect(projectFootprint(snapshot({ ...scene, panes: [...scene.panes, beside] }), project)).toEqual(everyone);
   });
@@ -561,7 +572,9 @@ describe("the person's order of projects", () => {
   test("a stored order is a list of names, anything else is no order", () => {
     expect(parseOrder(["b", 3, "a"])).toEqual(["b", "a"]);
     expect(parseOrder({ b: 1 })).toEqual([]);
-    expect(buildScene(snapshot({ terminals: projects.flatMap((project) => project.members) }), ["c"]).projects[0]?.name).toBe("c");
+    expect(
+      buildScene(snapshot({ terminals: projects.flatMap((project) => project.members) }), ["c"]).projects[0]?.name,
+    ).toBe("c");
   });
 
   test("a name must be a slug that no other project has", () => {
@@ -589,7 +602,14 @@ describe("what each project has open", () => {
 
 describe("the sessions that wait on the person", () => {
   const lead = terminal({ address: "t1", project: "a", role: "orchestrator", status: "blocked", since: 50 });
-  const asked = terminal({ address: "t2", project: "a", heading: "Fix it", status: "blocked", since: 20, reported: "needs-you" });
+  const asked = terminal({
+    address: "t2",
+    project: "a",
+    heading: "Fix it",
+    status: "blocked",
+    since: 20,
+    reported: "needs-you",
+  });
   const busy = terminal({ address: "t3", project: "a", heading: "Busy", status: "working" });
   const away = terminal({ address: "box/t4", project: "b", heading: "Elsewhere", status: "blocked", since: 10 });
   const done = terminal({ address: "box/t5", project: "b", heading: "Put away", status: "blocked", resolved: true });
@@ -610,19 +630,27 @@ describe("the sessions that wait on the person", () => {
     expect(nextWait(all, "t1")?.terminal).toBe("box/t4");
     expect(nextWait([], "t1")).toBeUndefined();
   });
-
 });
 
 describe("a thread's pull request", () => {
   const view = (fields: Record<string, unknown>) =>
-    parsePull({ number: 7, url: "https://example.test/pull/7", title: "Fix it", baseRefName: "main", headRefName: "fix-it", ...fields });
+    parsePull({
+      number: 7,
+      url: "https://example.test/pull/7",
+      title: "Fix it",
+      baseRefName: "main",
+      headRefName: "fix-it",
+      ...fields,
+    });
 
   test("is read from gh, and says where it stands for the person", () => {
     expect(view({ state: "OPEN", isDraft: true })?.stage).toBe("draft");
     expect(view({ state: "OPEN", isDraft: false, reviewDecision: "" })?.stage).toBe("review");
     expect(view({ state: "OPEN", reviewDecision: "CHANGES_REQUESTED" })?.stage).toBe("changes");
     expect(view({ state: "OPEN", reviewDecision: "APPROVED" })?.stage).toBe("landing");
-    expect(view({ state: "OPEN", reviewDecision: "", autoMergeRequest: { mergeMethod: "SQUASH" } })?.stage).toBe("landing");
+    expect(view({ state: "OPEN", reviewDecision: "", autoMergeRequest: { mergeMethod: "SQUASH" } })?.stage).toBe(
+      "landing",
+    );
     const auto = { state: "OPEN", autoMergeRequest: { mergeMethod: "SQUASH" } };
     expect(view({ ...auto, reviewDecision: "CHANGES_REQUESTED" })?.stage).toBe("changes");
     expect(view({ ...auto, reviewDecision: "REVIEW_REQUIRED" })?.stage).toBe("review");
@@ -638,7 +666,14 @@ describe("a thread's pull request", () => {
   });
 
   test("is stored and read back; one without its branches, or anything else, is dropped", () => {
-    const stored = { number: 7, url: "https://example.test/pull/7", title: "Fix it", stage: "landing", base: "main", head: "fix-it" };
+    const stored = {
+      number: 7,
+      url: "https://example.test/pull/7",
+      title: "Fix it",
+      stage: "landing",
+      base: "main",
+      head: "fix-it",
+    };
     const old = { number: 8, url: "https://example.test/pull/8", title: "Old", stage: "review", base: "main" };
     expect(parsePulls({ t1: stored, t2: "oops", t3: { number: "7" }, t4: old })).toEqual({ t1: stored });
     expect(parsePulls({ t1: { ...stored, stage: "soon", state: "MERGED" } }).t1?.stage).toBe("merged");
@@ -786,7 +821,9 @@ describe("a stack of pull requests", () => {
   const numbers = (stack: readonly Pull[]) => stack.map((entry) => entry.number);
 
   test("goes from the lowest one up, by the branch each one merges into", () => {
-    expect(numbers(orderStack([pull(3, "draft", "b2"), pull(1, "review"), pull(2, "review", "b1")]))).toEqual([1, 2, 3]);
+    expect(numbers(orderStack([pull(3, "draft", "b2"), pull(1, "review"), pull(2, "review", "b1")]))).toEqual([
+      1, 2, 3,
+    ]);
     expect(numbers(orderStack([pull(5, "review"), pull(4, "review")]))).toEqual([4, 5]);
     expect(numbers(orderStack([pull(9, "review", "b7"), pull(8, "review"), pull(7, "merged")]))).toEqual([7, 8, 9]);
     expect(numbers(orderStack([pull(2, "review", "b1"), pull(1, "review", "b2")]))).toEqual([1, 2]);
@@ -809,7 +846,10 @@ describe("a stack of pull requests", () => {
     const scene = (status: "idle" | "working") => {
       const members = [terminal({ address: "t2", project: "p", status, declared: urls })];
       return projectThreads(
-        snapshot({ terminals: members, pulls: { [urls[0] ?? ""]: pull(1, "landing"), [urls[1] ?? ""]: pull(2, "review", "b1") } }),
+        snapshot({
+          terminals: members,
+          pulls: { [urls[0] ?? ""]: pull(1, "landing"), [urls[1] ?? ""]: pull(2, "review", "b1") },
+        }),
         only(members),
       );
     };
@@ -824,7 +864,9 @@ describe("a stack of pull requests", () => {
 
   test("is told in a few words; neighbours at one stage share them", () => {
     expect(stackLabel([pull(7, "review")])).toBe("#7 in review");
-    expect(stackLabel([pull(1, "merged"), pull(2, "review"), pull(3, "review", "b2")])).toBe("#1 merged, #2 #3 in review");
+    expect(stackLabel([pull(1, "merged"), pull(2, "review"), pull(3, "review", "b2")])).toBe(
+      "#1 merged, #2 #3 in review",
+    );
     expect(stackLabel([pull(1, "review"), pull(2, "draft", "b1"), pull(3, "review", "b2")])).toBe(
       "#1 in review, #2 draft, #3 in review",
     );

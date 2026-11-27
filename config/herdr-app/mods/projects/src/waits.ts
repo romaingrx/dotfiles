@@ -42,5 +42,3 @@ export function nextWait(all: readonly Wait[], focused: string | null): Wait | u
   const at = all.findIndex((wait) => wait.terminal === focused);
   return all[(at + 1) % all.length];
 }
-
-
