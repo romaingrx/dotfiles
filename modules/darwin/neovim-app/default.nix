@@ -5,7 +5,6 @@
 let
   inherit (import ../../../lib/apps) terminal;
   extensions = import ./extensions.nix;
-  allExtensions = extensions.typed ++ extensions.untyped;
   bundleId = "com.romaingrx.neovim";
   appPath = "/Applications/Nix Apps/Neovim.app";
   lsregister = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
@@ -31,7 +30,7 @@ let
         CFBundleTypeName = "Source code";
         CFBundleTypeRole = "Editor";
         LSHandlerRank = "Alternate";
-        CFBundleTypeExtensions = allExtensions;
+        CFBundleTypeExtensions = extensions;
       }
     ];
     UTImportedTypeDeclarations = [
@@ -39,14 +38,10 @@ let
         UTTypeIdentifier = "${bundleId}.source-code";
         UTTypeDescription = "Source code";
         UTTypeConformsTo = [ "public.source-code" ];
-        UTTypeTagSpecification."public.filename-extension" = extensions.untyped;
+        UTTypeTagSpecification."public.filename-extension" = extensions;
       }
     ];
   };
-
-  handlers = pkgs.writeText "neovim-handlers" (
-    lib.concatMapStrings (ext: "${bundleId} .${ext} all\n") allExtensions
-  );
 
   app = pkgs.stdenv.mkDerivation {
     name = "neovim-app";
@@ -73,14 +68,20 @@ in
 
   # nix-darwin copies the app with the store's fixed timestamps, so
   # LaunchServices does not see a changed Info.plist until the app is
-  # registered again. The handlers need its types, so they come after.
+  # registered again. A handler can only be set for a declared type, and
+  # macOS declares none for extensions such as rs or nix: the app imports one,
+  # which gives way to a type macOS declares.
   home-manager.sharedModules = [
     (
       { lib, ... }:
       {
         home.activation.neovimDefaultApp = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-          run ${lsregister} -f ${lib.escapeShellArg appPath}
-          run ${pkgs.duti}/bin/duti ${handlers}
+          run ${lsregister} -f ${lib.escapeShellArg appPath} ||
+            warnEcho "Neovim.app is not registered"
+          for extension in ${lib.escapeShellArgs extensions}; do
+            run ${lib.getExe pkgs.duti} -s ${bundleId} ".$extension" all ||
+              warnEcho "Neovim is not the default app for .$extension"
+          done
         '';
       }
     )
