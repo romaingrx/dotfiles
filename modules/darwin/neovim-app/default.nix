@@ -1,13 +1,19 @@
-# Neovim.app: shows up in Finder's "Open With" for text files and opens them
-# in Neovim in a new window of your terminal (lib/apps). To make it the default
-# for a type, use Get Info > Open with > Change All.
+# Neovim.app: opens a file in Neovim in a new window of your terminal
+# (lib/apps). It shows up in Finder's "Open With" for any text file, and is
+# the default app for the extensions in ./extensions.nix.
 { lib, pkgs, ... }:
 let
   inherit (import ../../../lib/apps) terminal;
+  extensions = import ./extensions.nix;
+  allExtensions = extensions.typed ++ extensions.untyped;
+  bundleId = "com.romaingrx.neovim";
+  appPath = "/Applications/Nix Apps/Neovim.app";
+  lsregister = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
+
   info = {
     CFBundleName = "Neovim";
     CFBundleDisplayName = "Neovim";
-    CFBundleIdentifier = "com.romaingrx.neovim";
+    CFBundleIdentifier = bundleId;
     CFBundleExecutable = "Neovim";
     CFBundleIconFile = "nvim";
     CFBundlePackageType = "APPL";
@@ -21,8 +27,26 @@ let
         LSHandlerRank = "Alternate";
         LSItemContentTypes = [ "public.text" ];
       }
+      {
+        CFBundleTypeName = "Source code";
+        CFBundleTypeRole = "Editor";
+        LSHandlerRank = "Alternate";
+        CFBundleTypeExtensions = allExtensions;
+      }
+    ];
+    UTImportedTypeDeclarations = [
+      {
+        UTTypeIdentifier = "${bundleId}.source-code";
+        UTTypeDescription = "Source code";
+        UTTypeConformsTo = [ "public.source-code" ];
+        UTTypeTagSpecification."public.filename-extension" = extensions.untyped;
+      }
     ];
   };
+
+  handlers = pkgs.writeText "neovim-handlers" (
+    lib.concatMapStrings (ext: "${bundleId} .${ext} all\n") allExtensions
+  );
 
   app = pkgs.stdenv.mkDerivation {
     name = "neovim-app";
@@ -46,4 +70,19 @@ let
 in
 {
   environment.systemPackages = [ app ];
+
+  # nix-darwin copies the app with the store's fixed timestamps, so
+  # LaunchServices does not see a changed Info.plist until the app is
+  # registered again. The handlers need its types, so they come after.
+  home-manager.sharedModules = [
+    (
+      { lib, ... }:
+      {
+        home.activation.neovimDefaultApp = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+          run ${lsregister} -f ${lib.escapeShellArg appPath}
+          run ${pkgs.duti}/bin/duti ${handlers}
+        '';
+      }
+    )
+  ];
 }
