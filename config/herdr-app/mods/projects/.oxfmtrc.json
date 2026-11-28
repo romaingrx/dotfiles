@@ -1,4 +1,0 @@
-{
-  "printWidth": 120,
-  "ignorePatterns": ["main.js", "gpui-kit.d.ts"]
-}

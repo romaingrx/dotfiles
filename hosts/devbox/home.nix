@@ -38,6 +38,7 @@ in
     ../../modules/home/tl.nix
     ../../modules/home/claude-gateway.nix
     ../../modules/home/envoy-listener.nix
+    ../../modules/home/baton-settings.nix
     ../../modules/home/programs/tmux-ctrl-a.nix
   ];
 
